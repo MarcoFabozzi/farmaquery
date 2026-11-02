@@ -133,7 +133,8 @@ class SnapshotOnlineTests(unittest.TestCase):
                 am_q=("Quali sono tutti i centri elencati nella Tabella 1, "
                       "pagina 2, della nota AMVUTTRA 0634617/2026 "
                       "per ATTR-CM?")
-                am,am_full=contesto_integrale(db,am_q,"AMVUTTRA")
+                from tesi.pilota_tag_vs_sql import _target_db
+                am,am_full=contesto_integrale(db,am_q,_target_db(db,am_q))
                 self.assertTrue(am_full,"Pagina regionale completa non disponibile")
                 self.assertTrue(am and any("#p2" in r["fonte"] for r in am))
                 am_text=" ".join(x["testo"] for x in am).casefold()
@@ -144,7 +145,7 @@ class SnapshotOnlineTests(unittest.TestCase):
                 weg_q=("Quante confezioni di WEGOVY sono presenti "
                        "nell'articolo 1 della determina 23A02767? "
                        "Riporta tutti gli AIC.")
-                weg,weg_full=contesto_integrale(db,weg_q,"WEGOVY")
+                weg,weg_full=contesto_integrale(db,weg_q,_target_db(db,weg_q))
                 self.assertTrue(weg_full,"Articolo 1 completo non disponibile")
                 self.assertTrue(weg)
                 ids=list(dict.fromkeys(
@@ -156,7 +157,7 @@ class SnapshotOnlineTests(unittest.TestCase):
 
                 cam_q=("Quali protocolli precedenti sono citati nel "
                        "documento CAMZYOS del 20 novembre 2025?")
-                cam,_=contesto_integrale(db,cam_q,"CAMZYOS")
+                cam,_=contesto_integrale(db,cam_q,_target_db(db,cam_q))
                 self.assertTrue(cam,"Documento CAMZYOS non recuperato")
                 references=" ".join(x["testo"] for x in cam)
                 self.assertIn("0503681",references)
