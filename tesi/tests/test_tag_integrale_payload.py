@@ -92,13 +92,14 @@ class TagIntegralPayloadTests(unittest.TestCase):
             db.row_factory=sqlite3.Row
             result,requests=run_without_provider(
                 db,question,"Nell'articolo 1 sono presenti 5 confezioni.")
-        self.assertEqual(len(requests),1)
+        self.assertEqual(len(requests),2)
         payload=requests[0][1]
         ids={x for row in payload["evidenze"]
              for x in row.get("aic_trovati_nel_testo",[])}
         self.assertEqual(len(ids),6)
         self.assertIn("049883111/E",ids)
         self.assertEqual(result["aic_mancanti_rispetto_al_testo"],6)
+        self.assertTrue(result["revisione_completezza_llm"])
         self.assertTrue(result["contesto_integrale_completo"])
         self.assertIn("049883111/E",result["risposta"])
         self.assertIn("6",result["risposta"])
