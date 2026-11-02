@@ -128,8 +128,12 @@ class TagIntegralPayloadTests(unittest.TestCase):
         self.assertTrue(pages)
         self.assertTrue(all("#p1" in x["fonte"] for x in pages))
         text=" ".join(x["testo"] for x in pages)
-        self.assertIn("0503681",text)
+        # La pagina 1 originale contiene SOLO la nota sostituita:
+        # il protocollo 2024 non deve essere inventato per compiacere
+        # la domanda, pur comparendo in alcuni avvisi sui rimandi.
         self.assertIn("0624981",text)
+        self.assertNotIn("0503681",text)
+        self.assertIn("annulla e  sostituisce",text)
 
     def test_wegovy_sei_aic_raggiungono_sintesi(self):
         question=("Quante confezioni di WEGOVY sono presenti "
