@@ -46,8 +46,8 @@ class ChatbotTests(unittest.TestCase):
 
     def test_model_and_secret_from_server_only(self):
         model=chat.model_from_settings(
-            {"FARMAQUERY_LLM_MODEL":"gemini/gemini-2.5-flash"},environ={})
-        self.assertEqual(model,"gemini/gemini-2.5-flash")
+            {"FARMAQUERY_LLM_MODEL":"gemini/gemini-3.5-flash-lite"},environ={})
+        self.assertEqual(model,"gemini/gemini-3.5-flash-lite")
         env={}
         self.assertTrue(chat.enable_server_key(model,
                         {"GEMINI_API_KEY":"TEST_SECRET"},env))
