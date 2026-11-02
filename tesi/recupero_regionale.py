@@ -223,11 +223,32 @@ def regional_candidates(db,question,target="",limit=22):
                 score[note]=score.get(note,0)+7
     for note_id,_ in sorted(score.items(),key=lambda kv:(-kv[1],str(kv[0])))[:8]:
         pages=_doc_pages(db,note_id)
-        if institution:
-            pages.sort(key=lambda p:(0 if institution in p["testo"].casefold()
-                                     else 1, p["numero_pagina"]))
-        for page in _seleziona_pagine(pages,full=False)[:3]:
-            add(_evidence(page,"CANDIDATO PER CATEGORIA: verificare "
-                          "nel testo patologia, indicazione e centro; "
-                          "non presumere elenco esaustivo"))
+        readable=[p for p in pages if p["metodo"] in ("TESTO","OCR")
+                  and p["testo"].strip()]
+        if not readable:
+            continue
+        # Aggregazione documentale: LOTUS valuta insieme il testo della
+        # patologia e la pagina dei centri, anche se sono pagine diverse.
+        # Evita un falso match basato sulla sola menzione di Federico II.
+        ranked=sorted(readable,key=lambda p:(
+            0 if institution and institution in p["testo"].casefold() else 1,
+            0 if any(w in p["testo"].casefold() for w in expanded) else 1,
+            p["numero_pagina"]))
+        selected=ranked[:4]
+        combined="; ".join(
+            "[pagina "+str(p["numero_pagina"])+"] "+p["testo"][:530]
+            for p in selected)
+        first=selected[0]
+        docs=[str(p["percorso_zip"])+"#p"+str(p["numero_pagina"])
+              for p in selected]
+        annotation=("CANDIDATO PER CATEGORIA: verificare nel testo sia la "
+                    "patologia sia il centro; relazione non verificata; "
+                    "estratti parziali, risultati NON esaustivi. ")
+        add({
+            "tipo":"REGIONE",
+            "chiave":"REGIONE:DOC:"+str(note_id),
+            "testo":annotation+" Documento "+str(first.get("nome_file") or "")+
+                     "; "+combined,
+            "fonte":" | ".join(docs)+" | archivio: "+str(first["archivio_url"]),
+        })
     return found[:limit]
