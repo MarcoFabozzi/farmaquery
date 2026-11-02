@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import sqlite3
 import time
+import re
+from urllib.parse import urlsplit
 
 import streamlit as st
 from errori_chatbot import label_error
@@ -69,10 +71,31 @@ def _reply(question,method,model,has_key,remaining):
             return label_error(exc)
 
 
+def _show_citation(ref):
+    """Mostra pagina e archivio originali senza fingere link PDF nei file ZIP."""
+    source=str(ref)
+    match=re.match(r"^(.+?)#p([0-9]+) \| archivio: (https?://\S+)$",source)
+    if match:
+        name,page,url=match.groups()
+        st.caption(name+" — pagina "+page+" del PDF contenuto nell'archivio")
+    else:
+        parts=source.split(" | ",1)
+        url=parts[1].split("#segmento-",1)[0] if len(parts)==2 else ""
+        st.caption(parts[0])
+    if url and urlsplit(url).hostname and (
+        urlsplit(url).hostname.endswith(".aifa.gov.it")
+        or urlsplit(url).hostname=="www.aifa.gov.it"
+        or urlsplit(url).hostname=="www.regione.campania.it"
+        or urlsplit(url).hostname=="www.ema.europa.eu"
+        or urlsplit(url).hostname=="www.gazzettaufficiale.it"
+    ):
+        st.markdown("[Apri la fonte ufficiale]("+url+")")
+
+
 @st.dialog("Assistente FarmaQuery",width="large")
 def assistant_dialog():
     """Una finestra nativa: il campo è esterno al CSS del pulsante flottante."""
-    st.caption("Informazioni EMA, AIFA e Regione Campania.")
+    st.caption("Informazioni EMA, AIFA, Gazzetta Ufficiale e Regione Campania.")
     method=st.selectbox("Metodo di risposta",
                         ("Text-to-SQL","TAG"),
                         key="farmaquery_float_method")
@@ -131,7 +154,15 @@ def assistant_dialog():
                     if item.get("fonti"):
                         with st.expander("Fonti consultate"):
                             for ref in item["fonti"]:
-                                st.text(str(ref))
+                                _show_citation(ref)
+                    if item.get("evidenze_fonti"):
+                        with st.expander("Estratti dei dati consultati"):
+                            st.caption("Estratti del contesto recuperato, non "
+                                       "verifiche normative indipendenti.")
+                            for source in item["evidenze_fonti"]:
+                                st.caption(source.get("tipo","Fonte")+" · "+
+                                           source.get("fonte","")[:150])
+                                st.text(source.get("estratto",""))
                     if method=="Text-to-SQL" and item.get("sql"):
                         with st.expander("Query SQL"):
                             st.code(item["sql"],language="sql")
@@ -154,6 +185,7 @@ def assistant_dialog():
         history.append({"role":"assistant",
                         "text":result.get("risposta","Nessuna risposta disponibile."),
                         "fonti":result.get("fonti",[]),
+                        "evidenze_fonti":result.get("evidenze_fonti",[]),
                         "sql":result.get("sql",""),
                         "secondi":round(time.monotonic()-start,2)})
         # Solo la finestra viene aggiornata: rimane aperta e scrivibile.
