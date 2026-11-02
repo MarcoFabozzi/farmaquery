@@ -95,6 +95,13 @@ class RegionalSemanticRetrievalTests(unittest.TestCase):
         rows=regional_candidates(self.db,"Centri PLUVICTO","pluvicto")
         self.assertFalse(any("NOTA RICHIAMATA:" in x["testo"] for x in rows))
 
+    def test_categoria_non_forza_il_nome_del_farmaco(self):
+        q="Quali farmaci per malattie neuromuscolari si prescrivono al Federico II?"
+        results=evidence_candidates(self.db,q,max_rows=22)
+        self.assertTrue(results)
+        self.assertTrue(all(row["tipo"]=="REGIONE" for row in results))
+        self.assertTrue(any("miastenia" in row["testo"] for row in results))
+
     def test_assenza_documentale_non_inventa_fonti(self):
         self.assertEqual(regional_candidates(
             self.db,"Quali strutture per FARMACO SCONOSCIUTO?",
