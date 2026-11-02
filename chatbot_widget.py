@@ -18,6 +18,17 @@ from chatbot_farmaquery import (
 MAX_QUESTIONS_PER_SESSION=12
 
 
+def start_new_conversation():
+    """Azzera entrambe le chat prima del rerun gestito da Streamlit.
+
+    Il contatore delle richieste resta invariato, per non eludere il
+    limite della quota pubblica del provider.
+    """
+    for method in ("Text-to-SQL", "TAG"):
+        st.session_state[history_key(method)]=[]
+    st.session_state["farmaquery_chat_just_cleared"]=True
+
+
 @st.cache_resource(show_spinner=False,max_entries=2)
 def _cached_snapshot(version):
     return prepare_snapshot()
@@ -30,7 +41,7 @@ def render_assistant():
     .st-key-farmaquery_floating {
        position:fixed!important;
        right:22px!important;
-       bottom:22px!important;
+       bottom:64px!important;
        width:66px!important;
        z-index:99999!important;
        padding:0!important;
@@ -52,7 +63,7 @@ def render_assistant():
        transform:translateY(-2px);
     }
     @media(max-width:650px) {
-       .st-key-farmaquery_floating {right:13px!important;bottom:12px!important;}
+       .st-key-farmaquery_floating {right:13px!important;bottom:48px!important;}
     }
     </style>""",unsafe_allow_html=True)
 
@@ -87,10 +98,13 @@ def render_assistant():
             else:
                 st.caption(f"Domande disponibili nella sessione: {remaining}")
 
-            if st.button("Nuova conversazione",key="float_clear_"+method,
-                         use_container_width=True):
-                st.session_state[key]=[]
-                st.rerun()
+            st.button("Nuova conversazione",
+                      key="farmaquery_start_new_conversation",
+                      on_click=start_new_conversation,
+                      help="Cancella entrambe le cronologie; il limite di richieste rimane.",
+                      use_container_width=True)
+            if st.session_state.pop("farmaquery_chat_just_cleared",False):
+                st.success("Nuova conversazione avviata: messaggi eliminati.")
 
             # Le cronologie per TAG e Text-to-SQL sono separate.
             with st.container(height=260,border=False):
