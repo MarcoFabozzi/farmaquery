@@ -191,9 +191,9 @@ def regional_candidates(db,question,target="",limit=22):
             "OR nome_file LIKE ? ESCAPE '\\' COLLATE NOCASE ORDER BY anno DESC LIMIT 4",
             (target,"%"+escaped+"%"))]
     complete=bool(re.search(
-        r"\\b(?:tutt[ieo]|elenco completo|quante confezioni|quanti aic)\\b",
+        r"\b(?:tutt[ieo]|elenco completo|quante confezioni|quanti aic)\b",
         question,re.I))
-    explicit_page=re.search(r"\\bpagina\\s+(\\d+)\\b",question,re.I)
+    explicit_page=re.search(r"\bpagina\s+(\d+)\b",question,re.I)
     if exact:
         for note in exact[:3]:
             pages=_doc_pages(db,note["id"])
