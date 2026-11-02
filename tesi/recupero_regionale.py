@@ -14,8 +14,11 @@ import re
 ESPANSIONI = {
     # La sclerosi multipla non va automaticamente considerata una
     # patologia neuromuscolare: evitare espansioni troppo generiche.
-    "neuromuscolar": ("miastenia", "muscolare", "spinale", "duchenne",
-                      "atrofia", "distrofia", "motoneurone"),
+    # Sinonimi, abbreviazioni e codice di esenzione presenti nelle note.
+    # Servono al RECUPERO, non attestano un'autorizzazione.
+    "neuromuscolar": ("miastenia", "mgg", "rfg101", "muscolare", "spinale",
+                      "duchenne", "atrofia", "distrofia", "motoneurone",
+                      "neuropatia", "polineuropatia"),
     "oncol": ("carcinoma", "tumore", "neoplasia", "linfoma"),
     "autoimmun": ("miastenia", "artrite", "sclerosi", "lupus"),
     "cardiomiopat": ("cardiomiopatia", "amiloidosi", "attr"),
@@ -275,29 +278,42 @@ def regional_candidates(db,question,target="",limit=22):
     eligible.sort(key=lambda item:(-item[0][0],-item[0][1],
                                   -item[0][2],item[1]))
     def focused_passage(page, terms):
-        """Estrae distintamente centro e patologia dalla stessa pagina.
+        """Collega INTESTAZIONE dell'indicazione e riga del centro.
 
-        Le intestazioni OCR occupano spesso centinaia di caratteri: le
-        finestre sono ancorate al termine, non all'inizio della pagina.
+        Molte note hanno due sezioni diverse (es. NMOSD e miastenia):
+        riportare soltanto la riga "Federico II" non dice a quale delle
+        due appartenga. La finestra principale include prima il contesto
+        terapeutico della sezione e poi la riga del centro, dalla stessa
+        pagina, con riconoscimento OCR case-insensitive.
         """
         body=" ".join(str(page["testo"]).split())
-        low=body.casefold()
-        extracts=[]
-        if institution:
-            hits=list(re.finditer(re.escape(institution),low))
-            for hit in (hits[:1]+hits[-1:]):
-                start=max(0,hit.start()-390)
-                end=min(len(body),hit.end()+270)
-                snippet=body[start:end]
-                if snippet not in extracts:
-                    extracts.append("CENTRO: "+snippet)
+        lower=body.casefold()
+        disease_hits=[]
         for term in sorted(terms):
-            match=re.search(re.escape(term),low)
-            if match:
-                start=max(0,match.start()-220)
-                end=min(len(body),match.end()+300)
-                extracts.append("PATOLOGIA: "+body[start:end])
-        return " […] ".join(extracts)[:1100]
+            disease_hits.extend((match.start(),term)
+                                for match in list(re.finditer(re.escape(term),lower))[:2])
+        disease_hits.sort()
+        center_hits=(list(re.finditer(re.escape(institution),lower))
+                     if institution else [])
+        parts=[]
+        # Si favorisce l'indicazione più vicina al centro richiesto.
+        if disease_hits:
+            if center_hits:
+                nearest=min(disease_hits,key=lambda item: min(
+                    abs(item[0]-hit.start()) for hit in center_hits))
+            else:
+                nearest=disease_hits[0]
+            at,term=nearest
+            parts.append("INDICAZIONE NELLA PAGINA (DA VERIFICARE): "+
+                         body[max(0,at-260):min(len(body),at+210)])
+        if center_hits:
+            hit=center_hits[-1]
+            parts.append("RIGA DEL CENTRO (DA VERIFICARE): "+
+                         body[max(0,hit.start()-330):
+                              min(len(body),hit.end()+260)])
+        if not parts:
+            return ""
+        return " […] ".join(parts)[:1200]
 
     for _,note_id,readable,terms in eligible[:limit]:
         indexed={p["numero_pagina"]:p for p in readable}
