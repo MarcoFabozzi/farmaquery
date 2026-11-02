@@ -544,6 +544,11 @@ def tag(db,question,model):
                    if completion_tokens is not None and usage["token_output"] is not None else None)
     full_cost=(selection_cost+usage["costo_usd"]
                if selection_cost is not None and usage["costo_usd"] is not None else None)
+    if complete_request and any("ESTRATTO PARZIALE" in r["testo"]
+                                for r in evidence):
+        answer+=("\n\nAvvertenza: almeno una pagina della fonte è stata "
+                 "troncata per limiti di contesto; l'elenco va verificato "
+                 "sul PDF integrale e non può essere considerato completo.")
     if category_question and not re.search(
         r"parzial|non esaustiv|non documentat|non verificabil",
         answer.casefold()):
