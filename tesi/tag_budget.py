@@ -13,6 +13,24 @@ DEFAULT_GROUPS = 3
 MAX_GROUPS = 5
 EXCERPT_CHARS = 1750
 
+# Timeout per SINGOLA richiesta di selezione semantica (LiteLLM/LOTUS).
+# Un ServiceUnavailableError (503) può comunque arrivare prima della scadenza.
+LOTUS_SELECTION_TIMEOUT_SECONDS = 90
+
+
+def sem_filter_controlled(frame, instruction):
+    """Passa a LOTUS timeout esplicito e nessun retry automatico.
+
+    L'operatore rimane DataFrame.sem_filter; nessun bypass del modello.
+    LOTUS inoltra **model_kwargs al modello LiteLLM configurato.
+    """
+    return frame.sem_filter(
+        instruction,
+        timeout=LOTUS_SELECTION_TIMEOUT_SECONDS,
+        num_retries=0,
+    )
+
+
 
 def selection_mode(environ=None):
     env = os.environ if environ is None else environ
