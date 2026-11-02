@@ -17,7 +17,9 @@ class PilotaTests(unittest.TestCase):
                     "UPDATE note SET nome_file='x'",
                     "SELECT * FROM sqlite_master",
                     "SELECT * FROM main.note",
-                    "SELECT 1; DELETE FROM note"):
+                    "SELECT 1; DELETE FROM note",
+                    "SELECT load_extension('x') FROM note",
+                    "SELECT * FROM pragma_database_list"):
             with self.subTest(sql=sql), self.assertRaises(ValueError):
                 mod.validate_sql(sql)
 
@@ -25,11 +27,11 @@ class PilotaTests(unittest.TestCase):
         conn=sqlite3.connect(":memory:")
         conn.row_factory=sqlite3.Row
         conn.executescript("""
-            CREATE TABLE note(id TEXT,percorso_zip TEXT);
+            CREATE TABLE note(id TEXT,percorso_zip TEXT,archivio_url TEXT);
             CREATE TABLE pagine(nota_id TEXT,numero_pagina INTEGER,testo TEXT,metodo TEXT);
             CREATE VIRTUAL TABLE pagine_fts USING fts5(nota_id UNINDEXED,numero_pagina UNINDEXED,testo);
         """)
-        conn.execute("INSERT INTO note VALUES('n','archivio/TEST.pdf')")
+        conn.execute("INSERT INTO note VALUES('n','archivio/TEST.pdf','https://www.regione.campania.it/archive.zip')")
         conn.execute("INSERT INTO pagine VALUES('n',1,'KEYTRUDA e centro prescrittore','TESTO')")
         conn.execute("INSERT INTO pagine_fts VALUES('n',1,'KEYTRUDA e centro prescrittore')")
         pages=mod.candidates(conn,"Quali centri sono previsti per KEYTRUDA?")
