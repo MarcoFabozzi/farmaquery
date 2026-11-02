@@ -122,7 +122,7 @@ def contesto_integrale(db,question,target,max_chars=18500):
     if not ids:
         return [],True
 
-    page_matches=re.findall(r"\bpagina\s*(\d+)\b",question,re.I)
+    page_matches=re.findall(r"\b(?:pagina|pag\.)\s*(\d+)\b",question,re.I)
     requested_pages=set(int(n) for n in page_matches)
     for note_id in ids[:2]:
         pages=[dict(r) for r in db.execute(
