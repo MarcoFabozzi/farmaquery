@@ -37,7 +37,7 @@ CATEGORY_SYSTEM = (
 )
 
 
-def compact_category_evidence(rows, per_page_chars=900, per_doc_chars=2400):
+def compact_category_evidence(rows, per_page_chars=900, per_doc_chars=2700):
     """Conserva riferimenti e finestre indicazione/centro di ciascun PDF.
 
     Ritorna evidenze per la chiamata finale, NON per la selezione LOTUS.
@@ -70,7 +70,7 @@ def compact_category_evidence(rows, per_page_chars=900, per_doc_chars=2400):
                 pages=[{"pagina":None,"estratto":text[:per_doc_chars]}]
         selected=[]
         used=0
-        for page in pages[:4]:
+        for page in pages[:3]:
             remaining=per_doc_chars-used
             if remaining<=0:
                 break
@@ -83,7 +83,7 @@ def compact_category_evidence(rows, per_page_chars=900, per_doc_chars=2400):
             "chiave":str(row.get("chiave") or ""),
             "documento_e_medicinale_candidato":header[:290],
             "passaggi":selected,
-            "fonti":sources[:4],
+            "fonti":sources[:len(selected)],
             "copertura":"estratti di pagine candidate, non elenco esaustivo",
             "documenti_troncati":bool(row.get("documenti_troncati",False))
         })
