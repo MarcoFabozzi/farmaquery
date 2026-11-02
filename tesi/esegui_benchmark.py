@@ -178,7 +178,8 @@ def execute(db_path,manifest_path,question_path,out_path,model=None,
                         result=runner(db,item["domanda"],model)
                     status=result.get("stato","OK")
                     if status not in ("OK","NESSUNA_EVIDENZA",
-                                      "NESSUNA_EVIDENZA_SEMANTICA","RISULTATI_PARZIALI"):
+                                      "NESSUNA_EVIDENZA_SEMANTICA","NESSUNA_RIGA_SQL",
+                                      "RISULTATI_PARZIALI"):
                         status="ERRORE"
                     if status=="ERRORE":
                         errors+=1
