@@ -22,6 +22,7 @@ def richiede_sezione_completa(question):
         r"quanti\s+(?:centri|aic|farmaci|medicinali)|"
         r"numero\s+d(?:i|elle?)\s+(?:confezioni|centri|aic)|"
         r"tabella\s*\d+|articolo\s*\d+|art\.\s*\d+|"
+        r"pagina\s*\d+|pag\.\s*\d+|"
         r"quali\s+protocolli|quale\s+precedente\s+nota|"
         r"annulla\s+e\s+sostituisce)\b",q))
 
@@ -122,7 +123,7 @@ def contesto_integrale(db,question,target,max_chars=18500):
     if not ids:
         return [],True
 
-    page_matches=re.findall(r"\bpagina\s*(\d+)\b",question,re.I)
+    page_matches=re.findall(r"\b(?:pagina|pag\.)\s*(\d+)\b",question,re.I)
     requested_pages=set(int(n) for n in page_matches)
     for note_id in ids[:2]:
         pages=[dict(r) for r in db.execute(

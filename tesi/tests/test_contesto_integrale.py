@@ -72,6 +72,18 @@ class FullDocumentContextTests(unittest.TestCase):
         self.assertEqual(rows[0]["fonte"],
             "2026/MEDICINALE CAMPIONE.pdf#p2 | archivio: https://regione.test/note.zip")
 
+    def test_pagina_specifica_non_enumerativa_recupera_originale(self):
+        q=("Secondo la pagina 2 della nota MEDICINALE CAMPIONE, "
+           "a quale scopo sono elencate le strutture?")
+        self.assertTrue(richiede_sezione_completa(q))
+        rows,complete=contesto_integrale(
+            self.db,q,"MEDICINALE CAMPIONE")
+        self.assertTrue(complete)
+        self.assertEqual(len(rows),1)
+        self.assertTrue(rows[0]["fonte"].endswith(
+            "MEDICINALE CAMPIONE.pdf#p2 | archivio: https://regione.test/note.zip"))
+        self.assertIn("AORN CARDARELLI",rows[0]["testo"])
+
     def test_troppo_lungo_non_dichiara_elenco_completo(self):
         q="Elenca tutti i centri della Tabella 1, pagina 2 per MEDICINALE CAMPIONE"
         rows,complete=contesto_integrale(

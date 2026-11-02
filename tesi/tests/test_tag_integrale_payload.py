@@ -83,6 +83,29 @@ class TagIntegralPayloadTests(unittest.TestCase):
         self.assertTrue(result["contesto_integrale_completo"])
         self.assertNotIn("troncata per limiti",result["risposta"])
 
+    def test_casgevy_pagina_3_sinfonia_raggiunge_sintesi(self):
+        question=(
+            "Secondo la pagina 3 della nota CASGEVY Prot.N.0655032-2025, "
+            "a quale scopo viene richiamata la nota PG/2024/0503681 "
+            "del 24 ottobre 2024? Riporta esclusivamente quanto scritto "
+            "nella pagina 3 sulla piattaforma SINFONIA, senza cercare "
+            "il testo della nota precedente.")
+        with sqlite3.connect(self.path) as db:
+            db.row_factory=sqlite3.Row
+            result,requests=run_without_provider(
+                db,question,"Risposta basata sulla pagina 3.")
+        self.assertEqual(len(requests),1)
+        context=requests[0][1]
+        self.assertTrue(context.get("sezione_integralmente_disponibile"))
+        pages=context["evidenze"]
+        self.assertTrue(pages)
+        self.assertTrue(all("#p3" in x["fonte"] for x in pages))
+        raw=" ".join(x["testo"] for x in pages).upper()
+        self.assertIn("SINFONIA",raw)
+        self.assertIn("0503681",raw)
+        self.assertTrue(result["contesto_integrale_completo"])
+        self.assertEqual(result["verifica_contesto"],"integrale")
+
     def test_wegovy_sei_aic_raggiungono_sintesi(self):
         question=("Quante confezioni di WEGOVY sono presenti "
                   "nell'articolo 1 della determina 23A02767? "
