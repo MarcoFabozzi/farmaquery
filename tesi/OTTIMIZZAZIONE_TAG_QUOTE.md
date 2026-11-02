@@ -87,5 +87,33 @@ estratto passato alla sintesi. I documenti non sono inseriti come
 risposte predefinite nel motore; il test non sostituisce l'esecuzione
 del modello e la valutazione gold.
 
+## Richieste esaustive: sezioni documentali integrali
+
+Per domande che indicano un articolo, una pagina, una tabella, tutti i centri,
+tutte le confezioni o i protocolli di una nota, **LOTUS effettua comunque
+sem_filter sui candidati**. La successiva sintesi consulta però, quando
+possibile, il testo della sezione del documento originale già archiviata
+nello **stesso SQLite**: pagina della tabella regionale oppure articolo
+della determina GU. Non si aggiungono fonti esterne e non si inseriscono
+risposte gold nei prompt. Il testo non viene ridotto ai primi 1.800/2.150
+caratteri degli estratti di ricerca.
+
+Il limite per i passaggi documentali integrali è 18.500 caratteri
+configurati nel modulo di recupero; se il contenuto necessario non vi
+rientra, il motore lo segnala come **non esaustivo**, senza presentare
+una lista incompleta come totale. Per le determine GU un controllo
+strutturale estrae gli identificativi AIC effettivamente presenti nel
+testo ed evidenzia eventuali omissioni nella risposta del LLM. I
+codici non sono hardcoded: si leggono dall'atto e non sostituiscono
+la valutazione semantica del modello.
+
+I test di regressione sullo snapshot verificano la conservazione
+della pagina 2 di AMVUTTRA, dei sei AIC nell'articolo 1 della
+determina 23A02767, e dei riferimenti testuali nella nota CAMZYOS.
+La verifica della risposta effettiva con Gemini resta distinta dai test
+offline. Il percorso integrale può avere un diverso consumo di
+token rispetto al percorso compatto: per il benchmark va registrata
+la versione del motore, oltre al modello e all'hash dello snapshot.
+
 ## Stato
 I test automatici verificano conservazione delle evidenze, tracciabilità dei gruppi, classificazione quota e arresto del runner. **Non eseguono chiamate a Gemini** e non dimostrano la correttezza clinico-regolatoria delle risposte.
