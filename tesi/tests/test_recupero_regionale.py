@@ -85,6 +85,46 @@ class RegionalSemanticRetrievalTests(unittest.TestCase):
         full=evidence_candidates(self.db,question,max_rows=18)
         self.assertTrue(any(x["tipo"]=="REGIONE" for x in full))
 
+    def test_citazioni_ciascuna_pagina_e_finestre_rilevanti(self):
+        self.db.execute("UPDATE pagine SET testo=? "
+                        "WHERE nota_id='nm' AND numero_pagina=2",
+                        ("Intestazione ripetuta " * 110 +
+                         "Centro prescrittore: AOU Federico II di Napoli."))
+        self.db.execute(
+            "DELETE FROM pagine_fts WHERE nota_id='nm' AND numero_pagina=2")
+        self.db.execute(
+            "INSERT INTO pagine_fts SELECT nota_id,numero_pagina,testo "
+            "FROM pagine WHERE nota_id='nm' AND numero_pagina=2")
+        q="Quali farmaci per malattie neuromuscolari si prescrivono al Federico II?"
+        evidence=regional_candidates(self.db,q)
+        self.assertEqual(len(evidence),1)
+        doc=evidence[0]
+        self.assertEqual(len(doc["fonti"]),2)
+        self.assertTrue(all(" | archivio: " in x for x in doc["fonti"]))
+        self.assertTrue(all(x.count("#p")==1 for x in doc["fonti"]))
+        self.assertIn("miastenia",doc["testo"].lower())
+        self.assertIn("Federico II",doc["testo"])
+        self.assertIn("Federico II",doc["testo_selezione"])
+        self.assertNotIn("Intestazione ripetuta Intestazione ripetuta "
+                         "Intestazione ripetuta Intestazione ripetuta "
+                         "Intestazione ripetuta",doc["testo_selezione"])
+
+    def test_sclerosi_multipla_non_inserita_per_definizione(self):
+        self.db.execute(
+            "INSERT INTO note VALUES (?,?,?,?,?,?,?)",
+            ('ms','KESIMPTA.pdf','2022/KESIMPTA.pdf',2022,
+             'KESIMPTA',None,'https://regione.test/2022.zip'))
+        self.db.execute("INSERT INTO pagine VALUES(?,?,?,?)",
+                        ('ms',1,'Trattamento della sclerosi multipla presso '
+                         'AOU Federico II','TESTO'))
+        self.db.execute(
+            "INSERT INTO pagine_fts SELECT nota_id,numero_pagina,testo "
+            "FROM pagine WHERE nota_id='ms'")
+        docs=regional_candidates(self.db,
+            "Quali farmaci per malattie neuromuscolari si prescrivono al Federico II?")
+        self.assertFalse(any("KESIMPTA" in d["testo"] for d in docs))
+        self.assertTrue(any("miastenia" in d["testo"] for d in docs))
+
     def test_rimando_ambiguo_non_sceglie_documento_a_caso(self):
         self.db.execute(
            "INSERT INTO note VALUES(?,?,?,?,?,?,?)",
