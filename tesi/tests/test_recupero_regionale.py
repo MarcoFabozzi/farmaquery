@@ -123,6 +123,42 @@ class RegionalSemanticRetrievalTests(unittest.TestCase):
         self.assertFalse(any("KESIMPTA" in d["testo"] for d in docs))
         self.assertTrue(any("miastenia" in d["testo"] for d in docs))
 
+    def test_recupero_categoria_non_perde_note_dopo_otto_documenti(self):
+        # Le due note pertinenti sono deliberately after molti documenti,
+        # non è lecito tagliarle in base al vecchio top-8 FTS.
+        for i in range(14):
+            doc="dist-"+str(i)
+            name="ALTRO "+str(i)
+            self.db.execute(
+                "INSERT INTO note VALUES(?,?,?,?,?,?,?)",
+                (doc,name+".pdf","2026/"+name+".pdf",2026,name,
+                 "PG/2026/"+str(i).zfill(7),"https://regione.test/archive.zip"))
+            self.db.execute(
+                "INSERT INTO pagine VALUES(?,?,?,?)",
+                (doc,1,"Miastenia gravis. Centro: AOU Federico II.", "TESTO"))
+        for doc,med,disease in (
+            ("late-1","TERAPIA DUCHENNE","distrofia muscolare di Duchenne"),
+            ("late-2","TERAPIA MIASTENIA","miastenia gravis generalizzata"),
+        ):
+            self.db.execute(
+                "INSERT INTO note VALUES(?,?,?,?,?,?,?)",
+                (doc,med+".pdf","2026/"+med+".pdf",2026,med,
+                 None,"https://regione.test/archive.zip"))
+            self.db.execute("INSERT INTO pagine VALUES(?,?,?,?)",
+                            (doc,1,"Indicazione: "+disease+".","TESTO"))
+            self.db.execute("INSERT INTO pagine VALUES(?,?,?,?)",
+                            (doc,2,"Prescrizione: AOU Federico II.","TESTO"))
+        self.db.execute("DELETE FROM pagine_fts")
+        self.db.execute("INSERT INTO pagine_fts SELECT nota_id,numero_pagina,testo FROM pagine")
+        q="Quali farmaci per malattie neuromuscolari si prescrivono al Federico II?"
+        rows=regional_candidates(self.db,q,limit=22)
+        ids={row["chiave"] for row in rows}
+        self.assertIn("REGIONE:DOC:late-1",ids)
+        self.assertIn("REGIONE:DOC:late-2",ids)
+        self.assertTrue(all("fonti" in row for row in rows))
+        for row in rows:
+            self.assertLessEqual(len(row.get("passaggi_sintesi",[])),6)
+
     def test_rimando_ambiguo_non_sceglie_documento_a_caso(self):
         self.db.execute(
            "INSERT INTO note VALUES(?,?,?,?,?,?,?)",
