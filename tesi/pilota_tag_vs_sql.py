@@ -18,6 +18,7 @@ import time
 from errori_chatbot import EnginePhaseError
 from tesi.recupero_gu import domanda_gu, candidati_gu
 from tesi.recupero_regionale import regional_candidates, categoria
+from tesi.tag_budget import selection_mode,semantic_plan,expand_selected
 
 
 SCHEMA = """Tabelle disponibili (SQLite, SOLA LETTURA):
@@ -492,9 +493,13 @@ def tag(db,question,model):
         return {"risposta":"Informazione non documentata nello snapshot consultato.",
                 "fonti":[],"stato":"NESSUNA_EVIDENZA","token_input":0,
                 "token_output":0,"costo_usd":0.0,"costo_completo":True}
-    lm=_in_phase("inizializzazione TAG",LM,model=model,max_batch_size=4)
+    mode=selection_mode()
+    # Nessuna fonte viene eliminata per ridurre il costo: la selezione
+    # raggruppata valuta più evidenze in un solo elemento semantico.
+    planned,members=semantic_plan(rows,mode=mode,max_groups=3)
+    lm=_in_phase("inizializzazione TAG",LM,model,max_batch_size=4)
     _in_phase("inizializzazione TAG",lotus.settings.configure,lm=lm,enable_cache=False)
-    frame=pd.DataFrame(rows)
+    frame=pd.DataFrame(planned)
     selected=_in_phase("selezione TAG",lambda: frame.sem_filter(
         "La riga {testo} è pertinente ad ALMENO UNA parte della domanda "
         +json.dumps(question,ensure_ascii=False)
@@ -514,7 +519,8 @@ def tag(db,question,model):
     selection_cost=getattr(selection_usage,"total_cost",None)
     # Conserviamo chiave e tipo per garantire copertura delle fonti senza
     # confondere una selezione semantica vuota con un database vuoto.
-    semantic=selected[["tipo","chiave","testo","fonte"]].to_dict("records")
+    selected_groups=selected[["chiave"]].to_dict("records")
+    semantic=expand_selected(selected_groups,members)
     ids={r["chiave"] for r in rows}
     semantic=[r for r in semantic if r.get("chiave") in ids]
     evidence=_multisource_evidence(rows,semantic,question,
@@ -533,6 +539,8 @@ def tag(db,question,model):
         return {"risposta":"Informazione non documentata nello snapshot consultato.",
                 "fonti":[],"stato":"NESSUNA_EVIDENZA_SEMANTICA",
                 "righe_recuperate":len(rows),
+                "modalita_selezione":mode,
+                "chiamate_semantiche_stimate":len(planned),
                 "token_input":prompt_tokens,
                 "token_output":completion_tokens,
                 "costo_usd":selection_cost,"costo_completo":selection_cost is not None}
@@ -594,8 +602,13 @@ def tag(db,question,model):
             "stato":"OK","token_input":input_tokens,
             "token_output":output_tokens,"costo_usd":full_cost,
             "costo_completo":full_cost is not None,
-            "righe_sem_filter":len(rows),
-            "righe_selezionate_lotus":len(semantic),
+            "righe_sem_filter":len(planned),
+            "righe_recuperate":len(rows),
+            "righe_selezionate_lotus":len(selected_groups),
+            "righe_evidenze_da_lotus":len(semantic),
+            "modalita_selezione":mode,
+            "chiamate_semantiche_stimate":len(planned),
+            "chiamate_llm_stimate":len(planned)+1,
             "fonti_recuperate":sorted({r["tipo"] for r in rows}),
             "fonti_usate":sorted({r["tipo"] for r in evidence}),
             "fonti_mancanti":sorted(_facets(question)-{r["tipo"] for r in evidence})}
