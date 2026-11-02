@@ -634,11 +634,42 @@ def _sql_sources(db,rows):
     return list(dict.fromkeys(found))
 
 
+SQL_ROW_LIMIT = 80
+SQL_CONTEXT_CHARS = 24000
+
+
+def _limit_from_sql(sql):
+    hit=re.search(r"\bLIMIT\s+([0-9]+)\b",sql,re.I)
+    return int(hit.group(1)) if hit else None
+
+
+def _sql_context(raw):
+    """Estrae righe citabili e segnala eventuali tagli di celle o contesto."""
+    output=[]
+    consumed=0
+    cut=False
+    for record in raw:
+        original=dict(record)
+        row={key:(str(value)[:2500] if value is not None else None)
+             for key,value in original.items()}
+        if any(value is not None and len(str(value))>2500
+               for value in original.values()):
+            cut=True
+        size=len(json.dumps(row,ensure_ascii=False))
+        if consumed+size>SQL_CONTEXT_CHARS:
+            cut=True
+            break
+        output.append(row)
+        consumed+=size
+    return output,cut
+
+
 def sql_method(db,question,model):
     generated,first=_in_phase("generazione SQL",ask,model,
         "Genera SOLO UNA query SELECT SQLite eseguibile, senza Markdown. "
         "Usa esclusivamente le tabelle documentate; non generare DDL, DML, "
-        "PRAGMA né più istruzioni. LIMIT 30. Per citazioni includi "
+        "PRAGMA né più istruzioni. LIMIT massimo 80. Se la domanda chiede " 
+        "l'elenco completo non usare limiti più bassi. Per citazioni includi "
         "aic, ema_id oppure nota_id e numero_pagina nel risultato, "
          "e per GU codice AS gu_codice o documento_id, "
         "e archivio_url o fonte_url quando pertinenti. "
@@ -648,22 +679,38 @@ def sql_method(db,question,model):
     start=time.monotonic()
     db.set_progress_handler(lambda:1 if time.monotonic()-start>12 else 0,10000)
     try:
-        raw=_in_phase("esecuzione SQL",lambda:db.execute(sql).fetchmany(31))
-        rows=[{key:(str(value)[:2500] if value is not None else None)
-               for key,value in dict(r).items()} for r in raw[:30]]
+        raw=_in_phase("esecuzione SQL",
+                      lambda:db.execute(sql).fetchmany(SQL_ROW_LIMIT+1))
+        rows,context_cut=_sql_context(raw[:SQL_ROW_LIMIT])
+        max_from_query=_limit_from_sql(sql)
+        truncated=(len(raw)>SQL_ROW_LIMIT or context_cut or
+                   (max_from_query is not None and len(raw)>=max_from_query))
     finally:
         db.set_progress_handler(None,0)
     citations=_sql_sources(db,rows)
+    if not rows:
+        return {"risposta":"Informazione non documentata nello snapshot consultato.",
+                "fonti":[],"sql":sql,"righe_sql":0,
+                "stato":"NESSUNA_EVIDENZA","risultato_parziale":False,
+                **first,"costo_completo":first.get("costo_usd") is not None}
     answer,second=_in_phase("sintesi SQL",ask,model,
         "Rispondi in italiano SOLO in base alle righe SELECT e alle fonti. "
         "Non interpretare un dato AIFA/EMA come autorizzazione regionale. "
         "Se la classe_a_h_snapshot è NULL, indica C solo come deduzione per esclusione dagli elenchi A/H, mai come classe ufficialmente attestata. Distingui data della lista A/H e data della determina. "
         "Se mancano dati o evidenze, scrivi 'non documentato nello snapshot'. "
-        "Non inventare citazioni.",
-        {"domanda":question,"righe_sql":rows,"fonti_recuperate":citations})
+        "Non inventare citazioni; se i risultati sono parziali "
+        "non dichiarare una lista completa.",
+        {"domanda":question,"righe_sql":rows,"fonti_recuperate":citations,
+         "righe_limite":SQL_ROW_LIMIT,"risultati_parziali":truncated})
     total=_accumulate(first,second)
+    if truncated:
+        answer+=("\n\nAvvertenza: risultati SQL parziali per limite di "
+                 "righe, limite della query o di contesto. L'elenco non "
+                 "può essere considerato completo.")
     return {"risposta":answer,"fonti":citations,"sql":sql,
-            "righe_sql":len(rows),"stato":"OK",**total,"costo_completo":True}
+            "righe_sql":len(rows),"stato":"RISULTATI_PARZIALI" if truncated else "OK",
+            "risultato_parziale":truncated,**total,
+            "costo_completo":total["costo_usd"] is not None}
 
 
 def main():
