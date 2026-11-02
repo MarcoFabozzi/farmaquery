@@ -80,7 +80,16 @@ def importa_gu(db: sqlite3.Connection, fonte: sqlite3.Connection, root: Path):
         raw = percorso.read_bytes()
         observed = sha256(raw).hexdigest()
         if observed != expected:
-            raise ValueError("SHA-256 non corrispondente per testo GU: " + str(relativo))
+            # I vecchi testi GU sono stati talvolta committati con CRLF su
+            # GitHub. Accettiamo SOLO la conversione CRLF->LF quando
+            # il digest originale del database viene riprodotto esattamente.
+            canonical = raw.replace(b"\r\n", b"\n")
+            if sha256(canonical).hexdigest() != expected:
+                raise ValueError("SHA-256 non corrispondente per testo GU: " + str(relativo)
+                                 + " (byte=" + observed[:12]
+                                 + ", LF=" + sha256(canonical).hexdigest()[:12]
+                                 + ", atteso=" + expected[:12] + ")")
+            raw = canonical
         text = raw.decode("utf-8-sig")
         if not text.strip():
             raise ValueError("Testo GU vuoto: " + str(relativo))
