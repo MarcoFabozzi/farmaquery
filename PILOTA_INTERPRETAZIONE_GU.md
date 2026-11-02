@@ -24,7 +24,9 @@ python analisi_provvedimenti_llm.py --provider gemini --limit 12
 Remove-Item Env:GEMINI_API_KEY
 ```
 
-Il modello predefinito è `gemini-2.5-flash`, modificabile con `--model`. L'esecuzione richiede accesso Internet e può comportare costi/limiti API. I provvedimenti sono fonti pubbliche, ma si deve comunque verificare quali dati siano opportuni da inviare al provider.
+Il modello predefinito è `gemini-3.5-flash-lite`, modificabile con `--model`. L'esecuzione richiede accesso Internet e può comportare costi/limiti API. I provvedimenti sono fonti pubbliche, ma si deve comunque verificare quali dati siano opportuni da inviare al provider.
+
+Se il modello restituisce un errore HTTP, la nuova versione dello script indica `ERRORE_API` e `http_status`, senza esporre la chiave. Se usi uno ZIP scaricato prima della correzione, prova `--model gemini-3.5-flash-lite` oppure scarica la versione aggiornata del modulo.
 
 L'output predefinito è `risultati/analisi_provvedimenti_pilota.local.json`, un rapporto **locale**. Non aggiungerlo al repository. Il prompt può usare estratti parziali di documenti lunghi: il rapporto segnala il limite.
 
