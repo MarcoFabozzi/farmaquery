@@ -1,0 +1,37 @@
+name: Verifica classi AIFA nella dashboard
+
+on:
+  pull_request:
+    paths:
+      - 'classi_aifa.py'
+      - 'dashboard_regolatorio.py'
+      - 'aifa_componenti.py'
+      - 'aggiorna_indipendente.py'
+      - 'tests/test_classi_aifa.py'
+      - '.github/workflows/aggiorna-aifa-ah.yml'
+      - '.github/workflows/test-classi-aifa.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'classi_aifa.py'
+      - 'dashboard_regolatorio.py'
+      - 'aifa_componenti.py'
+      - 'aggiorna_indipendente.py'
+      - '.github/workflows/aggiorna-aifa-ah.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compila codice
+        run: python -m py_compile classi_aifa.py aifa_componenti.py aggiorna_indipendente.py dashboard_regolatorio.py
+      - name: Test indice delle classi A/H e pipeline
+        run: python -m unittest -v tests.test_classi_aifa tests.test_aifa_componenti tests.test_aifa_principi_attivi

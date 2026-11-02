@@ -19,6 +19,7 @@ BASE=Path(__file__).resolve().parent
 DATA=BASE/'risultati'
 DB=DATA/'farmaci_automatico.sqlite'
 AIFA=DATA/'aifa_confezioni_complete.sqlite.gz'
+AIFA_AH=DATA/'aifa_classi_ah.json'
 
 st.set_page_config(page_title='FarmaQuery',page_icon='💊',layout='centered')
 st.markdown("""
@@ -118,6 +119,44 @@ def archivio_aifa(path,version):
     return temp
 
 
+@st.cache_data(show_spinner=False,max_entries=4)
+def indice_classi_aifa(path,version):
+    from classi_aifa import leggi_indice
+    return leggi_indice(path)
+
+
+def classi_ah_per_aic(aics):
+    """Usa l'indice nazionale datato, con fallback allo snapshot locale."""
+    ids=list(dict.fromkeys(str(x) for x in aics if x))
+    if not ids:
+        return {}
+    if AIFA_AH.is_file():
+        try:
+            indice=indice_classi_aifa(str(AIFA_AH),AIFA_AH.stat().st_mtime_ns)
+            date_ref=indice['data_riferimento']
+            return {aic:(indice['classi'][aic],date_ref)
+                    for aic in ids if aic in indice['classi']}
+        except (OSError,ValueError,KeyError,TypeError):
+            pass
+    # Fallback: lista limitata alle AIC del database principale.
+    placeholders=','.join('?' for _ in ids)
+    rows=query('SELECT aic,classe,data_riferimento FROM classi_snapshot '
+               'WHERE aic IN ('+placeholders+') '
+               'ORDER BY data_riferimento DESC,classe',ids)
+    found={}
+    for row in rows:
+        found.setdefault(row['aic'],(row['classe'],row['data_riferimento']))
+    return found
+
+
+def etichetta_ah(record):
+    if record is None:
+        return 'N/D'
+    from datetime import date
+    cls,ref=record
+    return cls+' (lista '+date.fromisoformat(ref).strftime('%d/%m/%Y')+')'
+
+
 def scheda_confezione(aic):
     """Scheda AIFA consultabile mediante ?aic=XXXXXXXXX; solo query in lettura."""
     st.markdown('### 📋 Scheda della confezione')
@@ -168,6 +207,12 @@ def scheda_confezione(aic):
 
     classes=query('SELECT classe,data_riferimento FROM classi_snapshot '
                   'WHERE aic=? ORDER BY data_riferimento DESC,classe',(aic,))
+    nazionale=classi_ah_per_aic([aic]).get(aic)
+    if nazionale and not any(
+        c['classe']==nazionale[0] and c['data_riferimento']==nazionale[1]
+        for c in classes
+    ):
+        classes.insert(0,{'classe':nazionale[0],'data_riferimento':nazionale[1]})
     registry_class=str(package['classe_da_anagrafica'] or '').strip()
     st.markdown('#### Classe e riferimenti temporali')
     st.write('**Classe riportata nell’anagrafica AIFA:**',registry_class or 'Non disponibile')
@@ -325,12 +370,24 @@ if term.strip():
             st.markdown('#### Confezioni AIFA - archivio nazionale')
             st.caption('Risultati disponibili anche per medicinali senza scheda nel catalogo EMA.')
             if packages:
+                ah=classi_ah_per_aic([item['aic'] for item in packages])
+                ordinati=[]
                 for item in packages:
                     if not str(item.get('principio_attivo') or '').strip():
                         item['principio_attivo']='Non disponibile nel file acquisito'
-                st.dataframe(packages,hide_index=True,use_container_width=True)
-                st.caption('Se il principio attivo manca, non significa che il farmaco ne sia privo. '
-                           'Serve completare l’importazione del file ufficiale con i principi attivi.')
+                    # La nuova colonna è ben visibile anche nella ricerca nazionale.
+                    ordinati.append({
+                        'aic':item['aic'],
+                        'nome':item['nome'],
+                        'principio_attivo':item['principio_attivo'],
+                        'Classe (elenco A/H)':etichetta_ah(ah.get(str(item['aic']))),
+                        **{k:v for k,v in item.items()
+                           if k not in ('aic','nome','principio_attivo')}
+                    })
+                st.dataframe(ordinati,hide_index=True,use_container_width=True)
+                st.caption('Le classi A/H hanno la data dell’elenco ufficiale; '
+                           'N/D significa non presente nei dati disponibili, non classe C. '
+                           'La classificazione vigente non è certificata.')
             else:
                 st.info('Nessuna confezione trovata nell’ultimo archivio AIFA disponibile.')
         except (OSError,ValueError,sqlite3.DatabaseError) as exc:
@@ -401,30 +458,18 @@ try:
                     " WHERE nome=? ORDER BY aic LIMIT 101",(name,))]
             st.markdown('#### Confezioni di '+name)
             st.caption('Le descrizioni lunghe continuano su più righe, nella stessa colonna.')
-            # Gli snapshot A/H sono storici: non sovrascrivono la classe da anagrafica.
+            # Tutte le AIC negli elenchi ufficiali A/H, non solo nel campione EMA.
             ids=[str(r['aic']) for r in rows[:100]]
-            history={}
-            if ids:
-                placeholders=','.join('?' for _ in ids)
-                for record in query(
-                    'SELECT aic,classe,MAX(data_riferimento) AS data_riferimento '
-                    'FROM classi_snapshot WHERE aic IN ('+placeholders+') '
-                    'GROUP BY aic,classe',ids):
-                    history.setdefault(record['aic'],[]).append(
-                        record['classe']+' ('+record['data_riferimento']+')')
+            storico_ah=classi_ah_per_aic(ids)
             table_rows=[]
             for package in rows[:100]:
                 aic=escape(str(package['aic'] or ''))
                 active=escape(str(package['principio_attivo'] or 'Non disponibile'))
                 description=escape(str(package['descrizione'] or 'Non disponibile'))
                 registered_class=str(package['classe_da_anagrafica'] or '').strip()
-                historic_classes=history.get(str(package['aic']),[])
-                # Unico snapshot: utile come dato storico, MAI come classe corrente.
-                historic_fallback=(historic_classes[0].split(' (')[0]+' (storica)'
-                                   if len(historic_classes)==1 else 'N/D')
-                cls=escape(registered_class or historic_fallback)
-                admin=escape(str(package['stato_amministrativo'] or 'Non disponibile'))
-                snapshots=escape(', '.join(historic_classes) or 'Nessuno')
+                # Priorità al valore esplicito dell'anagrafica; altrimenti lista A/H datata.
+                classe_elenco=etichetta_ah(storico_ah.get(str(package['aic'])))
+                cls=escape(registered_class or classe_elenco)
                 # Il tag HTML details e' espandibile senza altri clic o ricaricamenti.
                 extra=(
                     '<a class="regula-detail-link" href="?aic='+aic+'" target="_self">'
@@ -442,9 +487,9 @@ try:
                 '<tbody>'+''.join(table_rows)+'</tbody></table></div>',
                 unsafe_allow_html=True
             )
-            st.caption('La classe proviene dall’anagrafica AIFA, oppure è indicata come storica '
-                       'quando disponibile soltanto in uno snapshot A/H. N/D = non disponibile. '
-                       'La classificazione attuale e la rimborsabilità non sono certificate.')
+            st.caption('La classe è quella dell’anagrafica AIFA, se presente, oppure della '
+                       'lista ufficiale A/H alla data indicata. N/D = dato non disponibile, '
+                       'non significa classe C. Lo stato attuale e la rimborsabilità non sono certificati.')
             if len(rows)>100:
                 st.caption('Visualizzate le prime 100 confezioni.')
         else:

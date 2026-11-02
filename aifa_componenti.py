@@ -204,6 +204,11 @@ def aggiorna_ah(db,work):
              for cls,key in (('A','aifa_a'),('H','aifa_h'))}
     if len(classes['A'])<1000 or len(classes['H'])<100 or classes['A'] & classes['H']:
         raise ValueError('Liste A/H incoerenti o troppo piccole')
+    # Il database principale contiene solo un sottoinsieme AIFA.
+    # Conserviamo tutte le classi A/H in un indice datato separato,
+    # da usare anche per le confezioni dell'archivio nazionale completo.
+    from classi_aifa import costruisci_indice, INDICE_FILE
+    indice_info=costruisci_indice(classes,date_ref,meta,Path(work)/INDICE_FILE)
     known={row[0] for row in db.execute('SELECT aic FROM aifa_confezioni')}
     inserted=0
     for cls,key in (('A','aifa_a'),('H','aifa_h')):
@@ -217,6 +222,7 @@ def aggiorna_ah(db,work):
     return {'data_riferimento_ah':date_ref,'a_file':len(classes['A']),
             'h_file':len(classes['H']),'nuove_righe_snapshot':inserted,
             'confezioni_abbinate':sum(len(classes[x]&known) for x in ('A','H')),
+            'indice_nazionale_ah':indice_info,
             'fonti':meta,**discovery}
 
 
