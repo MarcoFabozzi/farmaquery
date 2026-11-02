@@ -6,7 +6,8 @@ on:
     branches: [main]
     paths:
       - 'tesi/prepara_snapshot_online.py'
-      - 'tesi/crea_benchmark_documentato.py'
+      - 'tesi/benchmark_revisione_relatori_30_candidati.csv'
+      - 'tesi/pilota_4_tipi_relatori_da_validare.csv'
       - '.github/workflows/crea-snapshot-tesi-online.yml'
 
 permissions:
@@ -26,17 +27,27 @@ jobs:
       - name: Crea SQLite sperimentale dal commit corrente e manifesta fonti
         run: |
           mkdir -p dist_tesi
-          python tesi/prepara_snapshot_online.py \
+          python -m tesi.prepara_snapshot_online \
             --output dist_tesi/esperimento_online.sqlite \
             --manifest dist_tesi/manifest_fonti_online.json
-      - name: Genera le 36 domande e le evidenze da verificare
+      - name: Congela le 30 domande candidate e le 8 domande pilota
         run: |
-          python tesi/crea_benchmark_documentato.py \
-            --db dist_tesi/esperimento_online.sqlite \
-            --manifest dist_tesi/manifest_fonti_online.json \
-            --out dist_tesi/benchmark_36_da_validare.csv \
-            --evidenze dist_tesi/evidenze_da_controllare.jsonl \
-            --report dist_tesi/rapporto_benchmark.json
+          cp tesi/benchmark_revisione_relatori_30_candidati.csv dist_tesi/benchmark_30_da_validare.csv
+          cp tesi/pilota_4_tipi_relatori_da_validare.csv dist_tesi/pilota_4_tipi_da_validare.csv
+          cp tesi/PROTOCOLLO_REVISIONE_RELATORE.md dist_tesi/PROTOCOLLO_REVISIONE_RELATORE.md
+          python - <<'PY'
+          import csv
+          from pathlib import Path
+          for name, expected in [('benchmark_30_da_validare.csv', 30),
+                                  ('pilota_4_tipi_da_validare.csv', 8)]:
+              with (Path('dist_tesi') / name).open(encoding='utf-8-sig', newline='') as stream:
+                  data=list(csv.DictReader(stream, delimiter=';'))
+              assert len(data)==expected, (name, len(data))
+              assert len(set(row['id'] for row in data))==expected, name
+              assert all(row['stato_validazione']=='DA_VERIFICARE'
+                         and not row['risposta_gold'] for row in data), name
+              print(name, len(data), 'domande candidate non ancora validate')
+          PY
 
       - name: Controlla file e hash
         run: |
