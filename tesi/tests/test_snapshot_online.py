@@ -128,6 +128,42 @@ class SnapshotOnlineTests(unittest.TestCase):
                       "documenti nello snapshot:",docs[0]["copertura_documenti"])
 
 
+                # Prove di completezza sullo STESSO SQLite del benchmark.
+                from tesi.contesto_integrale import contesto_integrale
+                am_q=("Quali sono tutti i centri elencati nella Tabella 1, "
+                      "pagina 2, della nota AMVUTTRA 0634617/2026 "
+                      "per ATTR-CM?")
+                am,am_full=contesto_integrale(db,am_q,"AMVUTTRA")
+                self.assertTrue(am_full,"Pagina regionale completa non disponibile")
+                self.assertTrue(am and any("#p2" in r["fonte"] for r in am))
+                am_text=" ".join(x["testo"] for x in am).casefold()
+                self.assertIn("federico",am_text)
+                self.assertIn("cardarelli",am_text)
+                self.assertIn("ruggi",am_text)
+
+                weg_q=("Quante confezioni di WEGOVY sono presenti "
+                       "nell'articolo 1 della determina 23A02767? "
+                       "Riporta tutti gli AIC.")
+                weg,weg_full=contesto_integrale(db,weg_q,"WEGOVY")
+                self.assertTrue(weg_full,"Articolo 1 completo non disponibile")
+                self.assertTrue(weg)
+                ids=list(dict.fromkeys(
+                    code for row in weg
+                    for code in row.get("aic_trovati_nel_testo",())))
+                self.assertEqual(len(ids),6,
+                                 "Sei confezioni nel testo GU del 2023")
+                self.assertIn("049883111/E",ids)
+
+                cam_q=("Quali protocolli precedenti sono citati nel "
+                       "documento CAMZYOS del 20 novembre 2025?")
+                cam,_=contesto_integrale(db,cam_q,"CAMZYOS")
+                self.assertTrue(cam,"Documento CAMZYOS non recuperato")
+                references=" ".join(x["testo"] for x in cam)
+                self.assertIn("0503681",references)
+                self.assertIn("0624981",references)
+                # Non si trasforma la presenza dei codici in una
+                # sostituzione: la relazione va verificata nel testo.
+
                 # Lo snapshot scientifico NON attribuisce C per esclusione.
                 self.assertGreater(
                     db.execute("SELECT COUNT(*) FROM aifa_confezioni "
