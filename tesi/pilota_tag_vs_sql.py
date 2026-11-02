@@ -723,7 +723,7 @@ def tag(db,question,model):
             "righe_evidenze_da_lotus":len(semantic),
             "modalita_selezione":mode,
             "chiamate_semantiche_stimate":len(planned),
-            "chiamate_llm_stimate":len(planned)+1,
+            "chiamate_llm_stimate":len(planned)+1+int(revised),
             "fonti_recuperate":sorted({r["tipo"] for r in rows}),
             "fonti_usate":sorted({r["tipo"] for r in evidence}),
             "fonti_mancanti":sorted(_facets(question)-{r["tipo"] for r in evidence})}
