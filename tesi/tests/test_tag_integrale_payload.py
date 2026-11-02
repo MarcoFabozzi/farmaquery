@@ -135,6 +135,50 @@ class TagIntegralPayloadTests(unittest.TestCase):
         self.assertNotIn("0503681",text)
         self.assertIn("annulla e  sostituisce",text)
 
+
+    def test_casgevy_domanda_relatore_senza_numero_pagina(self):
+        question=(
+            "Quale nota del 2024 richiama CASGEVY nel 2025 per SINFONIA, "
+            "e questo rimando annulla o sostituisce la nota precedente?")
+        with sqlite3.connect(self.path) as db:
+            db.row_factory=sqlite3.Row
+            result,requests=run_without_provider(db,question,"Risposta di test.")
+        self.assertTrue(result["contesto_integrale"])
+        self.assertNotEqual(result["verifica_contesto"],"non_recuperato")
+        pages=requests[0][1]["evidenze"]
+        page3=[r for r in pages if "#p3" in r["fonte"]]
+        self.assertTrue(page3,"Il testo della pagina 3 CASGEVY deve arrivare al LLM.")
+        self.assertIn("0503681"," ".join(r["testo"] for r in page3))
+
+    def test_amvuttra_domanda_relatore_senza_tabella_esplicita(self):
+        question=(
+            "Quali sono esattamente i sei centri per ATTR-CM e i tre "
+            "per polineuropatia ereditaria indicati nella nota AMVUTTRA 2026?")
+        with sqlite3.connect(self.path) as db:
+            db.row_factory=sqlite3.Row
+            result,requests=run_without_provider(db,question,"Risposta di test.")
+        self.assertTrue(result["contesto_integrale"])
+        pages=requests[0][1]["evidenze"]
+        page2=" ".join(r["testo"] for r in pages if "#p2" in r["fonte"]).upper()
+        page3=" ".join(r["testo"] for r in pages if "#p3" in r["fonte"]).upper()
+        self.assertIn("RUGGI",page2)
+        self.assertIn("CARDARELLI",page2)
+        self.assertIn("VANVITELLI",page3)
+
+    def test_pluvicto_domanda_relatore_con_requisiti(self):
+        question=(
+            "Secondo la nota regionale PLUVICTO del 18/04/2025, quali "
+            "sono tutte le cinque strutture di Medicina Nucleare "
+            "individuate e quali requisiti aggiuntivi sono richiesti?")
+        with sqlite3.connect(self.path) as db:
+            db.row_factory=sqlite3.Row
+            result,requests=run_without_provider(db,question,"Risposta di test.")
+        self.assertTrue(result["contesto_integrale"])
+        pages=requests[0][1]["evidenze"]
+        page2=" ".join(r["testo"] for r in pages if "#p2" in r["fonte"]).casefold()
+        self.assertIn("lutezio",page2)
+        self.assertIn("registro",page2)
+
     def test_wegovy_sei_aic_raggiungono_sintesi(self):
         question=("Quante confezioni di WEGOVY sono presenti "
                   "nell'articolo 1 della determina 23A02767? "
