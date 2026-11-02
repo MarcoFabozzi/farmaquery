@@ -125,7 +125,8 @@ def aggiorna_anagrafica(db,work):
     from aifa_principi_attivi import principi_per_aic, arricchisci_confezioni
     pa_path=Path(work)/'aifa_principi_attivi.csv'
     pa_meta=etl.salva_dataset(PRINCIPI,pa_path,100_000_000)
-    pa_map,pa_rows=principi_per_aic(pa_path)
+    pa_audit={}
+    pa_map,pa_rows=principi_per_aic(pa_path,audit=pa_audit)
     seen={}
     for record in source_rows:
         aic=record['aic']
@@ -178,7 +179,8 @@ def aggiorna_anagrafica(db,work):
                  (ema_id,aic,criterion)).rowcount
             inserted+=count
     return {'confezioni_file':len(seen),'principi_attivi_righe_file':pa_rows,
-            'copertura_principi_attivi':coverage_pa,'archivio_completo':archive,'confezioni_pertinenti':len(chosen),
+            'copertura_principi_attivi':coverage_pa,'audit_principi_attivi':pa_audit,
+            'archivio_completo':archive,'confezioni_pertinenti':len(chosen),
             'nuove_confezioni':fresh,'nuovi_match_candidati':inserted,
             'aic_precedenti_non_nel_file':len(set(old)-set(seen)),
             'nota':'L anagrafica non prova la classe vigente; le AIC assenti restano storiche',

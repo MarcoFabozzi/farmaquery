@@ -10,9 +10,16 @@ import re
 import pipeline
 
 
-def principi_per_aic(csv_path):
-    """Legge i principi per confezione, deduplica e aggrega sostanze multiple."""
+def principi_per_aic(csv_path, audit=None):
+    """Aggrega sostanze per AIC senza pubblicare associazioni anomale.
+
+    Se un codice AIC presenta più di 20 sostanze distinte, lo si mette
+    interamente in quarantena: NON si trattengono le prime 20 sostanze
+    e NON si interrompe l'importazione di tutte le altre confezioni.
+    La soglia è un controllo prudenziale, non un limite farmacologico.
+    """
     results=defaultdict(dict)
+    quarantena={}
     rows=pipeline.lista_csv(csv_path)
     # Non considerare un CSV scaricato con intestazioni diverse come una lista vuota.
     if not rows:
@@ -30,9 +37,23 @@ def principi_per_aic(csv_path):
         norm=pipeline.normalizza(active)
         if not norm:
             continue
+        if aic in quarantena:
+            quarantena[aic].add(norm)
+            continue
         results[aic].setdefault(norm,active.strip())
         if len(results[aic])>20:
-            raise ValueError('Numero anomalo di principi attivi per AIC: '+aic)
+            quarantena[aic]=set(results.pop(aic))
+    if audit is not None:
+        audit.update({
+            'aic_anomale_escluse': len(quarantena),
+            'aic_anomale_con_numero_sostanze': {
+                aic: len(sostanze) for aic, sostanze in sorted(quarantena.items())
+            },
+            'nota_quarantena': (
+                'AIC con oltre 20 sostanze distinte: esclusa solo questa associazione '
+                'dalla sorgente PA_confezioni; richiede controllo manuale.'
+            ),
+        })
     if not results:
         raise ValueError('PA_confezioni AIFA non contiene coppie AIC/principio valide')
     combined={aic:'; '.join(sorted(components.values(),key=str.casefold))
