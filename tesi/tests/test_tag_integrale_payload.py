@@ -28,7 +28,7 @@ class FakeFrame:
         return self.records
 
 
-def run_without_provider(db, question, answer):
+def run_without_provider(db, question, answer, select_none=False):
     fake_pandas=types.ModuleType("pandas")
     fake_pandas.DataFrame=FakeFrame
     fake_lotus=types.ModuleType("lotus")
@@ -48,7 +48,8 @@ def run_without_provider(db, question, answer):
                                  "lotus.models":fake_models,
                                  "pandas":fake_pandas}):
         with patch.object(engine,"sem_filter_controlled",
-                          side_effect=lambda frame,instruction:frame):
+                          side_effect=lambda frame,instruction:(
+                              FakeFrame([]) if select_none else frame)):
             with patch.object(engine,"ask",side_effect=fake_ask):
                 result=engine.tag(db,question,"modello-test")
     return result,requests
@@ -105,6 +106,30 @@ class TagIntegralPayloadTests(unittest.TestCase):
         self.assertIn("0503681",raw)
         self.assertTrue(result["contesto_integrale_completo"])
         self.assertEqual(result["verifica_contesto"],"integrale")
+
+    def test_camzyos_pagina_1_rimane_disponibile_con_lotus_vuoto(self):
+        question=(
+            "Trascrivi le frasi della pagina 1 della nota CAMZYOS "
+            "Prot.N.0641382-2025 in cui compaiono i protocolli "
+            "0624981/2025 e PG/2024/0503681. Per ciascuno indica "
+            "esclusivamente il rapporto esplicitamente dichiarato "
+            "nel testo, distinguendo annullamento e sostituzione "
+            "da semplice richiamo.")
+        with sqlite3.connect(self.path) as db:
+            db.row_factory=sqlite3.Row
+            result,requests=run_without_provider(
+                db,question,"Risposta dalla pagina originale.",select_none=True)
+        self.assertEqual(len(requests),1)
+        self.assertTrue(result["fallback_pagina_integrale"])
+        self.assertTrue(result["contesto_integrale_completo"])
+        self.assertEqual(result["righe_selezionate_lotus"],0)
+        self.assertNotIn("non documentata",result["risposta"])
+        pages=requests[0][1]["evidenze"]
+        self.assertTrue(pages)
+        self.assertTrue(all("#p1" in x["fonte"] for x in pages))
+        text=" ".join(x["testo"] for x in pages)
+        self.assertIn("0503681",text)
+        self.assertIn("0624981",text)
 
     def test_wegovy_sei_aic_raggiungono_sintesi(self):
         question=("Quante confezioni di WEGOVY sono presenti "
