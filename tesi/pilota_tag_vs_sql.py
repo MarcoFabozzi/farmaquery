@@ -19,7 +19,8 @@ from errori_chatbot import EnginePhaseError
 from tesi.recupero_gu import domanda_gu, candidati_gu
 from tesi.recupero_regionale import regional_candidates, categoria
 from tesi.tag_budget import selection_mode,semantic_plan,expand_selected
-from tesi.sintesi_tag import CATEGORY_SYSTEM,compact_category_evidence
+from tesi.sintesi_tag import (CATEGORY_SYSTEM, compact_category_evidence,
+                              CATEGORY_RESPONSE_TIMEOUT_SECONDS)
 
 
 SCHEMA = """Tabelle disponibili (SQLite, SOLA LETTURA):
@@ -608,7 +609,9 @@ def tag(db,question,model):
         system_tag=CATEGORY_SYSTEM
         payload={"domanda":question,
                  "evidenze":compact_category_evidence(evidence)}
-        answer,usage=ask(model,system_tag,payload,timeout=48,max_tokens=1100)
+        answer,usage=ask(model,system_tag,payload,
+                         timeout=CATEGORY_RESPONSE_TIMEOUT_SECONDS,
+                         max_tokens=1100)
     else:
         answer,usage=ask(model,system_tag,payload)
     input_tokens=(prompt_tokens+usage["token_input"]

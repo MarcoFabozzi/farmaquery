@@ -10,6 +10,10 @@ import re
 
 PAGE_RE = re.compile(r"\[pagina\s+(\d+)\]", re.I)
 
+# Solo per la chiamata finale di sintesi delle categorie implicite.
+# Non controlla i timeout imposti dal provider Gemini.
+CATEGORY_RESPONSE_TIMEOUT_SECONDS = 90
+
 CATEGORY_SYSTEM = (
     "Sei un assistente di consultazione regolatoria. Rispondi in italiano "
     "SOLO con informazioni esplicite nei passaggi forniti dello snapshot. "

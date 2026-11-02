@@ -2,7 +2,8 @@
 import json
 import unittest
 
-from tesi.sintesi_tag import compact_category_evidence,CATEGORY_SYSTEM
+from tesi.sintesi_tag import (compact_category_evidence,CATEGORY_SYSTEM,
+                              CATEGORY_RESPONSE_TIMEOUT_SECONDS)
 from tesi.pilota_tag_vs_sql import ask
 from unittest.mock import patch
 
@@ -67,11 +68,12 @@ class CompactTagSynthesisTests(unittest.TestCase):
                              completion_cost=Mock(return_value=0.0))
         with patch_module.dict(sys.modules,{"litellm":fake}):
             answer,usage=ask("mock-model","Sistema",{"domanda":"test"},
-                             timeout=48,max_tokens=1100)
+                             timeout=CATEGORY_RESPONSE_TIMEOUT_SECONDS,max_tokens=1100)
         self.assertEqual(answer,"Risposta breve.")
         self.assertEqual(usage["token_input"],30)
         kwargs=mocked.call_args.kwargs
-        self.assertEqual(kwargs["timeout"],48)
+        self.assertEqual(CATEGORY_RESPONSE_TIMEOUT_SECONDS,90)
+        self.assertEqual(kwargs["timeout"],90)
         self.assertEqual(kwargs["max_tokens"],1100)
         self.assertEqual(kwargs["num_retries"],0)
 
