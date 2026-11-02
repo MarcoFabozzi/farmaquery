@@ -8,6 +8,7 @@ I due metodi usano lo stesso SQLite, manifest e modello.
 from __future__ import annotations
 
 import argparse
+from contextlib import closing
 import csv
 from datetime import datetime,timezone
 from hashlib import sha256
@@ -40,7 +41,8 @@ def load_questions(path):
     with Path(path).open("r",encoding="utf-8-sig",newline="") as f:
         sample=f.read(4096)
         f.seek(0)
-        delimiter=";" if sample.count(";")>=sample.count(",") else ","
+        header=sample.splitlines()[0] if sample.splitlines() else ""
+        delimiter=";" if ";" in header else ","
         reader=csv.DictReader(f,delimiter=delimiter)
         if not reader.fieldnames or "domanda" not in reader.fieldnames:
             raise ValueError("Nel CSV deve essere presente la colonna 'domanda'")
@@ -100,7 +102,7 @@ def _existing_results(path,model,digest):
     for row in rows:
         if row["modello"]!=model or row["snapshot_sha256"]!=digest:
             raise ValueError("Un file di risultati appartiene a un altro modello/snapshot")
-    return {(row["id"],row["metodo"]) for row in rows if row["stato"]=="OK"}
+    return {(row["id"],row["metodo"]) for row in rows}
 
 
 def execute(db_path,manifest_path,question_path,out_path,model=None,
@@ -147,7 +149,7 @@ def execute(db_path,manifest_path,question_path,out_path,model=None,
                 status="OK"
                 error=""
                 try:
-                    with motori.read_only(db_path) as db:
+                    with closing(motori.read_only(db_path)) as db:
                         result=runner(db,item["domanda"],model)
                     status=result.get("stato","OK")
                     if status not in ("OK","NESSUNA_EVIDENZA"):
