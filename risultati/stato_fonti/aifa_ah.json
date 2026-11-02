@@ -1,16 +1,21 @@
 {
   "fonte": "aifa_ah",
   "esito": "OK",
-  "ultimo_successo_utc": "2026-11-02T08:46:50+00:00",
-  "precedente_successo_utc": null,
+  "ultimo_successo_utc": "2026-11-02T10:04:17+00:00",
+  "precedente_successo_utc": "2026-11-02T08:46:50+00:00",
   "statistiche": {
     "data_riferimento_ah": "2026-06-30",
     "a_file": 10766,
     "h_file": 2487,
-    "nuove_righe_snapshot": 2132,
+    "nuove_righe_snapshot": 0,
     "confezioni_abbinate": 2186,
+    "indice_nazionale_ah": {
+      "file_indice": "aifa_classi_ah.json",
+      "aic_indicizzate": 13253,
+      "data_riferimento": "2026-06-30"
+    },
     "metodo_scoperta": "pagina_aifa",
-    "ultima_scoperta_indice_utc": "2026-11-02T08:44:12+00:00"
+    "ultima_scoperta_indice_utc": "2026-11-02T10:04:14+00:00"
   },
   "fonti": {
     "aifa_a": {
