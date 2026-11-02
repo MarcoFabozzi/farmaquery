@@ -7,6 +7,7 @@ on:
       - 'chatbot_widget.py'
       - 'errori_chatbot.py'
       - 'tesi/pilota_tag_vs_sql.py'
+      - 'tesi/tests/test_recupero_tag.py'
       - 'tests/test_errori_chatbot.py'
       - 'tests/test_assistente_flottante.py'
       - 'pages/**'
@@ -37,6 +38,7 @@ jobs:
           python -m unittest discover -s tests -p 'test_assistente_flottante.py' -v
           python -m unittest discover -s tests -p 'test_chatbot_farmaquery.py' -v
           python -m unittest discover -s tests -p 'test_errori_chatbot.py' -v
+          python -m unittest discover -s tesi/tests -p 'test_recupero_tag.py' -v
           python - <<'PY'
           import streamlit
           import lotus
@@ -58,5 +60,15 @@ jobs:
           with m.read_only(path) as db:
             candidate=m.evidence_candidates(db,'Qual è la classe di JIVI?')
             assert any(r['tipo']=='AIFA' for r in candidate),candidate
-          print('Snapshot comune pronto, senza chiamate LLM.',version[0])
+            # Controlla il recupero sul VERO archivio AIFA, non solo
+            # su esempi sintetici: non associare Tachipirina a Saridon.
+            tach=m.evidence_candidates(db,'Qual è il principio attivo di Tachipirina?')
+            aifa=[r for r in tach if r['tipo']=='AIFA']
+            assert aifa and all('Medicinale: TACHIPIRINA;' in r['testo'] for r in aifa),aifa
+            assert all('PARACETAMOLO' in r['testo'].upper() for r in aifa)
+            para=m.evidence_candidates(db,'Che principio attivo ha paracetamolo?')
+            assert para and not any(
+                'ANTIREUMINA' in r['testo'] or 'SARIDON' in r['testo']
+                for r in para),para
+          print('Recupero mirato Tachipirina/Paracetamolo verificato su AIFA reale.')
           PY

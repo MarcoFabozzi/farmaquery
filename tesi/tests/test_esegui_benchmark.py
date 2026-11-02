@@ -63,10 +63,16 @@ class ExperimentsTests(unittest.TestCase):
     def test_multifonte_su_stesso_database(self):
         with sqlite3.connect(self.db) as db:
             db.row_factory=sqlite3.Row
-            data=evidence_candidates(db,"Qual è la classe del JIVI?")
-        kinds={x["tipo"] for x in data}
-        self.assertTrue({"AIFA","EMA","REGIONE","REGISTRO_AIFA"}.issubset(kinds),kinds)
-        self.assertTrue(any("JIVI.pdf#p2" in x["fonte"] for x in data))
+            # Le fonti sono condivise ma la priorità cambia con l'intento.
+            classes=evidence_candidates(db,"Qual è la classe del JIVI?")
+            centers=evidence_candidates(db,"Quali centri campani prescrivono JIVI?")
+            indications=evidence_candidates(db,"Per quale patologia è indicato JIVI?")
+        self.assertTrue(classes and classes[0]["tipo"]=="AIFA",classes)
+        self.assertTrue(centers and centers[0]["tipo"]=="REGIONE",centers)
+        self.assertTrue(indications and indications[0]["tipo"]=="EMA",indications)
+        sources={x["tipo"] for x in centers}
+        self.assertTrue({"AIFA","EMA","REGIONE","REGISTRO_AIFA"}.issubset(sources),sources)
+        self.assertTrue(any("JIVI.pdf#p2" in x["fonte"] for x in centers))
 
     def test_anteprima_e_hash(self):
         report=execute(self.db,self.manifest,self.questions,self.out,max_questions=2)
