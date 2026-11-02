@@ -119,6 +119,56 @@ def _question_kind(question):
     return "GENERICA"
 
 
+def _facets(question):
+    """Fonti necessarie per rispondere alle parti della domanda.
+
+    Le domande miste richiedono più fonti indipendenti: un'unica riga
+    AIFA non può attestare anche l'indicazione EMA e i centri regionali.
+    """
+    q=question.casefold()
+    requested=set()
+    if any(x in q for x in ("indicaz", "tumore", "patologia", "malatt",
+                            "autorizz", "terapi", "trattament", "pazient",
+                            "duchenne", "emofilia", "primo linea")):
+        requested.add("EMA")
+    if any(x in q for x in ("classe", "confezion", "formato", "rimbors",
+                            "compresse", "bustine", "flaconcin")):
+        requested.add("AIFA")
+    if any(x in q for x in ("campania", "campani", "centri", "ospedal",
+                            "prescrittor", "somministrazion", "repart")):
+        requested.add("REGIONE")
+    return requested
+
+
+def _multisource_evidence(rows,semantic_rows,question,limit=8):
+    """Mantiene le righe selezionate da LOTUS e la copertura delle fonti.
+
+    Per una domanda che richiede EMA+AIFA+Regione ogni fonte soddisfa
+    un sottoquesito diverso. Se LOTUS rifiuta una fonte perché non
+    risponde alla domanda intera, conserviamo la prima evidenza con
+    corrispondenza diretta al medicinale recuperato (mai inventata).
+    L'eventuale assenza di una fonte resta esplicita nella risposta.
+    """
+    facets=_facets(question)
+    evidence=[]
+    seen=set()
+    for row in semantic_rows:
+        uid=row.get("chiave")
+        if uid not in seen:
+            evidence.append(row)
+            seen.add(uid)
+    if len(facets)>1:
+        for tipo in ("EMA","AIFA","REGIONE"):
+            if tipo not in facets or any(e["tipo"]==tipo for e in evidence):
+                continue
+            for row in rows:
+                if row["tipo"]==tipo and row["chiave"] not in seen:
+                    evidence.append(row)
+                    seen.add(row["chiave"])
+                    break
+    return evidence[:limit]
+
+
 def _target(question):
     """Prima entità significativa, non parole della domanda come 'attivo'.
 
@@ -318,26 +368,32 @@ def tag(db,question,model):
     _in_phase("inizializzazione TAG",lotus.settings.configure,lm=lm,enable_cache=False)
     frame=pd.DataFrame(rows)
     selected=_in_phase("selezione TAG",lambda: frame.sem_filter(
-        "La riga {testo} fornisce evidenza DIRETTA per rispondere "
-        "alla domanda specifica "
+        "La riga {testo} è pertinente ad ALMENO UNA parte della domanda "
         +json.dumps(question,ensure_ascii=False)
-        +". Se la domanda cita un medicinale, considera SOLO il nome commerciale "
-         "richiesto, non altri medicinali contenenti lo stesso principio attivo. "
-         "Un principio attivo è una sostanza, non necessariamente un medicinale. "
-         "Non confondere le strutture nei registri AIFA con centri regionali autorizzati."
-    ).head(8))
+        +". NON richiedere che la singola riga soddisfi tutte le parti: "
+         "una riga EMA può indicare il tumore, AIFA la classe, una nota "
+         "regionale i centri di prescrizione o somministrazione. "
+         "Valuta anche le informazioni parziali documentate. "
+         "Considera il nome commerciale esatto, non farmaci diversi "
+         "che contengono lo stesso principio attivo; le strutture dei "
+         "registri AIFA non sono automaticamente centri autorizzati."
+    ).head(5 if len(_facets(question))>1 else 8))
     # L'assenza delle statistiche non deve annullare una risposta valida.
     selection_usage=getattr(getattr(lm,"stats",None),"physical_usage",None)
     prompt_tokens=getattr(selection_usage,"prompt_tokens",None)
     completion_tokens=getattr(selection_usage,"completion_tokens",None)
     selection_cost=getattr(selection_usage,"total_cost",None)
-    if selected.empty:
+    # Conserviamo chiave e tipo per garantire copertura delle fonti senza
+    # confondere una selezione semantica vuota con un database vuoto.
+    semantic=selected[["tipo","chiave","testo","fonte"]].to_dict("records")
+    evidence=_multisource_evidence(rows,semantic,question)
+    if not evidence:
         return {"risposta":"Informazione non documentata nello snapshot consultato.",
-                "fonti":[],"stato":"NESSUNA_EVIDENZA",
+                "fonti":[],"stato":"NESSUNA_EVIDENZA_SEMANTICA",
+                "righe_recuperate":len(rows),
                 "token_input":prompt_tokens,
                 "token_output":completion_tokens,
                 "costo_usd":selection_cost,"costo_completo":selection_cost is not None}
-    evidence=selected[["tipo","testo","fonte"]].to_dict("records")
     answer,usage=ask(model,"Rispondi in italiano in modo breve e specifico, SOLO alla domanda. "
         "La denominazione di un principio attivo non va trattata come il nome "
         "di un medicinale che lo contiene: ad esempio, se si chiede il principio "
@@ -349,10 +405,19 @@ def tag(db,question,model):
         "Distingui autorizzazione europea EMA, classe A/H di una confezione AIFA "
         "e centri prescrittori di specifiche note campane. "
         "Classifica ogni confezione in A se compare nella lista A, H se compare nella lista H; altrimenti rispondi semplicemente C. Non aggiungere qualifiche alla classe. "
-        "Non dichiarare un centro autorizzato soltanto dal registro AIFA. "
-        "Indica le fonti; se mancano, scrivi 'non documentato nello snapshot'.",
+        "Per domande con più parti: rispondi separatamente a ciascuna, "
+        "usando EMA per le indicazioni, AIFA per le classi delle confezioni "
+        "e le note regionali per i centri. NON rinunciare a rispondere alle "
+        "parti documentate se manca la fonte di una sola parte. "
+        "Non dichiarare un centro autorizzato soltanto dal registro AIFA "
+        "e non dedurlo da una semplice menzione in un PDF. "
+        "Indica le fonti pertinenti e per le parti non documentate scrivi "
+        "'non documentato nello snapshot'.",
         {"domanda":question,"medicinale_o_sostanza_ricercata":_target(question),
-         "intento":_question_kind(question),"evidenze":evidence})
+         "intento":_question_kind(question),
+         "parti_richieste":sorted(_facets(question)),
+         "fonti_presenti":sorted({r["tipo"] for r in evidence}),
+         "evidenze":evidence})
     input_tokens=(prompt_tokens+usage["token_input"]
                   if prompt_tokens is not None and usage["token_input"] is not None else None)
     output_tokens=(completion_tokens+usage["token_output"]
@@ -363,7 +428,11 @@ def tag(db,question,model):
             "stato":"OK","token_input":input_tokens,
             "token_output":output_tokens,"costo_usd":full_cost,
             "costo_completo":full_cost is not None,
-            "righe_sem_filter":len(rows)}
+            "righe_sem_filter":len(rows),
+            "righe_selezionate_lotus":len(semantic),
+            "fonti_recuperate":sorted({r["tipo"] for r in rows}),
+            "fonti_usate":sorted({r["tipo"] for r in evidence}),
+            "fonti_mancanti":sorted(_facets(question)-{r["tipo"] for r in evidence})}
 
 
 def validate_sql(text):

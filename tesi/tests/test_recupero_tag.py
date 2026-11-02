@@ -7,7 +7,8 @@ import sqlite3
 import unittest
 
 from tesi.pilota_tag_vs_sql import (
-    _question_kind,_search_aifa,_target,evidence_candidates,terms,
+    _question_kind,_search_aifa,_target,_facets,_multisource_evidence,
+    evidence_candidates,terms,
 )
 
 
@@ -81,6 +82,47 @@ class TagRetrievalTests(unittest.TestCase):
         self.assertTrue(aifa)
         self.assertTrue(all("Medicinale: TACHIPIRINA;" in r["testo"] for r in aifa))
         self.assertTrue(all("PARACETAMOLO" in r["testo"] for r in aifa))
+
+    def test_pluvicto_domanda_multifonte_con_lotus_che_non_seleziona(self):
+        domanda=("PLUVICTO: per quale tumore è indicato, quale classe "
+                 "ha in Italia e dove è prevista la somministrazione in Campania?")
+        self.assertEqual(_target(domanda),"pluvicto")
+        self.assertEqual(_facets(domanda),{"EMA","AIFA","REGIONE"})
+        righe=[
+            {"tipo":"REGIONE","chiave":"n33#p2",
+             "testo":"Nota regionale PLUVICTO con ospedali",
+             "fonte":"Campania nota#p2"},
+            {"tipo":"EMA","chiave":"EMA:pluvicto",
+             "testo":"EMA PLUVICTO tumore della prostata",
+             "fonte":"EMA 123"},
+            {"tipo":"AIFA","chiave":"AIFA:123456789",
+             "testo":"AIFA PLUVICTO confezione e classe H",
+             "fonte":"AIFA 123456789"},
+        ]
+        # Filtro semantico che rifiuta le singole righe perché non
+        # rispondono DA SOLE a tutte e tre le sottodomande.
+        evidenze=_multisource_evidence(righe,[],domanda)
+        self.assertEqual({r["tipo"] for r in evidenze},
+                         {"REGIONE","EMA","AIFA"})
+        # Se LOTUS seleziona già la riga EMA, conserva quella e
+        # aggiunge le due parti restanti senza duplicati.
+        evidenze=_multisource_evidence(righe,[righe[1]],domanda)
+        self.assertEqual(len(evidenze),3)
+        self.assertEqual(evidenze[0]["tipo"],"EMA")
+
+    def test_pluvicto_parzialmente_documentato(self):
+        domanda=("PLUVICTO: quale tumore, quale classe e dove "
+                 "somministrato in Campania?")
+        righe=[
+            {"tipo":"EMA","chiave":"EMA:x","testo":"Indicazione",
+             "fonte":"EMA"},
+            {"tipo":"AIFA","chiave":"AIFA:y","testo":"Classe",
+             "fonte":"AIFA"},
+        ]
+        evidenze=_multisource_evidence(righe,[],domanda)
+        self.assertEqual({r["tipo"] for r in evidenze},{"EMA","AIFA"})
+        # Non viene inventata una nota regionale inesistente.
+        self.assertNotIn("REGIONE",{r["tipo"] for r in evidenze})
 
     def test_altro_medicinale_e_fonti_regionali(self):
         evidence=evidence_candidates(self.db,"Qual è il principio attivo di Brufen?")
