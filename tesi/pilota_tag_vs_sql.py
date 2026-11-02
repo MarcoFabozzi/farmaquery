@@ -150,6 +150,13 @@ def _facets(question):
     if any(x in q for x in ("campania", "campani", "centri", "ospedal",
                             "prescrittor", "somministrazion", "repart")):
         requested.add("REGIONE")
+    # Una determina GU può citare classe e indicazioni senza richiedere
+    # automaticamente una seconda fonte AIFA o EMA.
+    if domanda_gu(question):
+        if "aifa" not in q and "elench" not in q:
+            requested.discard("AIFA")
+        if "ema" not in q and "europe" not in q and "decisione ue" not in q:
+            requested.discard("EMA")
     return requested
 
 
@@ -443,7 +450,8 @@ def tag(db,question,model):
         "La riga {testo} è pertinente ad ALMENO UNA parte della domanda "
         +json.dumps(question,ensure_ascii=False)
         +". NON richiedere che la singola riga soddisfi tutte le parti: "
-         "una riga EMA può indicare il tumore, AIFA la classe, una nota "
+         "una riga EMA può indicare il tumore, AIFA la classe, un atto GU "
+          "le condizioni di una determina, una nota "
          "regionale i centri di prescrizione o somministrazione. "
          "Valuta anche le informazioni parziali documentate. "
          "Considera il nome commerciale esatto, non farmaci diversi "
@@ -477,6 +485,8 @@ def tag(db,question,model):
         "Distingui autorizzazione europea EMA, classe A/H di una confezione AIFA "
         "e centri prescrittori di specifiche note campane. "
         "Classifica ogni confezione in A se compare nella lista A, H se compare nella lista H; altrimenti indica C come deduzione per esclusione e non come classificazione ufficialmente verificata. "
+        "Quando la GU attesta C o C(nn), riportala come classe descritta "
+        "in quello specifico provvedimento, non come inferenza dalle liste. "
         "Per domande con più parti: rispondi separatamente a ciascuna, "
         "usando EMA per le indicazioni, AIFA per le classi delle confezioni, "
         "le note regionali per i centri e gli atti GU per le determine. "
@@ -559,7 +569,7 @@ def _sql_sources(db,rows):
             src=db.execute("SELECT url_ema FROM ema_medicinali WHERE ema_id=?",
                            (ema,)).fetchone()
             found.append("EMA "+str(ema)+(" | "+str(src["url_ema"]) if src else ""))
-        gu = row.get("gu_codice")
+        gu = row.get("gu_codice") or row.get("codice")
         if not gu and row.get("documento_id"):
             found_gu = db.execute(
                 "SELECT codice FROM gu_documenti WHERE documento_id=?",
