@@ -11,13 +11,14 @@ class EnginePhaseError(Exception):
 
     def __init__(self,phase,original):
         self.phase=phase
+        self.original=original
         self.error_type=type(original).__name__
         super().__init__(f"{phase}: {self.error_type}")
 
 
 def label_error(exc):
     """Restituisce SOLO informazioni diagnostiche sicure, mai str(exc)."""
-    cause=exc.__cause__ if isinstance(exc,EnginePhaseError) and exc.__cause__ else exc
+    cause=(exc.__cause__ or exc.original) if isinstance(exc,EnginePhaseError) else exc
     kind=type(cause).__name__
     phase=exc.phase if isinstance(exc,EnginePhaseError) else "esecuzione"
     # Classificazioni basate sulla classe, non sul testo dell'errore (che
