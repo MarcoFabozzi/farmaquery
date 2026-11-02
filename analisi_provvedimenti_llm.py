@@ -274,7 +274,7 @@ def main() -> None:
     ap.add_argument("--db", type=Path, default=DEFAULT_DB)
     ap.add_argument("--limit", type=int, default=12)
     ap.add_argument("--provider", choices=["nessuno", "gemini"], default="nessuno")
-    ap.add_argument("--model", default=os.getenv("FARMAQUERY_GEMINI_MODEL", "gemini-2.5-flash"))
+    ap.add_argument("--model", default=os.getenv("FARMAQUERY_GEMINI_MODEL", "gemini-3.5-flash-lite"))
     ap.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     args = ap.parse_args()
     result = pilota(args.db, args.limit, args.provider, args.model,
