@@ -59,7 +59,7 @@ def inspect(rows,connection):
         refs=[part.strip() for part in rec["fonti_gold"].split("|") if part.strip()]
         is_negative=category=="NEGATIVE"
         if not is_negative and not refs:
-            result["errori"].append(key+": nessuna citazione PDF#pN")
+            result["errori"].append(key+": nessuna citazione verificabile (EMA:ID, AIFA:AIC o file.pdf#pN)")
             continue
         if is_negative and "non" not in answer.casefold():
             result["errori"].append(key+": negativo: indicare espressamente il limite del corpus")
@@ -101,7 +101,7 @@ def inspect(rows,connection):
             if row is None or not row[0].strip() or row[1] not in ("TESTO","OCR"):
                 result["errori"].append(key+": pagina non trovata/non leggibile: "+ref)
                 bad=True
-        if state=="VALIDATO" and rec.get("fonti_previste"):
+        if state=="VALIDATO" and not is_negative and rec.get("fonti_previste"):
             needed=set(rec["fonti_previste"].split("+"))
             if not needed.issubset(cited):
                 result["errori"].append(key+": citazioni mancanti per: "+
