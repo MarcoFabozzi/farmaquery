@@ -459,6 +459,7 @@ try:
             st.markdown('#### Confezioni di '+name)
             st.caption('Le descrizioni lunghe continuano su più righe, nella stessa colonna.')
             # Tutte le AIC negli elenchi ufficiali A/H, non solo nel campione EMA.
+            ids=[str(r['aic']) for r in rows[:100]]
             storico_ah=classi_ah_per_aic(ids)
             table_rows=[]
             for package in rows[:100]:
