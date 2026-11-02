@@ -101,6 +101,21 @@ def answer_question(db_file,question,method,model):
                 else pilota_tag_vs_sql.sql_method(db,question,model))
 
 
+
+def verify_provider(model):
+    """Prova minima della connessione Gemini/LiteLLM, separata dal database.
+
+    Eseguita SOLO se l'utente preme il relativo pulsante. Consuma una
+    piccola quota del provider ma non verifica la correttezza delle risposte.
+    """
+    from litellm import completion
+    out=completion(model=model,temperature=0,timeout=20,num_retries=0,
+                   max_tokens=12,
+                   messages=[{"role":"user",
+                              "content":"Rispondi solo con la parola OK."}])
+    return bool(out.choices and out.choices[0].message.content)
+
+
 def history_key(method):
     if method not in ("Text-to-SQL","TAG"):
         raise ValueError("Metodo sconosciuto")
