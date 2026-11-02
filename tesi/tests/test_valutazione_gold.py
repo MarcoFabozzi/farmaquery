@@ -58,6 +58,23 @@ class GoldAndComparisonTests(unittest.TestCase):
         self.assertEqual(result["validati"],0)
         self.assertEqual(result["da_verificare"],1)
 
+    def test_citazioni_ema_aifa_e_copertura_multifonte(self):
+        self.db.executescript("""
+            CREATE TABLE ema_medicinali(ema_id TEXT, nome TEXT);
+            CREATE TABLE aifa_confezioni(aic TEXT, nome TEXT);
+            INSERT INTO ema_medicinali VALUES ('EMEA/H/C/005483','PLUVICTO');
+            INSERT INTO aifa_confezioni VALUES ('050419011','PLUVICTO');
+        """)
+        row = dict(self.gold,
+                   categoria="MULTIFONTE",
+                   fonti_previste="EMA+AIFA+REGIONE",
+                   fonti_gold="EMA:EMEA/H/C/005483|AIFA:050419011|archivio/nota.pdf#p2")
+        self.assertEqual(inspect([row], self.db)["esito"], "OK")
+        missing = dict(row, fonti_gold="EMA:EMEA/H/C/005483|archivio/nota.pdf#p2")
+        self.assertEqual(inspect([missing], self.db)["esito"], "ERRORE")
+        wrong = dict(row, fonti_gold="EMA:FAKE|AIFA:050419011|archivio/nota.pdf#p2")
+        self.assertEqual(inspect([wrong], self.db)["esito"], "ERRORE")
+
     def test_accuracy_only_from_manual_review(self):
         with tempfile.TemporaryDirectory() as d:
             folder=Path(d)

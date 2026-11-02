@@ -29,7 +29,7 @@ rimandi_candidati(nota_id, numero_pagina, riferimento, stato)
 fonti_snapshot(fonte, url, sha256, data_riferimento)
 pagine_fts(nota_id, numero_pagina, testo) -- FTS5, opzionale.
 
-AIFA: se classe_a_h_snapshot e' A o H usa quel valore, altrimenti mostra C. La regola e' quella scelta per la classificazione dell'app.
+AIFA: A/H sono attestate dalle liste datate. Se classe_a_h_snapshot e' NULL, C e' solo una classe convenzionale dedotta per esclusione e NON una certificazione AIFA.
 Regione: centri_candidati e strutture_registri non certificano autorizzazione
 per una indicazione, senza testo esplicito della nota regionale.
 Per citare, seleziona aic per AIFA; ema_id per EMA;
@@ -302,7 +302,7 @@ def evidence_candidates(db,question,max_rows=18):
                   +"; AIC: "+str(item["aic"])
                   +"; principio attivo dichiarato: "+str(item["principio_attivo"])
                   +"; confezione: "+str(item["descrizione"])
-                  +"; classe: "+str(item["classe_a_h_snapshot"] or "C")
+                  +"; classe: "+str(item["classe_a_h_snapshot"] or "C (dedotta per esclusione da A/H; non attestata come classe ufficiale)")
                   +"; data elenco A/H: "+str(item["classe_a_h_data"]))
             put("AIFA",uid,desc,"AIFA AIC "+str(item["aic"]))
 
@@ -445,7 +445,7 @@ def tag(db,question,model):
         "Non aggiungere dettagli EMA, classi o liste di confezioni non richiesti. "
         "Distingui autorizzazione europea EMA, classe A/H di una confezione AIFA "
         "e centri prescrittori di specifiche note campane. "
-        "Classifica ogni confezione in A se compare nella lista A, H se compare nella lista H; altrimenti rispondi semplicemente C. Non aggiungere qualifiche alla classe. "
+        "Classifica ogni confezione in A se compare nella lista A, H se compare nella lista H; altrimenti indica C come deduzione per esclusione e non come classificazione ufficialmente verificata. "
         "Per domande con più parti: rispondi separatamente a ciascuna, "
         "usando EMA per le indicazioni, AIFA per le classi delle confezioni "
         "e le note regionali per i centri. NON rinunciare a rispondere alle "
@@ -540,7 +540,7 @@ def sql_method(db,question,model):
         "PRAGMA né più istruzioni. LIMIT 30. Per citazioni includi "
         "aic, ema_id oppure nota_id e numero_pagina nel risultato, "
         "e archivio_url o fonte_url quando pertinenti. "
-        "Per le classi usa: CASE WHEN classe_a_h_snapshot IN ('A','H') THEN classe_a_h_snapshot ELSE 'C' END AS classe. Non aggiungere qualifiche alla classe.",
+        "Per le classi usa: CASE WHEN classe_a_h_snapshot IN ('A','H') THEN classe_a_h_snapshot ELSE 'C (dedotta per esclusione)' END AS classe. Includi anche classe_a_h_snapshot e classe_a_h_data per distinguere fonte e deduzione.",
         {"schema":SCHEMA,"domanda":question})
     sql=_in_phase("validazione SQL",validate_sql,generated)
     start=time.monotonic()
@@ -555,7 +555,7 @@ def sql_method(db,question,model):
     answer,second=_in_phase("sintesi SQL",ask,model,
         "Rispondi in italiano SOLO in base alle righe SELECT e alle fonti. "
         "Non interpretare un dato AIFA/EMA come autorizzazione regionale. "
-        "Se la classe_a_h_snapshot è NULL, indica classe C. Non distinguere fra C e altri sottotipi nelle risposte. "
+        "Se la classe_a_h_snapshot è NULL, indica C solo come deduzione per esclusione dagli elenchi A/H, mai come classe ufficialmente attestata. Distingui data della lista A/H e data della determina. "
         "Se mancano dati o evidenze, scrivi 'non documentato nello snapshot'. "
         "Non inventare citazioni.",
         {"domanda":question,"righe_sql":rows,"fonti_recuperate":citations})

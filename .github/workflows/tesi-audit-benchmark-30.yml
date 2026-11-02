@@ -1,0 +1,45 @@
+name: Audit benchmark regolatorio 30
+
+on:
+  pull_request:
+    paths:
+      - 'tesi/**'
+      - '.github/workflows/tesi-audit-benchmark-30.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verifica 30 domande, gold e blocchi anti-mismatch
+        run: python -m unittest -v tesi.tests.test_benchmark_regolatorio_30
+      # Snapshot del 02/11/2026, riscontro SHA dei PDF gold.
+      - name: Recupera snapshot congelato
+        uses: actions/download-artifact@v4
+        with:
+          name: tesi-snapshot-fonti-online
+          run-id: 41436480339
+          github-token: ${{ github.token }}
+          path: dist_tesi
+      - name: Audit referenze e copertura
+        run: |
+          python -m tesi.audit_benchmark_regolatorio \
+            --db dist_tesi/esperimento_online.sqlite \
+            --manifest dist_tesi/manifest_fonti_online.json \
+            --benchmark tesi/benchmark_regolatorio_30.csv \
+            --out benchmark_30_audit.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tesi-audit-benchmark-30
+          path: benchmark_30_audit.json
+          if-no-files-found: ignore

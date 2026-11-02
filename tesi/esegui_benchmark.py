@@ -61,7 +61,9 @@ def load_questions(path):
                 raise ValueError("ID domanda troppo lungo")
             used.add(ident)
             questions.append({"id":ident,"categoria":(row.get("categoria") or "").strip(),
-                              "domanda":question})
+                              "domanda":question,
+                              "snapshot_sha256":(row.get("snapshot_sha256") or "").strip(),
+                              "stato_validazione":(row.get("stato_validazione") or "").strip()})
     if not questions:
         raise ValueError("Nessuna domanda nel CSV")
     if len(questions)>500:
@@ -110,6 +112,9 @@ def execute(db_path,manifest_path,question_path,out_path,model=None,
             tag_fn=None,sql_fn=None):
     manifest=verify_snapshot(db_path,manifest_path)
     questions=load_questions(question_path)
+    if any(q['snapshot_sha256'] and q['snapshot_sha256']!=manifest['sha256_sqlite']
+           for q in questions):
+        raise ValueError('Le domande sono collegate a un diverso snapshot: benchmark non valido')
     if not isinstance(max_questions,int) or max_questions<1:
         raise ValueError("--max-domande deve essere positivo")
     selected=questions[:max_questions]
@@ -121,6 +126,11 @@ def execute(db_path,manifest_path,question_path,out_path,model=None,
     if not confirm:
         return {"esito":"ANTEPRIMA_SENZA_CHIAMATE","riepilogo":preview,
                 "domande":[x["id"]+": "+x["domanda"] for x in selected]}
+    pending=[q['id'] for q in selected if q['stato_validazione'] and
+             q['stato_validazione']!='VALIDATO']
+    if pending:
+        raise ValueError('Impossibile avviare esperimenti su gold non validati: '+
+                         ', '.join(pending))
     if not model or not model.strip():
         raise ValueError("Indicare --model per avviare i due motori")
     _check_credentials(model)
