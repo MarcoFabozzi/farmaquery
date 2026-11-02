@@ -20,6 +20,7 @@ import time
 
 from tesi import pilota_tag_vs_sql as motori
 from errori_chatbot import diagnose_error
+from tesi.tag_budget import selection_mode
 
 FIELDS=["id","categoria","domanda","metodo","modello","snapshot_sha256",
         "risposta","fonti","secondi","token_input","token_output","costo_usd",
@@ -108,7 +109,15 @@ def _existing_results(path,model,digest):
     for row in rows:
         if row["modello"]!=model or row["snapshot_sha256"]!=digest:
             raise ValueError("Un file di risultati appartiene a un altro modello/snapshot")
-    return {(row["id"],row["metodo"]) for row in rows}
+    modes={row["modalita_selezione"] for row in rows
+           if row["metodo"]=="TAG" and row["modalita_selezione"]}
+    if modes and modes!={selection_mode()}:
+        raise ValueError("Il CSV esistente usa una diversa modalità TAG; "
+                         "non mescolare misure di esperimenti differenti")
+    # QUOTA e gli errori sono tentativi, NON risposte valutabili. Riprendendo,
+    # si eseguono nuovamente dopo il ripristino API.
+    return {(row["id"],row["metodo"]) for row in rows
+            if row["stato"] not in ("QUOTA","ERRORE")}
 
 
 def execute(db_path,manifest_path,question_path,out_path,model=None,
