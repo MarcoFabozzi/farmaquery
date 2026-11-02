@@ -10,9 +10,11 @@ import sqlite3
 import time
 
 import streamlit as st
+from errori_chatbot import label_error
 from chatbot_farmaquery import (
     answer_question, enable_server_key, history_key,
     model_from_settings, prepare_snapshot, snapshot_version,
+    verify_provider,
 )
 
 MAX_QUESTIONS_PER_SESSION=12
@@ -62,15 +64,9 @@ def _reply(question,method,model,has_key,remaining):
             return {"risposta":"Il database non è temporaneamente disponibile.",
                     "fonti":[]}
         except Exception as exc:
-            description=str(exc).lower()
-            if ("429" in description or "resource_exhausted" in description
-                    or "rate limit" in description):
-                notice="Il provider ha esaurito la quota. Riprova più tardi."
-            elif any(x in description for x in ("api key","401","authentication")):
-                notice="Controlla la chiave API Gemini configurata sul server."
-            else:
-                notice="Il modello non è riuscito a elaborare la domanda."
-            return {"risposta":notice,"fonti":[]}
+            # NON visualizzare il messaggio grezzo: può contenere chiavi API
+            # o dettagli privati della richiesta. Mostra fase e classe sicure.
+            return label_error(exc)
 
 
 @st.dialog("Assistente FarmaQuery",width="large")
@@ -101,6 +97,29 @@ def assistant_dialog():
               help="Cancella le conversazioni TAG e Text-to-SQL; preserva il limite API.")
     if st.session_state.pop("farmaquery_chat_just_cleared",False):
         st.success("Conversazioni cancellate.")
+
+    # Diagnostica separata dalla chat: una chiamata minima permette di
+    # capire se il provider risponde senza coinvolgere TAG o Text-to-SQL.
+    with st.expander("Diagnostica del modello"):
+        st.caption(f"Modello selezionato: {model}. Il test usa una richiesta "
+                   "minima e può consumare una piccola quota API.")
+        if st.button("Verifica connessione Gemini",key="farmaquery_probe",
+                     disabled=not has_key or remaining<=0):
+            st.session_state["farmaquery_chat_count"]+=1
+            try:
+                ok=verify_provider(model)
+                if ok:
+                    st.success("Connessione al modello riuscita. "
+                               "Se la chat non risponde, il problema è nel "
+                               "motore TAG oppure nella query SQL.")
+                else:
+                    st.warning("Gemini non ha restituito testo.")
+            except Exception as exc:
+                result=label_error(exc)
+                st.error(result["risposta"])
+                st.caption("Questo errore riguarda la connessione al modello, "
+                           "non il database.")
+
 
     with st.container(height=290,border=True):
         if not history:
