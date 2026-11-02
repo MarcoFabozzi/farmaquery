@@ -84,8 +84,6 @@ div[data-testid="stButton"] button:hover {background:#dff5ee;border-color:#169b8
 </div>
 """,unsafe_allow_html=True)
 
-st.page_link('pages/1_Chatbot.py',label='💬 Apri il chatbot · Text-to-SQL / TAG')
-
 if not DB.is_file():
     st.error('Database non disponibile. Controllare il file risultati/farmaci_automatico.sqlite.')
     st.stop()
@@ -592,3 +590,7 @@ with st.expander('Stato degli aggiornamenti'):
     st.write('Gazzetta Ufficiale:',ultimo('gazzetta'))
     st.caption('Gli aggiornamenti sono giornalieri, con nuovi tentativi in caso di errore. Le date riportano le acquisizioni, non la validità normativa.')
 st.caption('Prototipo accademico: le informazioni non certificano la classificazione o la rimborsabilità corrente dei medicinali.')
+
+# Assistente sempre raggiungibile dall'icona in basso a destra.
+from chatbot_widget import render_assistant
+render_assistant()

@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'chatbot_farmaquery.py'
+      - 'chatbot_widget.py'
+      - 'tests/test_assistente_flottante.py'
       - 'pages/**'
       - 'requirements.txt'
       - 'dashboard_regolatorio.py'
@@ -28,7 +30,8 @@ jobs:
           python -m pip check
       - name: Compila app e verifica i moduli reali
         run: |
-          python -m py_compile dashboard_regolatorio.py pages/1_Chatbot.py chatbot_farmaquery.py tesi/pilota_tag_vs_sql.py
+          python -m py_compile dashboard_regolatorio.py chatbot_widget.py chatbot_farmaquery.py tesi/pilota_tag_vs_sql.py
+          python -m unittest discover -s tests -p 'test_assistente_flottante.py' -v
           python -m unittest discover -s tests -p 'test_chatbot_farmaquery.py' -v
           python - <<'PY'
           import streamlit
