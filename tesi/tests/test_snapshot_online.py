@@ -85,6 +85,23 @@ class SnapshotOnlineTests(unittest.TestCase):
                 self.assertIn("ULTOMIRIS",file_names,
                               "Il recupero categoria ha escluso la nota ULTOMIRIS")
                 self.assertTrue(all("copertura_documenti" in r for r in docs))
+                # Verifica TUTTO il passaggio allo strato TAG, non solo FTS.
+                from tesi.pilota_tag_vs_sql import evidence_candidates
+                from tesi.sintesi_tag import compact_category_evidence
+                complete=evidence_candidates(db,q,max_rows=22)
+                compact=compact_category_evidence(complete)
+                combined=" | ".join(
+                    str(d["documento_e_medicinale_candidato"])
+                    for d in compact).upper()
+                self.assertIn("DUVYZAT",combined,
+                              "DUVYZAT perso tra recupero e sintesi TAG")
+                self.assertIn("ULTOMIRIS",combined,
+                              "ULTOMIRIS perso tra recupero e sintesi TAG")
+                self.assertTrue(all(d.get("passaggi") for d in compact))
+                print("Documenti recuperati per categoria:",len(docs),
+                      "documenti consegnati alla sintesi:",len(compact),
+                      "documenti nello snapshot:",docs[0]["copertura_documenti"])
+
 
                 # Lo snapshot scientifico NON attribuisce C per esclusione.
                 self.assertGreater(
