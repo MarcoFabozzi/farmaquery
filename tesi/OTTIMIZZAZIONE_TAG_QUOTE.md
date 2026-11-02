@@ -63,5 +63,29 @@ payload finale**. Il codice di produzione non contiene liste predefinite di
 farmaci corretti né attribuisce automaticamente centri autorizzati.
 La correttezza delle associazioni rimane oggetto della revisione gold.
 
+## Note con più indicazioni: corrispondenza fra sezione e centro
+
+Per i PDF che riportano più indicazioni e più tabelle di centri, il recupero
+non può limitarsi alla parola «Federico II» isolata. Ogni estratto rilevante
+ora porta, **dalla stessa pagina**, due finestre testuali distinte: la
+**sezione dell'indicazione** (per es. intestazione della tabella) e la
+**riga del centro**. Le abbreviazioni e i codici diagnostici presenti nelle
+note sono impiegati unicamente per il recupero; non attribuiscono di per sé
+una categoria, una prescrizione o un'autorizzazione.
+
+La selezione LOTUS rimane semantica, così come l'interpretazione del
+collegamento fra la tabella e l'indicazione. Il prompt impone di valutare
+separatamente le indicazioni quando una nota ne contiene più di una,
+senza trasferire centri da un'indicazione all'altra né considerare una
+nota esclusa solo perché contiene anche patologie non richieste.
+
+Il controllo sullo SQLite congelato verifica specificamente il **richiamo**
+di due sezioni già sottoposte a revisione indipendente del PDF originale:
+ULTOMIRIS p. 3 e SOLIRIS p. 4. Il test controlla presenza sia della
+patologia miastenica sia della menzione della struttura, nello stesso
+estratto passato alla sintesi. I documenti non sono inseriti come
+risposte predefinite nel motore; il test non sostituisce l'esecuzione
+del modello e la valutazione gold.
+
 ## Stato
 I test automatici verificano conservazione delle evidenze, tracciabilità dei gruppi, classificazione quota e arresto del runner. **Non eseguono chiamate a Gemini** e non dimostrano la correttezza clinico-regolatoria delle risposte.
