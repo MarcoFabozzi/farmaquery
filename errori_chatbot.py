@@ -24,19 +24,24 @@ def label_error(exc):
     # Classificazioni basate sulla classe, non sul testo dell'errore (che
     # potrebbe contenere URL, prompt o credenziali).
     low=kind.lower()
-    if any(word in low for word in ("ratelimit","resourceexhausted","quota")):
+    # Il codice HTTP è informazione diagnostica non sensibile.
+    try:
+        http_code=int(getattr(cause,"status_code",0) or 0)
+    except (TypeError,ValueError):
+        http_code=0
+    if http_code==429 or any(word in low for word in ("ratelimit","resourceexhausted","quota")):
         message="Gemini ha esaurito la quota di richieste per questo modello."
         code="QUOTA"
-    elif any(word in low for word in ("authentication","unauthorized","permission")):
+    elif http_code in (401,403) or any(word in low for word in ("authentication","unauthorized","permission")):
         message="La chiave API è rifiutata dal provider. Controlla i Secrets."
         code="AUTH"
-    elif "notfound" in low:
+    elif http_code==404 or "notfound" in low:
         message="Il modello configurato non risulta disponibile presso il provider."
         code="MODELLO"
-    elif any(word in low for word in ("timeout","connection","connect")):
+    elif http_code in (502,503,504) or any(word in low for word in ("timeout","connection","connect")):
         message="La connessione al provider non è riuscita o è scaduta."
         code="CONNESSIONE"
-    elif "badrequest" in low or "invalidrequest" in low:
+    elif http_code==400 or "badrequest" in low or "invalidrequest" in low:
         message="Il provider ha rifiutato la richiesta del modello."
         code="RICHIESTA"
     elif "sql" in phase or "sqlite" in low or "parse" in low:
