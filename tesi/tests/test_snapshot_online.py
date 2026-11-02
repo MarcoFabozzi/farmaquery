@@ -51,6 +51,15 @@ class SnapshotOnlineTests(unittest.TestCase):
                 self.assertTrue(all(r["codice"]=="23A02767" for r in gu))
                 self.assertTrue(any("WEGOVY" in r["testo"].upper() for r in gu))
                 self.assertIn("gazzetta",info["fonti_ufficiali"])
+                # Il nuovo recupero TAG funziona anche sul corpus regionale
+                # reale, non solo sulle fixture sintetiche.
+                from tesi.recupero_regionale import regional_candidates
+                plu = regional_candidates(
+                    db, "Quali centri sono riportati per PLUVICTO?", "pluvicto")
+                self.assertTrue(plu, "Documento PLUVICTO non recuperato")
+                self.assertTrue(all("#p" in r["fonte"] for r in plu))
+                self.assertTrue(any("PLUVICTO" in r["testo"].upper()
+                                    for r in plu))
                 # Lo snapshot scientifico NON attribuisce C per esclusione.
                 self.assertGreater(
                     db.execute("SELECT COUNT(*) FROM aifa_confezioni "
