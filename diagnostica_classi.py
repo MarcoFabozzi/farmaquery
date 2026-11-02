@@ -24,11 +24,9 @@ with closing(sqlite3.connect(main.as_uri()+'?mode=ro',uri=True)) as db:
     for nome,active,proc,raw in cnn:
         data=json.loads(raw)
         for k in data:keys[k]+=1
-        det=data.get('dettagli',{})
-        if isinstance(det,dict):
-            v=str(det.get('aic_farmaco',''))
-            aic_samples[('aic_len',len(v))]+=1
-            if v:aic_samples[('example_chars',v[:24])]+=1
+        v=str(data.get('aic_farmaco','') or '')
+        aic_samples[('aic_len',len(v))]+=1
+        if v:aic_samples[('example_chars',v[:24])]+=1
     print("Cnn keys",keys.most_common(15))
     print("Cnn AIC values",aic_samples.most_common(8))
 if archive.exists():
