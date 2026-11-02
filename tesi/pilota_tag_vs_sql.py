@@ -445,6 +445,34 @@ def _accumulate(a,b):
             for key in ("token_input","token_output","costo_usd")}
 
 
+def _source_previews(evidence, limit=16):
+    """Estratti verificabili delle righe effettivamente consegnate al modello.
+
+    Non sono citazioni letterali validate: l'interfaccia indica un estratto
+    della riga recuperata, insieme alla fonte da cui proviene.
+    """
+    found=[]
+    seen=set()
+    for row in evidence:
+        source=str(row.get("fonte") or "")
+        if not source or source in seen:
+            continue
+        seen.add(source)
+        raw=str(row.get("testo") or "")
+        for marker in ("; testo: ", "; estratto: ", "; passaggio: "):
+            if marker in raw:
+                raw=raw.split(marker,1)[1]
+                break
+        raw=" ".join(raw.split())
+        if len(raw)>420:
+            raw=raw[:417].rstrip()+"..."
+        found.append({"fonte":source,"tipo":row.get("tipo",""),
+                      "estratto":raw})
+        if len(found)>=limit:
+            break
+    return found
+
+
 def tag(db,question,model):
     import pandas as pd
     import lotus
@@ -555,6 +583,7 @@ def tag(db,question,model):
         answer += ("\n\nCopertura: risultati candidati ricavati dalle note "
                    "recuperate; non è garantito un elenco esaustivo dei medicinali.")
     return {"risposta":answer,"fonti":list(dict.fromkeys(x["fonte"] for x in evidence)),
+            "evidenze_fonti":_source_previews(evidence),
             "stato":"OK","token_input":input_tokens,
             "token_output":output_tokens,"costo_usd":full_cost,
             "costo_completo":full_cost is not None,
@@ -707,7 +736,14 @@ def sql_method(db,question,model):
         answer+=("\n\nAvvertenza: risultati SQL parziali per limite di "
                  "righe, limite della query o di contesto. L'elenco non "
                  "può essere considerato completo.")
+    sql_evidence=[{"tipo":"SQL","fonte":"Riga "+str(ix+1),
+                  "testo":str(record.get("testo") or record.get("indicazione_ema")
+                              or record.get("descrizione") or "")}
+                 for ix,record in enumerate(rows) if
+                 (record.get("testo") or record.get("indicazione_ema")
+                  or record.get("descrizione"))]
     return {"risposta":answer,"fonti":citations,"sql":sql,
+            "evidenze_fonti":_source_previews(sql_evidence),
             "righe_sql":len(rows),"stato":"RISULTATI_PARZIALI" if truncated else "OK",
             "risultato_parziale":truncated,**total,
             "costo_completo":total["costo_usd"] is not None}
