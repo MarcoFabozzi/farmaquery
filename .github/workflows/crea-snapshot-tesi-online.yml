@@ -1,0 +1,51 @@
+name: Crea snapshot online per la tesi
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'tesi/prepara_snapshot_online.py'
+      - '.github/workflows/crea-snapshot-tesi-online.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Crea SQLite sperimentale dal commit corrente e manifesta fonti
+        run: |
+          mkdir -p dist_tesi
+          python tesi/prepara_snapshot_online.py \
+            --output dist_tesi/esperimento_online.sqlite \
+            --manifest dist_tesi/manifest_fonti_online.json
+      - name: Controlla file e hash
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          folder=Path('dist_tesi')
+          doc=json.loads((folder/'manifest_fonti_online.json').read_text())
+          file=folder/'esperimento_online.sqlite'
+          assert file.is_file()
+          assert hashlib.sha256(file.read_bytes()).hexdigest()==doc['sha256_sqlite']
+          print('A/H:',doc['fonti_ufficiali']['classi_ah']['data_riferimento'])
+          print('Git commit:',doc['git_commit'])
+          print('SHA-256 SQLite:',doc['sha256_sqlite'])
+          print('Conteggi:',doc['conteggi'])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tesi-snapshot-fonti-online
+          path: dist_tesi/
+          if-no-files-found: error
+          retention-days: 30
