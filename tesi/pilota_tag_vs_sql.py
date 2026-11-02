@@ -51,6 +51,7 @@ STOP = {"quali","quale","quali","della","delle","nelle","degli","sono",
         "come","perche","attualmente","sostanza","sostanze",
         "formulazione","formulazioni","confezione","confezioni",
         "formato","formati","compresse","bustine","flaconcino",
+         "tumore","rimborsabilita","rimborsabilità","alla","dove",
         "ospedali","reparti","reparto","strutture","possibile","prevista",
         "previsto","previsti","prescrizione","somministrazione","nelle",
         "negli","agli","campani","campane","indicato","indicati",
@@ -111,7 +112,7 @@ def _question_kind(question):
                                   "compresse", "flaconcin", "bustine",
                                   "rimbors")):
         return "AIFA"
-    if any(word in q for word in ("indicazion", "indicat", "patologia",
+    if any(word in q for word in ("indicazion", "indicat", "tumore", "patologia",
                                   "malattia", "autorizzazion",
                                   "europe", "pazienti", "quale età",
                                   "quali condizioni")):
@@ -179,6 +180,46 @@ def _target(question):
     return meaningful[0] if meaningful else ""
 
 
+def _target_db(db, question):
+    """Riconosce il nome presente nella domanda tramite le tabelle dello snapshot.
+
+    Non assume che il farmaco sia la prima parola significativa e supporta
+    denominazioni di più parole. Usa solo SELECT parametrizzate.
+    """
+    words = re.findall(r"[A-Za-zÀ-ÿ0-9]+(?:[-'][A-Za-zÀ-ÿ0-9]+)*", question)
+    phrases = {}
+    for start in range(len(words)):
+        for length in range(1, min(5, len(words) - start) + 1):
+            part = words[start:start + length]
+            if not any(len(w) >= 4 and w.casefold() not in STOP for w in part):
+                continue
+            phrase = " ".join(part).casefold()
+            phrases.setdefault(phrase, (start, length))
+
+    if not phrases:
+        return _target(question)
+
+    placeholders = ",".join("?" for _ in phrases)
+    params = tuple(phrases)
+    matches = set()
+    for table, column in (
+        ("ema_medicinali", "nome"),
+        ("aifa_confezioni", "nome"),
+        ("aifa_confezioni", "principio_attivo"),
+    ):
+        query = (f"SELECT DISTINCT {column} FROM {table} "
+                 f"WHERE {column} COLLATE NOCASE IN ({placeholders})")
+        for row in db.execute(query, params):
+            name = str(row[0] or "").casefold()
+            if name in phrases:
+                matches.add(name)
+
+    if matches:
+        return min(matches, key=lambda name: (-phrases[name][1], phrases[name][0]))
+    # Preserva il recupero via FTS per farmaci presenti solo nelle note.
+    return _target(question)
+
+
 def _search_aifa(db,target,limit=6):
     """Prima marchio esatto, poi prefisso; sostanza come ripiego.
 
@@ -237,7 +278,7 @@ def evidence_candidates(db,question,max_rows=18):
     Un match solo nel campo 'principio_attivo' di un medicinale composto
     NON deve prevalere sul nome esatto del medicinale chiesto.
     """
-    target=_target(question)
+    target=_target_db(db, question)
     if not target:
         return []
     kind=_question_kind(question)
@@ -413,7 +454,7 @@ def tag(db,question,model):
         "e non dedurlo da una semplice menzione in un PDF. "
         "Indica le fonti pertinenti e per le parti non documentate scrivi "
         "'non documentato nello snapshot'.",
-        {"domanda":question,"medicinale_o_sostanza_ricercata":_target(question),
+        {"domanda":question,"medicinale_o_sostanza_ricercata":_target_db(db, question),
          "intento":_question_kind(question),
          "parti_richieste":sorted(_facets(question)),
          "fonti_presenti":sorted({r["tipo"] for r in evidence}),
