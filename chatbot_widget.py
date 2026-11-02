@@ -1,11 +1,11 @@
-"""Chatbot flottante di FarmaQuery, disponibile in fondo alla dashboard.
+"""Assistente FarmaQuery: bolla flottante + finestra di chat autonoma.
 
-Nessuna password e nessuna domanda precompilata: l'utente scrive
-liberamente e sceglie il motore dal menu a tendina.
+Il vecchio st.popover era annidato dentro un contenitore fixed di soli
+90 pixel. Questo file fissa SOLO il pulsante; il contenuto è un dialog
+Streamlit separato e il campo rimane sempre modificabile.
 """
 from __future__ import annotations
 
-from contextlib import closing
 import sqlite3
 import time
 
@@ -19,11 +19,7 @@ MAX_QUESTIONS_PER_SESSION=12
 
 
 def start_new_conversation():
-    """Azzera entrambe le chat prima del rerun gestito da Streamlit.
-
-    Il contatore delle richieste resta invariato, per non eludere il
-    limite della quota pubblica del provider.
-    """
+    """Pulisce entrambe le cronologie, senza azzerare la quota API."""
     for method in ("Text-to-SQL", "TAG"):
         st.session_state[history_key(method)]=[]
     st.session_state["farmaquery_chat_just_cleared"]=True
@@ -34,155 +30,169 @@ def _cached_snapshot(version):
     return prepare_snapshot()
 
 
-def render_assistant():
-    st.markdown("""
-    <style>
-    /* L'icona resta sempre in basso a destra, anche durante lo scroll. */
-    .st-key-farmaquery_floating {
-       position:fixed!important;
-       right:22px!important;
-       bottom:72px!important;
-       width:90px!important;
-       max-width:90px!important;
-       z-index:99999!important;
-       padding:0!important;
-    }
-    .st-key-farmaquery_floating div[data-testid="stPopover"] > button,
-    .st-key-farmaquery_floating button[data-testid="stPopoverButton"] {
-       width:84px!important;
-       min-width:84px!important;
-       max-width:84px!important;
-       height:84px!important;
-       min-height:84px!important;
-       border-radius:9999px!important;
-       aspect-ratio:1/1!important;
-       background:#116b70!important;
-       border:2px solid #ffffff!important;
-       box-shadow:0 7px 26px rgba(0,0,0,.22)!important;
-       color:white!important;
-       font-size:2.0rem!important;
-       padding:0!important;
-    }
-    .st-key-farmaquery_floating div[data-testid="stPopover"] > button:hover {
-       background:#098f85!important;
-       transform:translateY(-2px);
-    }
-    @media(max-width:650px) {
-       .st-key-farmaquery_floating {right:13px!important;bottom:56px!important;width:82px!important;max-width:82px!important;}
-       .st-key-farmaquery_floating div[data-testid="stPopover"] > button,
-       .st-key-farmaquery_floating button[data-testid="stPopoverButton"] {
-          width:78px!important;min-width:78px!important;max-width:78px!important;
-          height:78px!important;min-height:78px!important;border-radius:9999px!important;
-       }
-    }
-    </style>""",unsafe_allow_html=True)
-
+def _server_config():
     try:
         secrets=dict(st.secrets)
     except (FileNotFoundError,RuntimeError):
         secrets={}
     model=model_from_settings(secrets)
-    has_key=enable_server_key(model,secrets)
+    return model,enable_server_key(model,secrets)
 
-    with st.container(key="farmaquery_floating"):
-        with st.popover("💬",help="Apri assistente FarmaQuery",use_container_width=False):
-            st.markdown("#### 💊 Assistente FarmaQuery")
-            st.caption("Fai una domanda su farmaci, classi, indicazioni "
-                       "e centri di prescrizione.")
-            method=st.selectbox("Metodo di risposta",
-                                ("Text-to-SQL","TAG"),
-                                key="farmaquery_float_method")
-            key=history_key(method)
-            if key not in st.session_state:
-                st.session_state[key]=[]
-            history=st.session_state[key]
-            if "farmaquery_chat_count" not in st.session_state:
-                st.session_state["farmaquery_chat_count"]=0
-            remaining=MAX_QUESTIONS_PER_SESSION-st.session_state["farmaquery_chat_count"]
 
-            if not has_key:
-                st.info("L'assistente non è ancora disponibile: "
-                        "manca la configurazione del modello sul server.")
-            elif remaining<=0:
-                st.info("Hai raggiunto il limite di domande per questa sessione.")
+def _reply(question,method,model,has_key,remaining):
+    """Produce un risultato senza mai disabilitare l'editor dei messaggi."""
+    if not has_key:
+        return {"risposta":"La domanda è stata ricevuta. Il modello non è "
+                "ancora collegato: controlla GEMINI_API_KEY nei Secrets "
+                "di Streamlit Cloud.","fonti":[]}
+    if remaining<=0:
+        return {"risposta":"Hai raggiunto il limite di chiamate al modello "
+                "per questa sessione. Puoi continuare a scrivere, ma "
+                "non effettuare altre richieste in questa sessione.",
+                "fonti":[]}
+    st.session_state["farmaquery_chat_count"]+=1
+    with st.spinner("Consulto le fonti..."):
+        try:
+            db,_manifest=_cached_snapshot(snapshot_version())
+            return answer_question(db,question,method,model)
+        except (ImportError,ModuleNotFoundError):
+            return {"risposta":"Il motore selezionato non risulta installato "
+                    "nell'ambiente del server.","fonti":[]}
+        except (OSError,ValueError,sqlite3.DatabaseError):
+            return {"risposta":"Il database non è temporaneamente disponibile.",
+                    "fonti":[]}
+        except Exception as exc:
+            description=str(exc).lower()
+            if ("429" in description or "resource_exhausted" in description
+                    or "rate limit" in description):
+                notice="Il provider ha esaurito la quota. Riprova più tardi."
+            elif any(x in description for x in ("api key","401","authentication")):
+                notice="Controlla la chiave API Gemini configurata sul server."
             else:
-                st.caption(f"Domande disponibili nella sessione: {remaining}")
+                notice="Il modello non è riuscito a elaborare la domanda."
+            return {"risposta":notice,"fonti":[]}
 
-            st.button("Nuova conversazione",
-                      key="farmaquery_start_new_conversation",
-                      on_click=start_new_conversation,
-                      help="Cancella entrambe le cronologie; il limite di richieste rimane.",
-                      use_container_width=True)
-            if st.session_state.pop("farmaquery_chat_just_cleared",False):
-                st.success("Nuova conversazione avviata: messaggi eliminati.")
 
-            # Le cronologie per TAG e Text-to-SQL sono separate.
-            with st.container(height=260,border=False):
-                if not history:
-                    st.caption("Scrivi liberamente una domanda per iniziare.")
-                for item in history:
-                    with st.chat_message(item["role"]):
-                        st.markdown(item["text"])
-                        if item["role"]=="assistant":
-                            if item.get("fonti"):
-                                with st.expander("Fonti"):
-                                    for ref in item["fonti"]:
-                                        st.write(str(ref))
-                            if method=="Text-to-SQL" and item.get("sql"):
-                                with st.expander("SQL generato"):
-                                    st.code(item["sql"],language="sql")
-                            if item.get("secondi") is not None:
-                                st.caption(f"{item['secondi']:.1f} s · {method}")
+@st.dialog("Assistente FarmaQuery",width="large")
+def assistant_dialog():
+    """Una finestra nativa: il campo è esterno al CSS del pulsante flottante."""
+    st.caption("Informazioni EMA, AIFA e Regione Campania.")
+    method=st.selectbox("Metodo di risposta",
+                        ("Text-to-SQL","TAG"),
+                        key="farmaquery_float_method")
+    model,has_key=_server_config()
+    history_id=history_key(method)
+    if history_id not in st.session_state:
+        st.session_state[history_id]=[]
+    history=st.session_state[history_id]
+    if "farmaquery_chat_count" not in st.session_state:
+        st.session_state["farmaquery_chat_count"]=0
+    remaining=MAX_QUESTIONS_PER_SESSION-st.session_state["farmaquery_chat_count"]
+    if not has_key:
+        st.warning("Gemini non è configurato. Il campo di scrittura è comunque disponibile.")
+    elif remaining<=0:
+        st.info("Limite di richieste raggiunto. Puoi ancora scrivere, ma non ottenere nuove risposte.")
+    else:
+        st.caption(f"Richieste disponibili: {remaining}")
 
-            # Nessuna lista di esempi e nessuna domanda inserita nel codice.
-            with st.form("farmaquery_float_form_"+method,clear_on_submit=True):
-                # Il campo resta SEMPRE scrivibile: nessuna impostazione API
-                # o quota deve disabilitare la digitazione.
-                question=st.text_input("La tua domanda",max_chars=700,
-                                       placeholder="Scrivi qui...",
-                                       disabled=False)
-                sent=st.form_submit_button("Invia",type="primary",
-                                            use_container_width=True)
+    st.button("Nuova conversazione",
+              key="farmaquery_start_new_conversation",
+              on_click=start_new_conversation,
+              help="Cancella le conversazioni TAG e Text-to-SQL; preserva il limite API.")
+    if st.session_state.pop("farmaquery_chat_just_cleared",False):
+        st.success("Conversazioni cancellate.")
 
-            if sent and question.strip():
-                history.append({"role":"user","text":question.strip()})
-                start=time.monotonic()
-                if not has_key:
-                    result={"risposta":"La domanda è stata ricevuta, ma il modello non "
-                            "è ancora collegato. Controlla i Secrets sul server: "
-                            "GEMINI_API_KEY e FARMAQUERY_LLM_MODEL.","fonti":[]}
-                elif remaining<=0:
-                    result={"risposta":"Hai raggiunto il limite di richieste di "
-                            "questa sessione. Il campo resta disponibile, ma "
-                            "per altre risposte serve una nuova sessione.",
-                            "fonti":[]}
-                else:
-                    st.session_state["farmaquery_chat_count"]+=1
-                    with st.spinner("Sto consultando le fonti..."):
-                        try:
-                            db,manifest=_cached_snapshot(snapshot_version())
-                            result=answer_question(db,question,method,model)
-                        except (ImportError,ModuleNotFoundError):
-                            result={"risposta":"Il modulo di risposta non è disponibile "
-                                    "nell'ambiente del server.","fonti":[]}
-                        except (OSError,ValueError,sqlite3.DatabaseError) as err:
-                            result={"risposta":"Non riesco ad accedere al database "
-                                    f"({type(err).__name__}).","fonti":[]}
-                        except Exception as err:
-                            msg=str(err).lower()
-                            if "429" in msg or "resource_exhausted" in msg or "rate limit" in msg:
-                                info="La quota del modello è esaurita. Riprova più tardi."
-                            elif "api key" in msg or "401" in msg or "authentication" in msg:
-                                info="La chiave API del modello deve essere controllata."
-                            else:
-                                info="Non è stato possibile ottenere una risposta dal modello."
-                            result={"risposta":info,"fonti":[]}
-                history.append({"role":"assistant",
-                                "text":result.get("risposta","Nessuna risposta disponibile."),
-                                "fonti":result.get("fonti",[]),
-                                "sql":result.get("sql",""),
-                                "secondi":round(time.monotonic()-start,2)})
-                st.rerun()
+    with st.container(height=290,border=True):
+        if not history:
+            st.caption("Scrivi una domanda per iniziare.")
+        for item in history:
+            with st.chat_message(item["role"]):
+                st.markdown(item["text"])
+                if item["role"]=="assistant":
+                    if item.get("fonti"):
+                        with st.expander("Fonti consultate"):
+                            for ref in item["fonti"]:
+                                st.text(str(ref))
+                    if method=="Text-to-SQL" and item.get("sql"):
+                        with st.expander("Query SQL"):
+                            st.code(item["sql"],language="sql")
+                    if item.get("secondi") is not None:
+                        st.caption(f'{item["secondi"]:.1f} s · {method}')
 
-            st.caption("Prototipo accademico: verifica sempre le fonti "
-                       "prima di prendere decisioni cliniche.")
+    # Non usare st.popover o st.chat_input: un normale text_area in st.dialog
+    # è interattivo e non dipende dalle dimensioni/coordinate della bolla.
+    with st.form("farmaquery_message_form_"+method,clear_on_submit=True):
+        question=st.text_area("Scrivi la tua domanda",
+                              placeholder="Digita qui la domanda...",
+                              height=85,max_chars=700,disabled=False)
+        sent=st.form_submit_button("Invia",type="primary",use_container_width=True)
+
+    if sent and question.strip():
+        text_question=question.strip()
+        history.append({"role":"user","text":text_question})
+        start=time.monotonic()
+        result=_reply(text_question,method,model,has_key,remaining)
+        history.append({"role":"assistant",
+                        "text":result.get("risposta","Nessuna risposta disponibile."),
+                        "fonti":result.get("fonti",[]),
+                        "sql":result.get("sql",""),
+                        "secondi":round(time.monotonic()-start,2)})
+        # Solo la finestra viene aggiornata: rimane aperta e scrivibile.
+        st.rerun(scope="fragment")
+
+    st.caption("Prototipo accademico: controlla le fonti prima di prendere "
+               "decisioni cliniche.")
+
+
+def render_assistant():
+    # Il contenitore a posizione fissa contiene SOLO il pulsante. La chat
+    # vera si apre nel dialog Streamlit (portal indipendente dal layout).
+    st.markdown("""
+    <style>
+    .st-key-farmaquery_floating {
+        position:fixed!important;
+        right:22px!important;
+        bottom:72px!important;
+        z-index:99999!important;
+        width:94px!important;
+        max-width:94px!important;
+        padding:0!important;
+    }
+    .st-key-farmaquery_floating button {
+        width:88px!important;
+        min-width:88px!important;
+        max-width:88px!important;
+        height:88px!important;
+        min-height:88px!important;
+        border-radius:50%!important;
+        padding:0!important;
+        font-size:2rem!important;
+        color:white!important;
+        background:#116b70!important;
+        border:2px solid white!important;
+        box-shadow:0 7px 26px rgba(0,0,0,.24)!important;
+    }
+    .st-key-farmaquery_floating button:hover {
+        background:#098f85!important;
+    }
+    @media(max-width:650px) {
+        .st-key-farmaquery_floating {
+            right:13px!important;
+            bottom:56px!important;
+            width:84px!important;
+            max-width:84px!important;
+        }
+        .st-key-farmaquery_floating button {
+            width:78px!important;
+            min-width:78px!important;
+            max-width:78px!important;
+            height:78px!important;
+            min-height:78px!important;
+        }
+    }
+    </style>
+    """,unsafe_allow_html=True)
+    with st.container(key="farmaquery_floating"):
+        if st.button("💬",key="farmaquery_open_chat",
+                     help="Apri assistente FarmaQuery"):
+            assistant_dialog()
