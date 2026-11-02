@@ -1,1 +1,4 @@
 streamlit>=1.40,<2
+lotus-ai==1.2.4
+litellm>=1.70
+sqlglot>=25
