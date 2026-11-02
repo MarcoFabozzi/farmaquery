@@ -13,6 +13,8 @@ import json
 
 STATI={"VALIDATO","DA_VERIFICARE","SCARTATO"}
 REF=re.compile(r"^(.*?)#p([1-9]\d*)$")
+REF_EMA=re.compile(r"^EMA:(.+)$")
+REF_AIFA=re.compile(r"^AIFA:([0-9]{9})$")
 
 
 def read(path):
@@ -63,19 +65,47 @@ def inspect(rows,connection):
             result["errori"].append(key+": negativo: indicare espressamente il limite del corpus")
             continue
         bad=False
+        cited=set()
         for ref in refs:
-            found=REF.fullmatch(ref)
-            if not found:
+            ema=REF_EMA.fullmatch(ref)
+            aifa=REF_AIFA.fullmatch(ref)
+            regional=REF.fullmatch(ref)
+            if ema:
+                exists=connection.execute(
+                    "SELECT 1 FROM ema_medicinali WHERE ema_id=?",
+                    (ema.group(1),)).fetchone()
+                cited.add("EMA")
+                if not exists:
+                    result["errori"].append(key+": EMA ID assente: "+ref)
+                    bad=True
+                continue
+            if aifa:
+                exists=connection.execute(
+                    "SELECT 1 FROM aifa_confezioni WHERE aic=?",
+                    (aifa.group(1),)).fetchone()
+                cited.add("AIFA")
+                if not exists:
+                    result["errori"].append(key+": AIC assente: "+ref)
+                    bad=True
+                continue
+            if not regional:
                 result["errori"].append(key+": formato citazione non valido: "+ref)
                 bad=True
                 continue
-            pdf,page=found.group(1),int(found.group(2))
+            pdf,page=regional.group(1),int(regional.group(2))
+            cited.add("REGIONE")
             row=connection.execute(
                 "SELECT p.testo,p.metodo FROM note n JOIN pagine p "
                 "ON p.nota_id=n.id WHERE n.percorso_zip=? AND p.numero_pagina=?",
                 (pdf,page)).fetchone()
             if row is None or not row[0].strip() or row[1] not in ("TESTO","OCR"):
                 result["errori"].append(key+": pagina non trovata/non leggibile: "+ref)
+                bad=True
+        if state=="VALIDATO" and rec.get("fonti_previste"):
+            needed=set(rec["fonti_previste"].split("+"))
+            if not needed.issubset(cited):
+                result["errori"].append(key+": citazioni mancanti per: "+
+                                         ", ".join(sorted(needed-cited)))
                 bad=True
         if not bad:
             result["validati"]+=1
