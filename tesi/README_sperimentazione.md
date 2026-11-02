@@ -81,6 +81,34 @@ Ogni gold comprende risposta verificata, documento, pagina e criterio di valutaz
 - **TAG con LOTUS**: sem_filter/sem_map su DataFrame di pagine e strutture, con predicati in linguaggio naturale; eventuali sem_join solo su coppie candidate e con criteri verificabili. Documentazione: https://lotus-ai.readthedocs.io/en/latest/sem_filter.html e https://lotus-ai.readthedocs.io/en/latest/sem_join.html .
 - Non effettuare chiamate LLM quando i gold non sono ancora stati validati oppure quando la chiave/modello non sono stati configurati dall'utente.
 
+## Validazione dei gold e valutazione
+
+Dopo aver annotato `risposta_gold`, `fonti_gold` (formato
+`nome/percorso.pdf#p2`, separatore `|` per più citazioni),
+`note_revisore` e `stato_validazione=VALIDATO`, verificare i
+riferimenti sullo stesso SQLite dello snapshot:
+
+```bash
+python -m tesi.valida_gold \
+  --benchmark dist_tesi/benchmark_36_da_validare.csv \
+  --db dist_tesi/esperimento_online.sqlite \
+  --report dist_tesi/verifica_gold.json
+```
+
+Il programma controlla che documenti e pagine **esistano** e che il
+revisore abbia fornito una motivazione; non pretende di decidere
+automaticamente la validità normativa. Le domande ancora
+`DA_VERIFICARE` non entrano nelle statistiche.
+
+Per calcolare la correttezza del confronto usare
+`python -m tesi.valuta_confronto` con i due output sullo
+**stesso hash di snapshot** e con il **medesimo modello LLM**.
+Il CSV risultati richiede le annotazioni manuali
+`valutazione_risposta` e `valutazione_citazioni` (0/1), oltre
+a tempo, token e costo quando disponibili. La metrica di correttezza
+è `null` se non esistono giudizi manuali; non usare un semplice
+confronto letterale delle risposte aperte come accuracy scientifica.
+
 ## Metriche
 Risposte corrette sul gold, correttezza delle citazioni (documento + pagina), gestione dei negativi/astensioni, tempo di risposta, token e costo per domanda. Riportare i risultati **per categoria** oltre alla media. Controllare l'effetto dell'OCR sugli errori.
 
