@@ -17,6 +17,7 @@ import time
 
 from errori_chatbot import EnginePhaseError
 from tesi.recupero_gu import domanda_gu, candidati_gu
+from tesi.recupero_regionale import regional_candidates, categoria
 
 
 SCHEMA = """Tabelle disponibili (SQLite, SOLA LETTURA):
@@ -339,6 +340,16 @@ def evidence_candidates(db,question,max_rows=18):
     def add_regione():
         if kind=="PRINCIPIO_ATTIVO":
             return
+        # Se il documento nominativo esiste, carica tutte le pagine
+        # leggibili (entro limiti controllati) e gli eventuali protocolli
+        # richiamati. Per categorie implicite interroga più note e LOTUS
+        # deciderà semanticamente, non una tabella di risposte predefinite.
+        expanded=regional_candidates(db,question,target,limit=min(22,max_rows))
+        if expanded:
+            for item in expanded:
+                put(item["tipo"],item["chiave"],item["testo"],item["fonte"])
+            return
+        # Compatibilità con fixture minime e con vecchie sorgenti.
         for item in candidates(db,target,limit=5 if kind=="CENTRI" else 3):
             put("REGIONE",str(item["nota_id"])+"#p"+str(item["numero_pagina"]),
                 str(item["testo"])[:1750],
@@ -438,7 +449,12 @@ def tag(db,question,model):
     import pandas as pd
     import lotus
     from lotus.models import LM
-    rows=evidence_candidates(db,question,max_rows=10)
+    category_question=bool(categoria(question)[0])
+    complete_request=bool(re.search(
+        r"\b(?:tutti|tutte|elenco completo|lista completa|quali farmaci)\b",
+        question.casefold()))
+    region_request=category_question or complete_request or _question_kind(question)=="CENTRI"
+    rows=evidence_candidates(db,question,max_rows=22 if region_request else 12)
     if not rows:
         return {"risposta":"Informazione non documentata nello snapshot consultato.",
                 "fonti":[],"stato":"NESSUNA_EVIDENZA","token_input":0,
@@ -457,7 +473,7 @@ def tag(db,question,model):
          "Considera il nome commerciale esatto, non farmaci diversi "
          "che contengono lo stesso principio attivo; le strutture dei "
          "registri AIFA non sono automaticamente centri autorizzati."
-    ).head(5 if len(_facets(question))>1 else 8))
+    ).head(12 if region_request else (6 if len(_facets(question))>1 else 8)))
     # L'assenza delle statistiche non deve annullare una risposta valida.
     selection_usage=getattr(getattr(lm,"stats",None),"physical_usage",None)
     prompt_tokens=getattr(selection_usage,"prompt_tokens",None)
@@ -466,7 +482,18 @@ def tag(db,question,model):
     # Conserviamo chiave e tipo per garantire copertura delle fonti senza
     # confondere una selezione semantica vuota con un database vuoto.
     semantic=selected[["tipo","chiave","testo","fonte"]].to_dict("records")
-    evidence=_multisource_evidence(rows,semantic,question)
+    evidence=_multisource_evidence(rows,semantic,question,
+                                 limit=18 if region_request else 10)
+    # Una lista di centri richiesta come completa non può essere generata
+    # da una sola pagina selezionata: includiamo tutte le pagine della nota
+    # già recuperate e verificate come leggibili. Non dichiariamo esaustive
+    # ricerche trasversali a categorie con corpus troncato.
+    if complete_request and not category_question:
+        seen={r["chiave"] for r in evidence}
+        for row in rows:
+            if row["tipo"]=="REGIONE" and row["chiave"] not in seen and len(evidence)<18:
+                evidence.append(row)
+                seen.add(row["chiave"])
     if not evidence:
         return {"risposta":"Informazione non documentata nello snapshot consultato.",
                 "fonti":[],"stato":"NESSUNA_EVIDENZA_SEMANTICA",
@@ -495,6 +522,15 @@ def tag(db,question,model):
         "parti documentate se manca la fonte di una sola parte. "
         "Non dichiarare un centro autorizzato soltanto dal registro AIFA "
         "e non dedurlo da una semplice menzione in un PDF. "
+        "Per una categoria implicita (es. neuromuscolare), verifica la "
+        "patologia e il centro direttamente nel testo di ogni nota; i "
+        "termini di ricerca NON certificano che il farmaco appartenga "
+        "alla categoria e i registri AIFA NON attestano autorizzazioni "
+        "regionali. Per i rimandi cita sia la nota che richiama sia "
+        "quella richiamata: non scambiare un richiamo per abrogazione. "
+        "Se l'elenco richiesto non è verificabilmente completo, dichiara "
+        "espressamente che è parziale e non inventare elementi. "
+        "Indica PDF, pagina e passo rilevante per ogni conclusione. "
         "Indica le fonti pertinenti e per le parti non documentate scrivi "
         "'non documentato nello snapshot'.",
         {"domanda":question,"medicinale_o_sostanza_ricercata":_target_db(db, question),
@@ -508,6 +544,16 @@ def tag(db,question,model):
                    if completion_tokens is not None and usage["token_output"] is not None else None)
     full_cost=(selection_cost+usage["costo_usd"]
                if selection_cost is not None and usage["costo_usd"] is not None else None)
+    if complete_request and any("ESTRATTO PARZIALE" in r["testo"]
+                                for r in evidence):
+        answer+=("\n\nAvvertenza: almeno una pagina della fonte è stata "
+                 "troncata per limiti di contesto; l'elenco va verificato "
+                 "sul PDF integrale e non può essere considerato completo.")
+    if category_question and not re.search(
+        r"parzial|non esaustiv|non documentat|non verificabil",
+        answer.casefold()):
+        answer += ("\n\nCopertura: risultati candidati ricavati dalle note "
+                   "recuperate; non è garantito un elenco esaustivo dei medicinali.")
     return {"risposta":answer,"fonti":list(dict.fromkeys(x["fonte"] for x in evidence)),
             "stato":"OK","token_input":input_tokens,
             "token_output":output_tokens,"costo_usd":full_cost,
