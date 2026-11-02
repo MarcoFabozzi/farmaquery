@@ -165,7 +165,19 @@ def assistant_dialog():
                                 st.text(source.get("estratto",""))
                     if method=="Text-to-SQL" and item.get("sql"):
                         with st.expander("Query SQL"):
+                            if item.get("sql_iniziale"):
+                                st.caption("Prima SELECT: zero righe. "
+                                           "Il modello ha generato una seconda "
+                                           "query (mostrata più sotto).")
+                                st.code(item["sql_iniziale"],language="sql")
+                                st.caption("Seconda SELECT eseguita:")
                             st.code(item["sql"],language="sql")
+                        if item.get("sql_tentativi"):
+                            st.caption(
+                                "Text-to-SQL · query generate: "+
+                                str(item["sql_tentativi"])+
+                                " · modello e snapshot invariati"
+                            )
                     if item.get("secondi") is not None:
                         st.caption(f'{item["secondi"]:.1f} s · {method}')
                     if method=="TAG" and item.get("modalita_selezione"):
@@ -195,6 +207,8 @@ def assistant_dialog():
                         "fonti":result.get("fonti",[]),
                         "evidenze_fonti":result.get("evidenze_fonti",[]),
                         "sql":result.get("sql",""),
+                        "sql_iniziale":result.get("sql_iniziale"),
+                        "sql_tentativi":result.get("sql_tentativi"),
                         "secondi":round(time.monotonic()-start,2),
                         "modalita_selezione":result.get("modalita_selezione"),
                         "righe_recuperate":result.get("righe_recuperate"),
