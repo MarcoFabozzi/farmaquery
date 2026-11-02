@@ -54,7 +54,7 @@ class ClassiComplementariTests(unittest.TestCase):
         event = {"classe_nuova": "C", "data_pubblicazione": "2023-05-16",
                  "fonte": "https://www.gazzettaufficiale.it/"}
         self.assertEqual(classe_con_fonti("", None, event, []),
-                         "C (atto storico 16/05/2023)")
+                         "C (atto storico sul medicinale 16/05/2023)")
         self.assertEqual(classe_con_fonti("", ("A", "2026-06-30"), event, []),
                          "A (lista 30/06/2026)")
         self.assertEqual(classe_con_fonti("", None, None, []), "N/D")
