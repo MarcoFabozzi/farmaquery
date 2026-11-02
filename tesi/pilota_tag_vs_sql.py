@@ -246,11 +246,16 @@ def _target_db(db, question):
 
     if matches:
         return min(matches, key=lambda name: (-phrases[name][1], phrases[name][0]))
-    # Recupera anche nomi presenti esclusivamente nelle note regionali.
-    for row in db.execute("SELECT DISTINCT farmaco_candidato FROM note WHERE farmaco_candidato IS NOT NULL"):
-        name=str(row[0]).strip()
-        if name and re.search(r"(?<!\\w)"+re.escape(name)+r"(?!\\w)",question,re.I):
-            return name
+    # Le fixture minime possono non avere questa colonna.
+    note_columns={r[1] for r in db.execute("PRAGMA table_info(note)")}
+    if "farmaco_candidato" in note_columns:
+        for row in db.execute(
+            "SELECT DISTINCT farmaco_candidato FROM note "
+            "WHERE farmaco_candidato IS NOT NULL"):
+            name=str(row[0]).strip()
+            if name and re.search(r"(?<!\w)"+re.escape(name)+r"(?!\w)",
+                                  question,re.I):
+                return name
     return _target(question)
 
 
