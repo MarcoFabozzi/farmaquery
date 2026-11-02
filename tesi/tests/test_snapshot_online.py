@@ -29,6 +29,7 @@ class SnapshotOnlineTests(unittest.TestCase):
             self.assertEqual(json.loads(manifest.read_text())["sha256_sqlite"],
                              info["sha256_sqlite"])
             with sqlite3.connect(dbfile) as db:
+                db.row_factory=sqlite3.Row
                 self.assertEqual(db.execute("PRAGMA integrity_check").fetchone()[0],"ok")
                 self.assertGreater(db.execute("SELECT COUNT(*) FROM pagine_fts").fetchone()[0],100)
                 self.assertGreater(db.execute("SELECT COUNT(*) FROM note").fetchone()[0],100)
