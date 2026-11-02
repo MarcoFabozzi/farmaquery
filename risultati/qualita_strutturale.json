@@ -1,5 +1,5 @@
 {
-  "generato_utc": "2026-11-01T13:46:35+00:00",
+  "generato_utc": "2026-11-02T08:28:13+00:00",
   "stato": "OK",
   "controlli_bloccanti": [],
   "avvertenze": [
@@ -10,7 +10,7 @@
   "metriche": {
     "errori_foreign_key": 0,
     "conteggi": {
-      "acquisizioni": 7,
+      "acquisizioni": 8,
       "aifa_confezioni": 10606,
       "classi_snapshot": 54,
       "cnn_elenco_storico": 41,
@@ -48,7 +48,7 @@
   "fonti": {
     "ema": {
       "stato": "OK",
-      "ultima_acquisizione_utc": "2026-11-01T12:18:27+00:00"
+      "ultima_acquisizione_utc": "2026-11-02T05:20:55+00:00"
     },
     "aifa_anagrafica": {
       "stato": "OK",
@@ -64,7 +64,7 @@
     },
     "gazzetta": {
       "stato": "OK",
-      "ultima_acquisizione_utc": "2026-11-01T13:39:16+00:00"
+      "ultima_acquisizione_utc": "2026-11-02T05:37:58+00:00"
     }
   },
   "nota": "Solo qualita strutturale e provenienza locale: non verifica la classe vigente."
