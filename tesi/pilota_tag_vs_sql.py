@@ -60,7 +60,8 @@ STOP = {"quali","quale","quali","della","delle","nelle","degli","sono",
         "trattate","trattamento","terapia","condizioni","controllo",
         "oncologici","servizi","neurologia","possono","potrebbe",
         "prescrittori","autorizzazione","autorizzati","ricevuto",
-        "stessi","stesse","impiegato","farmaci","quale","europea"}
+        "stessi","stesse","impiegato","farmaci","quale","europea",
+        "qual","quell","quello","quella","queste","questi"}
 
 
 def read_only(path):
