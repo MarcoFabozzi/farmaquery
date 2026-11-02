@@ -27,6 +27,9 @@ CATEGORY_SYSTEM = (
     "per ciascun caso documentato. Non inventare centri, non usare fonti "
     "esterne, non confondere un richiamo con un'abrogazione. "
     "Se qualche relazione manca, esplicita il limite invece di inventarla. "
+    "Non dichiarare che un medicinale È ESCLUSO da Federico II sulla sola "
+    "assenza nelle pagine selezionate: le evidenze possono essere parziali. "
+    "Non limitarti ai primi due documenti: valuta ciascun candidato. "
     "Un elenco fondato su documenti candidati non è necessariamente "
     "esaustivo; segnala la copertura parziale. "
     "Se nessun caso è dimostrabile, scrivi che la relazione "
@@ -34,7 +37,7 @@ CATEGORY_SYSTEM = (
 )
 
 
-def compact_category_evidence(rows, per_page_chars=470, per_doc_chars=2150):
+def compact_category_evidence(rows, per_page_chars=900, per_doc_chars=2400):
     """Conserva riferimenti e finestre indicazione/centro di ciascun PDF.
 
     Ritorna evidenze per la chiamata finale, NON per la selezione LOTUS.
@@ -45,21 +48,26 @@ def compact_category_evidence(rows, per_page_chars=470, per_doc_chars=2150):
         text=str(row.get("testo") or "")
         sources=list(dict.fromkeys(row.get("fonti") or
                                    [row.get("fonte") or ""]))
-        matches=list(PAGE_RE.finditer(text))
-        pages=[]
-        if matches:
-            for i,m in enumerate(matches):
-                end=matches[i+1].start() if i+1<len(matches) else len(text)
-                part=text[m.end():end].strip()
-                if not part:
-                    continue
-                pages.append({
-                    "pagina":int(m.group(1)),
-                    "estratto":part[:per_page_chars]
-                })
-        if not pages:
-            pages=[{"pagina":None,"estratto":text[:per_doc_chars]}]
-        # Per non spendere migliaia di token su una nota molto lunga.
+        prepared=row.get("passaggi_sintesi")
+        if prepared:
+            pages=[
+                {"pagina":int(p["pagina"]),
+                 "estratto":str(p["estratto"])[:min(per_page_chars,1100)]}
+                for p in prepared if p.get("estratto")
+            ]
+        else:
+            matches=list(PAGE_RE.finditer(text))
+            pages=[]
+            if matches:
+                for i,m in enumerate(matches):
+                    end=matches[i+1].start() if i+1<len(matches) else len(text)
+                    part=text[m.end():end].strip()
+                    if not part:
+                        continue
+                    pages.append({"pagina":int(m.group(1)),
+                                  "estratto":part[:per_page_chars]})
+            if not pages:
+                pages=[{"pagina":None,"estratto":text[:per_doc_chars]}]
         selected=[]
         used=0
         for page in pages[:4]:
@@ -76,6 +84,7 @@ def compact_category_evidence(rows, per_page_chars=470, per_doc_chars=2150):
             "documento_e_medicinale_candidato":header[:290],
             "passaggi":selected,
             "fonti":sources[:4],
-            "copertura":"estratti di pagine candidate, non elenco esaustivo"
+            "copertura":"estratti di pagine candidate, non elenco esaustivo",
+            "documenti_troncati":bool(row.get("documenti_troncati",False))
         })
     return out
