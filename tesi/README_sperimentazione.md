@@ -5,14 +5,31 @@ Confrontare **Table-Augmented Generation (TAG)** tramite gli operatori semantici
 
 Il successo della dashboard pubblica non costituisce la valutazione scientifica. L’esperimento resta **separato** dall'aggiornamento automatico online.
 
-## Dataset congelato del relatore
-Fonti del 02/11/2026:
-- `Note_regionali_PDF 1(1).zip` — 209 PDF / 580 pagine; hash SHA-256: `8e444cb36f94ff0b73518ace3003f43eaf847f7e658da9b3913ac1d0e9a308a5`.
-- `Strutture_registri_regioni_2026-09-14.csv` — 10.527 righe Campania; hash: `f4b1ec6f3123b441e240080867b37dd4ba19f2b54cd5b37b82fb869bffa155da`.
-- Per gli esperimenti sulle classi di rimborsabilità usare **A/H al 31/05/2026** richiesti dal relatore, NON gli A/H del 30/06/2026 aggiornati dalla dashboard. Incorporare i file A/H soltanto dopo averne fissato SHA-256, struttura e data.
-- Per le note regionali le pagine scansionate richiedono OCR. Un OCR non verificato va segnalato, non trattato come certezza.
+## Fonti: ultime versioni ufficiali online, congelate per ogni esperimento
 
-**I file ZIP/CSV non sono inclusi nel repository**: hanno dimensioni elevate e fanno parte del materiale sperimentale fornito. Il loro hash consente di ripetere l'importazione a parità di sorgente.
+**Scelta aggiornata:** i file AIFA A/H del **31 maggio 2026 non sono vincolanti**. Erano stati inviati soltanto come ripiego durante l'indisponibilità del sito AIFA. Utilizziamo le **ultime versioni effettivamente acquisite e verificate dai workflow automatici** di FarmaQuery. La data dell'ultimo elenco pubblicato può essere precedente alla data di acquisizione.
+
+Fonti incluse:
+- **EMA**: catalogo JSON ufficiale e data/hash dell'ultima acquisizione riuscita.
+- **AIFA**: anagrafica nazionale, principi attivi, liste A/H con la **data di riferimento più recente recuperata**; non dedurre la classe C ufficiale dall'assenza nelle liste A/H.
+- **Regione Campania**: raccolte ZIP ufficiali 2022–2026 indicizzate mediante testo/OCR, con citazione a nome PDF e pagina.
+- **AIFA strutture registri**: CSV ufficiale più recente disponibile nel progetto, limitato alla Campania.
+
+**Distinzione essenziale**: FarmaQuery online mantiene gli aggiornamenti automatici; l'esperimento scatta quando selezioniamo una versione del repository GitHub e genera un **nuovo snapshot immutabile** con le fonti disponibili in quel commit. Tutti i metodi usano lo **stesso file SQLite sperimentale**, e il suo manifesto registra date e SHA-256. Gli esperimenti successivi su dati aggiornati saranno una nuova serie, non una modifica silenziosa dei test precedenti.
+
+Per creare lo snapshot, dopo un aggiornamento riuscito delle fonti:
+```bash
+python tesi/prepara_snapshot_online.py \
+  --output risultati/esperimento_online.sqlite \
+  --manifest risultati/esperimento_online_manifest.json
+```
+Oppure eseguire il workflow GitHub Actions **Crea snapshot online per la tesi**: pubblica i due file come artifact scaricabile (senza modificare il database pubblico). Il database ha tabelle `note`, `pagine`, `pagine_fts`, `strutture_registri`, `centri_candidati`, `rimandi_candidati`, `aifa_confezioni`, `ema_medicinali`, `fonti_snapshot`.
+
+Gli allegati originariamente forniti dal relatore (`Note_regionali_PDF 1(1).zip` e `Strutture_registri_regioni_2026-09-14.csv`) rimangono **materiale storico di riferimento**, ma non sostituiscono più le versioni ufficiali più aggiornate. Il loro hash è conservato in `risultati/snapshot_relatore_meta.json` per provenienza.
+
+Il gold pilota di OLUMIANT è verificato sul PDF del materiale iniziale: **prima di usarlo nello snapshot online occorre confermare la presenza della stessa nota, la sua pagina e l'eventuale esistenza di note successive**. Non utilizzare automaticamente una risposta storica per dichiarare la situazione vigente.
+
+Per le note regionali le pagine scansionate richiedono OCR. Una menzione di un centro nel documento o la presenza nel registro AIFA non equivale a prescrivibilità verificata.
 
 ## Struttura dati minima
 - `note`: documento, anno, filename, hash, farmaco candidato, protocollo/data/determina da controllare.
@@ -41,7 +58,7 @@ Ogni gold comprende risposta verificata, documento, pagina e criterio di valutaz
 Risposte corrette sul gold, correttezza delle citazioni (documento + pagina), gestione dei negativi/astensioni, tempo di risposta, token e costo per domanda. Riportare i risultati **per categoria** oltre alla media. Controllare l'effetto dell'OCR sugli errori.
 
 ## Ordine operativo
-1. Completare OCR e congelare il database dei PDF/strutture.
+1. Verificare l'ultimo aggiornamento di EMA, AIFA e Regione Campania; creare e archiviare un unico snapshot sperimentale online con manifesto SHA-256.
 2. Rivedere protocolli, centri, indicazioni e rimandi.
 3. Fissare i 36 gold documentati e i casi negativi.
 4. Eseguire gli stessi test con Text-to-SQL e LOTUS.
