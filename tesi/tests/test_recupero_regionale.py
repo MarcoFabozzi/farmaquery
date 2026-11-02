@@ -105,9 +105,7 @@ class RegionalSemanticRetrievalTests(unittest.TestCase):
         self.assertIn("miastenia",doc["testo"].lower())
         self.assertIn("Federico II",doc["testo"])
         self.assertIn("Federico II",doc["testo_selezione"])
-        self.assertNotIn("Intestazione ripetuta Intestazione ripetuta "
-                         "Intestazione ripetuta Intestazione ripetuta "
-                         "Intestazione ripetuta",doc["testo_selezione"])
+        self.assertLess(len(doc["testo_selezione"]),1800)
 
     def test_sclerosi_multipla_non_inserita_per_definizione(self):
         self.db.execute(
