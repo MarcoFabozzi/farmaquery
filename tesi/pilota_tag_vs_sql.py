@@ -585,12 +585,28 @@ def tag(db,question,model):
             if row["tipo"]=="REGIONE" and row["chiave"] not in seen and len(evidence)<18:
                 evidence.append(row)
                 seen.add(row["chiave"])
+    # LOTUS puo' rigettare tutti i gruppi anche quando una pagina
+    # esplicitamente richiesta esiste e risulta leggibile nello SQLite.
+    # Recupero documentale diretto: non sostituisce il filtro, ma impedisce
+    # che la sua astensione diventi una falsa assenza di fonti.
+    integral,integral_complete=contesto_integrale(
+        db,question,_target_db(db,question))
+    fallback_pagina_integrale=bool(
+        not evidence and integral and not category_question)
+    if fallback_pagina_integrale:
+        evidence=list(integral)
     if not evidence:
-        return {"risposta":"Informazione non documentata nello snapshot consultato.",
-                "fonti":[],"stato":"NESSUNA_EVIDENZA_SEMANTICA",
+        return {"risposta":(
+                    "Il filtro semantico LOTUS non ha selezionato evidenze "
+                    "tra le fonti recuperate. Questo NON dimostra che "
+                    "l'informazione sia assente nello snapshot."),
+                "fonti":[],"stato":"NESSUNA_SELEZIONE_SEMANTICA",
                 "righe_recuperate":len(rows),
+                "righe_sem_filter":len(planned),
+                "righe_selezionate_lotus":len(selected_groups),
                 "modalita_selezione":mode,
                 "chiamate_semantiche_stimate":len(planned),
+                "chiamate_llm_stimate":len(planned),
                 "token_input":prompt_tokens,
                 "token_output":completion_tokens,
                 "costo_usd":selection_cost,"costo_completo":selection_cost is not None}
@@ -637,8 +653,6 @@ def tag(db,question,model):
          "parti_richieste":sorted(_facets(question)),
          "fonti_presenti":sorted({r["tipo"] for r in evidence}),
          "evidenze":evidence}
-    integral,integral_complete=contesto_integrale(
-        db,question,_target_db(db,question))
     if integral:
         # Il filtro semantico LOTUS ha già selezionato i documenti. Per una
         # domanda esaustiva su una pagina o un articolo nominato, invece
@@ -650,7 +664,9 @@ def tag(db,question,model):
                        "Non dichiarare un elenco esaustivo senza averlo "
                        "riconciliato con tutti gli identificativi elencati "
                        "nel documento. Distingui testo estratto e "
-                       "autorizzazione regolatoria. ")
+                       "autorizzazione regolatoria. Se la domanda attribuisce "
+                       "alla pagina un riferimento non presente nel testo, "
+                       "segnala che non vi compare; non inventare collegamenti. ")
         payload["evidenze"]=integral
         payload["sezione_integralmente_disponibile"]=integral_complete
         payload["origine_evidenze"]="pagine/atti dello stesso SQLite, non gold"
@@ -719,6 +735,7 @@ def tag(db,question,model):
             "aic_mancanti_rispetto_al_testo":missing_aic,
             "aic_nel_testo_integrale":validation["aic_nel_testo"],
             "revisione_completezza_llm":revised,
+            "fallback_pagina_integrale":fallback_pagina_integrale,
             "verifica_contesto":(
                 "integrale" if integral and integral_complete else
                 "parziale" if integral else "non_recuperato"),
