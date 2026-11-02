@@ -84,6 +84,8 @@ div[data-testid="stButton"] button:hover {background:#dff5ee;border-color:#169b8
 </div>
 """,unsafe_allow_html=True)
 
+st.page_link('pages/1_Chatbot.py',label='💬 Apri il chatbot · Text-to-SQL / TAG')
+
 if not DB.is_file():
     st.error('Database non disponibile. Controllare il file risultati/farmaci_automatico.sqlite.')
     st.stop()
