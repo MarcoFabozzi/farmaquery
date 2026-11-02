@@ -18,6 +18,7 @@ import time
 from errori_chatbot import EnginePhaseError
 from tesi.recupero_gu import domanda_gu, candidati_gu
 from tesi.recupero_regionale import regional_candidates, categoria
+from tesi.contesto_integrale import contesto_integrale,richiede_sezione_completa,AIC_RE
 from tesi.sql_category_support import (category_sql_context,
                                       select_generation_guidance,CATEGORY_RETRY_RULES)
 from tesi.tag_budget import (selection_mode,semantic_plan,expand_selected,
@@ -512,7 +513,7 @@ def tag(db,question,model):
     from lotus.models import LM
     category_question=bool(categoria(question)[0])
     complete_request=bool(re.search(
-        r"\b(?:tutti|tutte|elenco completo|lista completa|quali farmaci|quali centri|quali strutture)\b",
+        r"\b(?:tutti|tutte|elenco completo|lista completa|quali farmaci|quali centri|quali strutture|quante confezioni|quanti aic)\b",
         question.casefold()))
     region_request=category_question or complete_request or _question_kind(question)=="CENTRI"
     rows=evidence_candidates(db,question,max_rows=22 if region_request else 12)
@@ -624,6 +625,26 @@ def tag(db,question,model):
          "parti_richieste":sorted(_facets(question)),
          "fonti_presenti":sorted({r["tipo"] for r in evidence}),
          "evidenze":evidence}
+    integral,integral_complete=contesto_integrale(
+        db,question,_target_db(db,question))
+    if integral:
+        # Il filtro semantico LOTUS ha già selezionato i documenti. Per una
+        # domanda esaustiva su una pagina o un articolo nominato, invece
+        # dell'incipit OCR passiamo alla sintesi il TESTO INTEGRALE della
+        # sezione effettiva sullo stesso SQLite. Non è una risposta gold.
+        system_tag += (" Per un elenco completo controlla TUTTE le righe "
+                       "del testo originale della sezione, comprese "
+                       "confezioni con dosaggio identico ma formato diverso. "
+                       "Non dichiarare un elenco esaustivo senza averlo "
+                       "riconciliato con tutti gli identificativi elencati "
+                       "nel documento. Distingui testo estratto e "
+                       "autorizzazione regolatoria. ")
+        payload["evidenze"]=integral
+        payload["sezione_integralmente_disponibile"]=integral_complete
+        payload["origine_evidenze"]="pagine/atti dello stesso SQLite, non gold"
+        if not integral_complete:
+            payload["avviso"]="Fonte più lunga del contesto: elenco NON esaustivo"
+
     if category_question:
         # LOTUS ha già selezionato. Per la sintesi usiamo passaggi brevi
         # con riferimenti alla pagina e un prompt dedicato alla categoria.
@@ -643,6 +664,22 @@ def tag(db,question,model):
                          max_tokens=1100)
     else:
         answer,usage=ask(model,system_tag,payload)
+    aic_attesi=set()
+    for item in integral:
+        aic_attesi.update(item.get("aic_trovati_nel_testo") or [])
+    missing_aic=sorted(code for code in aic_attesi
+                       if code.casefold() not in answer.casefold())
+    if missing_aic and richiede_sezione_completa(question):
+        # Un controllo deterministico sulla stringa sorgente non produce
+        # risposte: rende però impossibile pubblicare "tutti gli AIC"
+        # quando il testo effettivamente contiene altri identificativi.
+        answer+=("\n\nControllo di completezza: la risposta non riporta "
+                 "tutti gli identificativi AIC presenti nell'atto "
+                 "consultato; l'elenco deve essere verificato.")
+    if integral and not integral_complete:
+        answer+=("\n\nAvvertenza: la sezione richiesta supera il "
+                 "limite di contesto, pertanto la lista non può essere "
+                 "considerata completa.")
     input_tokens=(prompt_tokens+usage["token_input"]
                   if prompt_tokens is not None and usage["token_input"] is not None else None)
     output_tokens=(completion_tokens+usage["token_output"]
@@ -664,12 +701,16 @@ def tag(db,question,model):
         answer += ("\n\nCopertura: risultati candidati ricavati dalle note "
                    "recuperate; non è garantito un elenco esaustivo dei medicinali.")
     citations=list(dict.fromkeys(
-        source for item in evidence
+        source for item in (integral or evidence)
         for source in (item.get("fonti") or [item["fonte"]])
     ))
     return {"risposta":answer,"fonti":citations,
             "evidenze_fonti":_source_previews(evidence),
-            "stato":"OK","token_input":input_tokens,
+            "stato":"RISULTATI_PARZIALI" if (integral and (not integral_complete or missing_aic)) else "OK",
+            "contesto_integrale":bool(integral),
+            "contesto_integrale_completo":bool(integral and integral_complete),
+            "aic_mancanti_rispetto_al_testo":len(missing_aic),
+            "token_input":input_tokens,
             "token_output":output_tokens,"costo_usd":full_cost,
             "costo_completo":full_cost is not None,
             "righe_sem_filter":len(planned),
