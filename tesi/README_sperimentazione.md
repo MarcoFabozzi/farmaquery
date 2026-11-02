@@ -40,6 +40,33 @@ Per le note regionali le pagine scansionate richiedono OCR. Una menzione di un c
 
 Evitare di assumere equivalenza tra **centro abilitato al registro AIFA** e **centro prescrittore autorizzato dalla specifica nota regionale**; verificare indicazione e periodo di efficacia.
 
+## Selezione dei quesiti e raccolta delle evidenze
+
+Il comando `python tesi/crea_benchmark_documentato.py` viene eseguito
+dal workflow **Crea snapshot online per la tesi** sullo stesso SQLite
+immutabile, utilizzando il suo manifesto SHA-256.
+
+Produce tre file:
+- `benchmark_36_da_validare.csv`: 9 domande per categoria, risposta e
+  citazioni **vuote** finché non avviene il controllo umano.
+- `evidenze_da_controllare.jsonl`: prima selezione delle pagine candidate,
+  testo OCR, metodo di estrazione, percorso PDF e archivio istituzionale.
+- `rapporto_benchmark.json`: hash dello snapshot, commit e distribuzione
+  delle categorie.
+
+Ogni domanda è `DA_VERIFICARE`. Un revisore deve controllare
+il PDF ufficiale e compilare `risposta_gold`, `fonti_gold`,
+`stato_validazione=VALIDATO`, con le osservazioni sul periodo di
+efficacia, il contesto clinico e i rimandi. Un negativo deve essere
+controllato anche per sinonimi, denominazioni alternative e principi
+attivi. **L'assenza da un risultato di ricerca non dimostra un divieto
+di prescrizione.**
+
+Le domande possono essere rigenerate su uno snapshot successivo, ma
+non vanno cambiate dopo aver avviato il confronto sullo snapshot fissato.
+La valutazione quantitativa deve riportare separatamente quante domande
+hanno effettivamente un gold validato.
+
 ## Benchmark: 36 domande, 4 categorie
 1. **9 dirette**: verifica di un medicinale/centro in una nota.
 2. **9 semantiche**: ricerca di indicazioni e centri per patologia.
