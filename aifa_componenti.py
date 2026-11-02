@@ -244,6 +244,12 @@ def aggiorna_cnn(db,work):
     records=list(pipeline.lista_cnn(p))
     if len(records)<10:
         raise ValueError('Elenco C(nn) troppo piccolo o non interpretabile')
+    if not date_ref:
+        raise ValueError('Data di riferimento elenco C(nn) mancante')
+    from classi_complementari import costruisci_indice_cnn, CNN_FILE
+    indice_cnn=costruisci_indice_cnn(
+        records,date_ref,dict(url=url,**meta),Path(work)/CNN_FILE
+    )
     ema_names={norm(row[0]) for row in db.execute('SELECT nome FROM ema_medicinali')}
     selected=[r for r in records if norm(r['nome']) in ema_names]
     sid=pipeline.registra_fonte(db,'aifa_cnn',p,url,
@@ -261,6 +267,7 @@ def aggiorna_cnn(db,work):
               sid,r['raw_json'])).rowcount
     return {'data_riferimento_file_cnn':date_ref,'righe_file_cnn':len(records),
             'righe_pertinenti':len(selected),'nuove_righe_storiche':added,
+            'indice_nazionale_cnn':indice_cnn,
             'nota':'La C(nn) in elenco storico non certifica la classificazione attuale',
             'fonti':{'aifa_cnn':dict(url=url,**meta)},**discovery}
 
