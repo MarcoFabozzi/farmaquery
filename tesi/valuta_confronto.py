@@ -93,7 +93,7 @@ def evaluate(benchmark,results,manifest):
                          **stat(method_rows),
                          "categorie":{cat:stat([x for x in method_rows
                             if gold[x["id"]]["categoria"]==cat])
-                            for cat in ("DIRETTE","SEMANTICHE","RIMANDI","NEGATIVE")}}
+                            for cat in sorted({x["categoria"] for x in gold.values()})}}
     complete=[key for key,pair in paired.items() if set(pair)==set(METHODS)]
     return {"esito":"OK","snapshot_sha256":digest,"modello":next(iter(models),None),
             "gold_validati":len(gold),"domande_con_entrambe_le_risposte":len(complete),
