@@ -27,7 +27,8 @@ FIELDS=["id","categoria","domanda","metodo","modello","snapshot_sha256",
         "costo_completo","stato","errore","codice_errore","fase_errore",
         "modalita_selezione","righe_recuperate","righe_sem_filter",
         "righe_selezionate_lotus","chiamate_semantiche_stimate",
-        "chiamate_llm_stimate","sql","data_utc",
+        "chiamate_llm_stimate","sql","sql_iniziale","sql_tentativi",
+        "categoria_implicita_sql","data_utc",
         "valutazione_risposta","valutazione_citazioni","note_revisore"]
 
 METHODS=("TAG","Text-to-SQL")
@@ -178,7 +179,8 @@ def execute(db_path,manifest_path,question_path,out_path,model=None,
                         result=runner(db,item["domanda"],model)
                     status=result.get("stato","OK")
                     if status not in ("OK","NESSUNA_EVIDENZA",
-                                      "NESSUNA_EVIDENZA_SEMANTICA","RISULTATI_PARZIALI"):
+                                      "NESSUNA_EVIDENZA_SEMANTICA","NESSUNA_RIGA_SQL",
+                                      "RISULTATI_PARZIALI"):
                         status="ERRORE"
                     if status=="ERRORE":
                         errors+=1
@@ -210,6 +212,9 @@ def execute(db_path,manifest_path,question_path,out_path,model=None,
                     "chiamate_semantiche_stimate":result.get("chiamate_semantiche_stimate"),
                     "chiamate_llm_stimate":result.get("chiamate_llm_stimate"),
                     "sql":result.get("sql",""),
+                    "sql_iniziale":result.get("sql_iniziale",""),
+                    "sql_tentativi":result.get("sql_tentativi"),
+                    "categoria_implicita_sql":result.get("categoria_implicita"),
                     "data_utc":datetime.now(timezone.utc).isoformat(timespec="seconds"),
                     "valutazione_risposta":"","valutazione_citazioni":"",
                     "note_revisore":"",
