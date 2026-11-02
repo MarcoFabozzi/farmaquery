@@ -50,14 +50,12 @@ def semantic_plan(rows, mode="raggruppata", max_groups=DEFAULT_GROUPS):
             assigned[kind]=min(range(count),key=lambda i:(len(buckets[i]),i))
         buckets[assigned[kind]].append(row)
 
-    # Unica fonte con molte pagine: ripartizione del carico per sem_filter.
-    # Dopo la separazione per fonti, distribuiamo solo gruppi completamente
-    # vuoti in modo da non lasciare gruppi inutilizzati.
-    for idx in range(count):
-        if not buckets[idx]:
-            largest=max(range(count),key=lambda j:len(buckets[j]))
-            if len(buckets[largest])>1:
-                buckets[idx].append(buckets[largest].pop())
+    # Bilancia gruppi sovraccarichi: ogni riga originale rimane presente,
+    # ma il modello non deve leggere 20 documenti in un unico gruppo.
+    while max(map(len,buckets))-min(map(len,buckets))>1:
+        largest=max(range(count),key=lambda i:(len(buckets[i]),-i))
+        smallest=min(range(count),key=lambda i:(len(buckets[i]),i))
+        buckets[smallest].append(buckets[largest].pop())
 
     planned=[]
     members={}
