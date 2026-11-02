@@ -188,8 +188,13 @@ def regional_candidates(db,question,target="",limit=22):
     if exact:
         for note in exact[:3]:
             pages=_doc_pages(db,note["id"])
-            for p in _seleziona_pagine(pages,full=True):
-                add(_evidence(p))
+            usable=sum(p["metodo"] in ("TESTO","OCR") and bool(p["testo"].strip())
+                       for p in pages)
+            selected=_seleziona_pagine(pages,full=True)
+            partial=usable>len(selected)
+            for p in selected:
+                add(_evidence(p,"ESTRATTO PARZIALE: altre pagine della nota "
+                                  "non incluse nel contesto" if partial else ""))
             linked, warnings=_rimandi(db,note["id"],limit=3)
             for p in linked:
                 add(p)

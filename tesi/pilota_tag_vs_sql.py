@@ -450,13 +450,41 @@ def _accumulate(a,b):
             for key in ("token_input","token_output","costo_usd")}
 
 
+def _source_previews(evidence, limit=16):
+    """Estratti verificabili delle righe effettivamente consegnate al modello.
+
+    Non sono citazioni letterali validate: l'interfaccia indica un estratto
+    della riga recuperata, insieme alla fonte da cui proviene.
+    """
+    found=[]
+    seen=set()
+    for row in evidence:
+        source=str(row.get("fonte") or "")
+        if not source or source in seen:
+            continue
+        seen.add(source)
+        raw=str(row.get("testo") or "")
+        for marker in ("; testo: ", "; estratto: ", "; passaggio: "):
+            if marker in raw:
+                raw=raw.split(marker,1)[1]
+                break
+        raw=" ".join(raw.split())
+        if len(raw)>420:
+            raw=raw[:417].rstrip()+"..."
+        found.append({"fonte":source,"tipo":row.get("tipo",""),
+                      "estratto":raw})
+        if len(found)>=limit:
+            break
+    return found
+
+
 def tag(db,question,model):
     import pandas as pd
     import lotus
     from lotus.models import LM
     category_question=bool(categoria(question)[0])
     complete_request=bool(re.search(
-        r"\b(?:tutti|tutte|elenco completo|lista completa|quali farmaci)\b",
+        r"\b(?:tutti|tutte|elenco completo|lista completa|quali farmaci|quali centri|quali strutture)\b",
         question.casefold()))
     region_request=category_question or complete_request or _question_kind(question)=="CENTRI"
     rows=evidence_candidates(db,question,max_rows=22 if region_request else 12)
@@ -551,8 +579,8 @@ def tag(db,question,model):
                    if completion_tokens is not None and usage["token_output"] is not None else None)
     full_cost=(selection_cost+usage["costo_usd"]
                if selection_cost is not None and usage["costo_usd"] is not None else None)
-    if complete_request and any("ESTRATTO PARZIALE" in r["testo"]
-                                for r in evidence):
+    if complete_request and (len(rows)>=22 or any("ESTRATTO PARZIALE" in r["testo"]
+                                for r in evidence)):
         answer+=("\n\nAvvertenza: almeno una pagina della fonte è stata "
                  "troncata per limiti di contesto; l'elenco va verificato "
                  "sul PDF integrale e non può essere considerato completo.")
@@ -562,6 +590,7 @@ def tag(db,question,model):
         answer += ("\n\nCopertura: risultati candidati ricavati dalle note "
                    "recuperate; non è garantito un elenco esaustivo dei medicinali.")
     return {"risposta":answer,"fonti":list(dict.fromkeys(x["fonte"] for x in evidence)),
+            "evidenze_fonti":_source_previews(evidence),
             "stato":"OK","token_input":input_tokens,
             "token_output":output_tokens,"costo_usd":full_cost,
             "costo_completo":full_cost is not None,
@@ -641,11 +670,42 @@ def _sql_sources(db,rows):
     return list(dict.fromkeys(found))
 
 
+SQL_ROW_LIMIT = 80
+SQL_CONTEXT_CHARS = 24000
+
+
+def _limit_from_sql(sql):
+    hit=re.search(r"\bLIMIT\s+([0-9]+)\b",sql,re.I)
+    return int(hit.group(1)) if hit else None
+
+
+def _sql_context(raw):
+    """Estrae righe citabili e segnala eventuali tagli di celle o contesto."""
+    output=[]
+    consumed=0
+    cut=False
+    for record in raw:
+        original=dict(record)
+        row={key:(str(value)[:2500] if value is not None else None)
+             for key,value in original.items()}
+        if any(value is not None and len(str(value))>2500
+               for value in original.values()):
+            cut=True
+        size=len(json.dumps(row,ensure_ascii=False))
+        if consumed+size>SQL_CONTEXT_CHARS:
+            cut=True
+            break
+        output.append(row)
+        consumed+=size
+    return output,cut
+
+
 def sql_method(db,question,model):
     generated,first=_in_phase("generazione SQL",ask,model,
         "Genera SOLO UNA query SELECT SQLite eseguibile, senza Markdown. "
         "Usa esclusivamente le tabelle documentate; non generare DDL, DML, "
-        "PRAGMA né più istruzioni. LIMIT 30. Per citazioni includi "
+        "PRAGMA né più istruzioni. LIMIT massimo 80. Se la domanda chiede " 
+        "l'elenco completo non usare limiti più bassi. Per citazioni includi "
         "aic, ema_id oppure nota_id e numero_pagina nel risultato, "
          "e per GU codice AS gu_codice o documento_id, "
         "e archivio_url o fonte_url quando pertinenti. "
@@ -655,30 +715,45 @@ def sql_method(db,question,model):
     start=time.monotonic()
     db.set_progress_handler(lambda:1 if time.monotonic()-start>12 else 0,10000)
     try:
-        raw=_in_phase("esecuzione SQL",lambda:db.execute(sql).fetchmany(31))
-        rows=[{key:(str(value)[:2500] if value is not None else None)
-               for key,value in dict(r).items()} for r in raw[:30]]
+        raw=_in_phase("esecuzione SQL",
+                      lambda:db.execute(sql).fetchmany(SQL_ROW_LIMIT+1))
+        rows,context_cut=_sql_context(raw[:SQL_ROW_LIMIT])
+        max_from_query=_limit_from_sql(sql)
+        truncated=(len(raw)>SQL_ROW_LIMIT or context_cut or
+                   (max_from_query is not None and len(raw)>=max_from_query))
     finally:
         db.set_progress_handler(None,0)
     citations=_sql_sources(db,rows)
-    truncated=len(raw)>30
+    if not rows:
+        return {"risposta":"Informazione non documentata nello snapshot consultato.",
+                "fonti":[],"sql":sql,"righe_sql":0,
+                "stato":"NESSUNA_EVIDENZA","risultato_parziale":False,
+                **first,"costo_completo":first.get("costo_usd") is not None}
     answer,second=_in_phase("sintesi SQL",ask,model,
         "Rispondi in italiano SOLO in base alle righe SELECT e alle fonti. "
         "Non interpretare un dato AIFA/EMA come autorizzazione regionale. "
         "Se la classe_a_h_snapshot è NULL, indica C solo come deduzione per esclusione dagli elenchi A/H, mai come classe ufficialmente attestata. Distingui data della lista A/H e data della determina. "
-        "Le liste e i rimandi candidati non attestano autorizzazioni; "
-        "serve il testo integrale del provvedimento. "
-        "Se il risultato ha righe_troncate=true, non dichiarare completa la lista. "
         "Se mancano dati o evidenze, scrivi 'non documentato nello snapshot'. "
-        "Non inventare citazioni.",
+        "Non inventare citazioni; se i risultati sono parziali "
+        "non dichiarare una lista completa.",
         {"domanda":question,"righe_sql":rows,"fonti_recuperate":citations,
-          "righe_troncate":truncated})
-    if truncated:
-        answer+=("\n\nAvvertenza: query con più di 30 righe; "
-                 "elenco non verificabilmente completo.")
+         "righe_limite":SQL_ROW_LIMIT,"risultati_parziali":truncated})
     total=_accumulate(first,second)
+    if truncated:
+        answer+=("\n\nAvvertenza: risultati SQL parziali per limite di "
+                 "righe, limite della query o di contesto. L'elenco non "
+                 "può essere considerato completo.")
+    sql_evidence=[{"tipo":"SQL","fonte":"Riga "+str(ix+1),
+                  "testo":str(record.get("testo") or record.get("indicazione_ema")
+                              or record.get("descrizione") or "")}
+                 for ix,record in enumerate(rows) if
+                 (record.get("testo") or record.get("indicazione_ema")
+                  or record.get("descrizione"))]
     return {"risposta":answer,"fonti":citations,"sql":sql,
-            "righe_sql":len(rows),"righe_troncate":truncated,"stato":"OK",**total,"costo_completo":True}
+            "evidenze_fonti":_source_previews(sql_evidence),
+            "righe_sql":len(rows),"stato":"RISULTATI_PARZIALI" if truncated else "OK",
+            "risultato_parziale":truncated,**total,
+            "costo_completo":total["costo_usd"] is not None}
 
 
 def main():
