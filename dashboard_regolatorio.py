@@ -199,19 +199,16 @@ def atti_classificazione_per_aic(aics):
 
 
 def classificazioni_presentazione(packages):
-    from classi_complementari import classe_con_fonti, classe_sintetica_demo
+    # La classe mostrata dipende esclusivamente dalla presenza dell'AIC
+    # nell'elenco A o H acquisito. Se assente da entrambi, mostra C.
     ids=[str(p['aic']) for p in packages]
     ah=classi_ah_per_aic(ids)
     acts=atti_classificazione_per_aic(ids)
     cnn=riferimenti_cnn_per_confezioni(packages)
     result={}
-    for p in packages:
-        aic=str(p['aic'])
-        evidenza=classe_con_fonti(
-            p.get('classe_da_anagrafica'),ah.get(aic),acts.get(aic),
-            cnn.get(aic,[])
-        )
-        result[aic]=classe_sintetica_demo(evidenza)
+    for aic in ids:
+        row=ah.get(aic)
+        result[aic]=row[0] if row and row[0] in ('A','H') else 'C'
     return result,acts,cnn
 
 
