@@ -79,6 +79,7 @@ REPORTS = {
     "aifa_anagrafica": "risultati/stato_fonti/aifa_anagrafica.json",
     "aifa_ah": "risultati/stato_fonti/aifa_ah.json",
     "ema": "risultati/stato_fonti/ema.json",
+    "gazzetta": "risultati/stato_fonti/gazzetta.json",
 }
 
 
@@ -210,6 +211,8 @@ def build_snapshot(root, output, manifest):
                     "data_decisione_ue,indicazione_ema,url_ema FROM ema_medicinali"
                 ),
             )
+            from tesi.gazzetta_snapshot import importa_gu
+            conteggi_gu = importa_gu(db, main, root)
             for source, meta in states["aifa_ah"]["fonti"].items():
                 db.execute(
                     "INSERT INTO fonti_snapshot VALUES (?,?,?,?)",
@@ -230,7 +233,15 @@ def build_snapshot(root, output, manifest):
                 "INSERT INTO fonti_snapshot VALUES (?,?,?,?)",
                 ("strutture",structure["url"],structure["sha256"],structure["data_riferimento"]),
             )
+            db.execute(
+                "INSERT INTO fonti_snapshot VALUES (?,?,?,?)",
+                ("gazzetta", states["gazzetta"]["fonti"]["gazzetta"]["url"],
+                 sha_file(root / FILES["principale"]),
+                 states["gazzetta"]["ultimo_successo_utc"]),
+            )
             db.commit()
+            if db.execute("PRAGMA foreign_key_check").fetchall():
+                raise ValueError("Vincoli GU non rispettati nello snapshot")
             if db.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
                 raise ValueError("Snapshot sperimentale SQLite non integro")
             counts = {
@@ -238,6 +249,7 @@ def build_snapshot(root, output, manifest):
                 for table in ("note","pagine","strutture_registri","aifa_confezioni",
                               "ema_medicinali","centri_candidati","rimandi_candidati")
             }
+            counts.update(conteggi_gu)
             if counts["note"] < 1 or counts["pagine"] < counts["note"] or (
                 counts["aifa_confezioni"] < 10000 or counts["ema_medicinali"] < 100
             ):
@@ -267,6 +279,12 @@ def build_snapshot(root, output, manifest):
                 "aifa_anagrafica": states["aifa_anagrafica"]["fonti"],
                 "note_regionali": states["regione"]["fonti"],
                 "strutture_registri": states["regione"]["strutture"],
+                "gazzetta": {
+                    "fonte": states["gazzetta"]["fonti"]["gazzetta"],
+                    "ultimo_successo_utc": states["gazzetta"]["ultimo_successo_utc"],
+                    "completezza": "Corpus incrementale: testi e allegati archiviati, "
+                                   "non necessariamente verificati o esaustivi",
+                },
             },
             "acquisizioni": {
                 name: doc.get("ultimo_successo_utc") for name,doc in states.items()
@@ -274,6 +292,8 @@ def build_snapshot(root, output, manifest):
             "avvertenza": "La classe A/H è documentata dagli elenchi datati; "
                          "l'assenza non dimostra ufficialmente C. Centri e rimandi "
                          "estratti sono candidati, da validare sui PDF. "
+                         "GU: estrazione incrementale, non corpus completo; controllare "
+                         "atti e allegati prima del gold. "
                          "Lo snapshot è immutabile per tutte le prove del benchmark.",
         }
         temp_manifest = temp_dir / "manifest.json"

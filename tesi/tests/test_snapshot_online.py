@@ -29,12 +29,28 @@ class SnapshotOnlineTests(unittest.TestCase):
             self.assertEqual(json.loads(manifest.read_text())["sha256_sqlite"],
                              info["sha256_sqlite"])
             with sqlite3.connect(dbfile) as db:
+                db.row_factory=sqlite3.Row
                 self.assertEqual(db.execute("PRAGMA integrity_check").fetchone()[0],"ok")
                 self.assertGreater(db.execute("SELECT COUNT(*) FROM pagine_fts").fetchone()[0],100)
                 self.assertGreater(db.execute("SELECT COUNT(*) FROM note").fetchone()[0],100)
                 self.assertGreater(db.execute("SELECT COUNT(*) FROM strutture_registri").fetchone()[0],1000)
                 self.assertGreater(db.execute("SELECT COUNT(*) FROM aifa_confezioni").fetchone()[0],100000)
                 self.assertGreater(db.execute("SELECT COUNT(*) FROM ema_medicinali").fetchone()[0],1000)
+                self.assertGreater(db.execute("SELECT COUNT(*) FROM gu_atti").fetchone()[0],10)
+                self.assertGreater(db.execute("SELECT COUNT(*) FROM gu_segmenti_fts").fetchone()[0],10)
+                self.assertGreater(
+                    db.execute("SELECT COUNT(*) FROM gu_documenti "
+                               "WHERE tipo_documento='ALLEGATO'").fetchone()[0],0
+                )
+                self.assertGreater(info["conteggi"]["gu_documenti"],10)
+                from tesi.recupero_gu import candidati_gu
+                gu = candidati_gu(
+                    db,"Secondo la determina GU 23A02767, quali AIC di WEGOVY "
+                       "sono elencati e quale classe è attribuita?")
+                self.assertTrue(gu, "WEGOVY non recuperato nel corpus GU reale")
+                self.assertTrue(all(r["codice"]=="23A02767" for r in gu))
+                self.assertTrue(any("WEGOVY" in r["testo"].upper() for r in gu))
+                self.assertIn("gazzetta",info["fonti_ufficiali"])
                 # Lo snapshot scientifico NON attribuisce C per esclusione.
                 self.assertGreater(
                     db.execute("SELECT COUNT(*) FROM aifa_confezioni "

@@ -16,6 +16,7 @@ import sqlite3
 import time
 
 from errori_chatbot import EnginePhaseError
+from tesi.recupero_gu import domanda_gu, candidati_gu
 
 
 SCHEMA = """Tabelle disponibili (SQLite, SOLA LETTURA):
@@ -26,6 +27,10 @@ pagine(nota_id, numero_pagina, testo, metodo)
 strutture_registri(id, medicinale, patologia, indicazione, struttura, regione, data_riferimento, fonte_url)
 centri_candidati(nota_id, numero_pagina, menzione, stato)
 rimandi_candidati(nota_id, numero_pagina, riferimento, stato)
+gu_atti(codice, data_pubblicazione, titolo, tipo, url_ufficiale, nominativi_campione, completezza)
+gu_documenti(documento_id, codice, tipo_documento, url_fonte, sha256_testo, testo)
+gu_segmenti(documento_id, numero_segmento, testo)
+gu_segmenti_fts(documento_id, numero_segmento, testo) -- FTS5
 fonti_snapshot(fonte, url, sha256, data_riferimento)
 pagine_fts(nota_id, numero_pagina, testo) -- FTS5, opzionale.
 
@@ -33,11 +38,14 @@ AIFA: A/H sono attestate dalle liste datate. Se classe_a_h_snapshot e' NULL, C e
 Regione: centri_candidati e strutture_registri non certificano autorizzazione
 per una indicazione, senza testo esplicito della nota regionale.
 Per citare, seleziona aic per AIFA; ema_id per EMA;
-nota_id e numero_pagina per le note (con join su pagine)."""
+nota_id e numero_pagina per le note (con join su pagine).
+Per GU includi gu_codice (alias del codice) o documento_id. I testi GU
+possono essere parziali e richiedono validazione documentale."""
 
 ALLOWED = {"aifa_confezioni","ema_medicinali","note","pagine",
            "strutture_registri","centri_candidati","rimandi_candidati",
-           "fonti_snapshot","pagine_fts"}
+           "fonti_snapshot","pagine_fts","gu_atti","gu_documenti",
+           "gu_segmenti","gu_segmenti_fts"}
 STOP = {"quali","quale","quali","della","delle","nelle","degli","sono",
         "questa","questo","regione","campania","farmaco","farmaci",
         "medicinale","medicinali","centri","centro","prescrive",
@@ -102,6 +110,8 @@ def candidates(db,question,limit=12):
 def _question_kind(question):
     """Instrada il recupero verso la fonte più utile, senza LLM."""
     q=question.casefold()
+    if domanda_gu(question):
+        return "GU"
     if "principio attivo" in q or "principi attivi" in q:
         return "PRINCIPIO_ATTIVO"
     if any(word in q for word in ("centri", "centro prescritt",
@@ -128,6 +138,8 @@ def _facets(question):
     """
     q=question.casefold()
     requested=set()
+    if domanda_gu(question):
+        requested.add("GU")
     if any(x in q for x in ("indicaz", "tumore", "patologia", "malatt",
                             "autorizz", "terapi", "trattament", "pazient",
                             "duchenne", "emofilia", "primo linea")):
@@ -138,6 +150,13 @@ def _facets(question):
     if any(x in q for x in ("campania", "campani", "centri", "ospedal",
                             "prescrittor", "somministrazion", "repart")):
         requested.add("REGIONE")
+    # Una determina GU può citare classe e indicazioni senza richiedere
+    # automaticamente una seconda fonte AIFA o EMA.
+    if domanda_gu(question):
+        if "aifa" not in q and "elench" not in q:
+            requested.discard("AIFA")
+        if "ema" not in q and "europe" not in q and "decisione ue" not in q:
+            requested.discard("EMA")
     return requested
 
 
@@ -159,7 +178,7 @@ def _multisource_evidence(rows,semantic_rows,question,limit=8):
             evidence.append(row)
             seen.add(uid)
     if len(facets)>1:
-        for tipo in ("EMA","AIFA","REGIONE"):
+        for tipo in ("EMA","AIFA","REGIONE","GU"):
             if tipo not in facets or any(e["tipo"]==tipo for e in evidence):
                 continue
             for row in rows:
@@ -326,6 +345,20 @@ def evidence_candidates(db,question,max_rows=18):
                 str(item["percorso_zip"])+"#p"+str(item["numero_pagina"])+
                 " | archivio: "+str(item["archivio_url"]))
 
+    def add_gu():
+        for item in candidati_gu(db,question,limit=6):
+            uid=("GU:"+str(item["documento_id"])+"#s"+
+                 str(item["numero_segmento"]))
+            text=("GU "+str(item["codice"])+"; pubblicazione: "+
+                  str(item["data_pubblicazione"])+"; tipo: "+
+                  str(item["tipo_documento"])+"; stato del testo: "+
+                  str(item["completezza"])+"; estratto: "+
+                  str(item["testo"])[:1800])
+            source=("GU "+str(item["codice"])+" | "+
+                    str(item["url_fonte"])+"#segmento-"+
+                    str(item["numero_segmento"]))
+            put("GU",uid,text,source)
+
     def add_registri():
         if kind!="CENTRI":
             return
@@ -343,7 +376,12 @@ def evidence_candidates(db,question,max_rows=18):
                 "; data: "+str(item["data_riferimento"]),
                 "AIFA strutture abilitate ai registri | "+str(item["fonte_url"]))
 
-    if kind=="CENTRI":
+    if kind=="GU":
+        add_gu()
+        add_ema()
+        add_aifa()
+        add_regione()
+    elif kind=="CENTRI":
         add_regione()
         add_ema()
         add_aifa()
@@ -412,7 +450,8 @@ def tag(db,question,model):
         "La riga {testo} è pertinente ad ALMENO UNA parte della domanda "
         +json.dumps(question,ensure_ascii=False)
         +". NON richiedere che la singola riga soddisfi tutte le parti: "
-         "una riga EMA può indicare il tumore, AIFA la classe, una nota "
+         "una riga EMA può indicare il tumore, AIFA la classe, un atto GU "
+          "le condizioni di una determina, una nota "
          "regionale i centri di prescrizione o somministrazione. "
          "Valuta anche le informazioni parziali documentate. "
          "Considera il nome commerciale esatto, non farmaci diversi "
@@ -446,9 +485,13 @@ def tag(db,question,model):
         "Distingui autorizzazione europea EMA, classe A/H di una confezione AIFA "
         "e centri prescrittori di specifiche note campane. "
         "Classifica ogni confezione in A se compare nella lista A, H se compare nella lista H; altrimenti indica C come deduzione per esclusione e non come classificazione ufficialmente verificata. "
+        "Quando la GU attesta C o C(nn), riportala come classe descritta "
+        "in quello specifico provvedimento, non come inferenza dalle liste. "
         "Per domande con più parti: rispondi separatamente a ciascuna, "
-        "usando EMA per le indicazioni, AIFA per le classi delle confezioni "
-        "e le note regionali per i centri. NON rinunciare a rispondere alle "
+        "usando EMA per le indicazioni, AIFA per le classi delle confezioni, "
+        "le note regionali per i centri e gli atti GU per le determine. "
+         "I testi GU possono essere parziali; non inferire lo stato vigente. "
+         "NON rinunciare a rispondere alle "
         "parti documentate se manca la fonte di una sola parte. "
         "Non dichiarare un centro autorizzato soltanto dal registro AIFA "
         "e non dedurlo da una semplice menzione in un PDF. "
@@ -526,6 +569,18 @@ def _sql_sources(db,rows):
             src=db.execute("SELECT url_ema FROM ema_medicinali WHERE ema_id=?",
                            (ema,)).fetchone()
             found.append("EMA "+str(ema)+(" | "+str(src["url_ema"]) if src else ""))
+        gu = row.get("gu_codice") or row.get("codice")
+        if not gu and row.get("documento_id"):
+            found_gu = db.execute(
+                "SELECT codice FROM gu_documenti WHERE documento_id=?",
+                (row["documento_id"],)).fetchone()
+            gu = found_gu["codice"] if found_gu else None
+        if gu:
+            source = db.execute(
+                "SELECT url_ufficiale FROM gu_atti WHERE codice=?", (gu,)
+            ).fetchone()
+            if source:
+                found.append("GU " + str(gu) + " | " + str(source["url_ufficiale"]))
         if row.get("fonte_url"):
             found.append(str(row["fonte_url"]))
         if row.get("url"):
@@ -539,6 +594,7 @@ def sql_method(db,question,model):
         "Usa esclusivamente le tabelle documentate; non generare DDL, DML, "
         "PRAGMA né più istruzioni. LIMIT 30. Per citazioni includi "
         "aic, ema_id oppure nota_id e numero_pagina nel risultato, "
+         "e per GU codice AS gu_codice o documento_id, "
         "e archivio_url o fonte_url quando pertinenti. "
         "Per le classi usa: CASE WHEN classe_a_h_snapshot IN ('A','H') THEN classe_a_h_snapshot ELSE 'C (dedotta per esclusione)' END AS classe. Includi anche classe_a_h_snapshot e classe_a_h_data per distinguere fonte e deduzione.",
         {"schema":SCHEMA,"domanda":question})

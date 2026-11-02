@@ -17,17 +17,14 @@ Non inviare il CSV al runner di esperimenti LLM come se fosse validato.
 La versione aggiornata del CSV include **30 domande candidate**: 4 controlli CSV/JSON EMA-AIFA, 9 sulle note della Campania, 8 su atti della Gazzetta Ufficiale, 6 incroci tra fonti e 3 sulle informazioni non documentate.
 Le domande non sono progettate per dichiarare TAG vincitore a priori: lo stesso quesito viene sottoposto ad entrambi i metodi con gli stessi documenti e uno stesso criterio di valutazione.
 
-### BLOCCO TECNICO: Gazzetta non ancora nello snapshot sperimentale
-Il repository contiene l'archivio degli atti della Gazzetta Ufficiale: tabelle `gazzetta_atti`, `gazzetta_evidenze_aic`, `gu_allegati`, `gu_coppie_eu_aic` nella base principale e testi archiviati in `risultati/gazzetta_testi/`. Esempi presenti nel repository: atti 23A02767 (WEGOVY), 25A04004 (LEQEMBI), 26A02071 (KISUNLA), 26A05472 (IMFINZI).
+### Importazione della Gazzetta nel database sperimentale
+La pipeline `tesi/prepara_snapshot_online.py` acquisisce ora dal database principale gli atti e gli allegati GU e verifica gli SHA-256 dei testi archiviati prima di includerli nello **stesso SQLite** di EMA, AIFA e Regione. Le tabelle `gu_atti`, `gu_documenti`, `gu_segmenti` e `gu_segmenti_fts` conservano codici, URL, data, stato di completezza e testo consultabile.
 
-**Attenzione:** `tesi/prepara_snapshot_online.py` attualmente importa nello SQLite per gli esperimenti solo EMA, AIFA e fonti della Regione. Non crea tabelle GU e non trasferisce i testi GU, perciò le 8 domande GU e quelle multifonte che usano GU **non sono ancora sperimentabili in modo equo**.
+Il motore TAG usa il recupero FTS5 dei segmenti GU come candidati per la selezione semantica LOTUS; Text-to-SQL può interrogare le medesime tabelle. Gli atti elencati come esempi nel benchmark includono 23A02767, 25A04004, 26A02071 e 26A05472.
 
-Prima di lanciare il benchmark:
-1. Integrare nello snapshot in sola lettura gli atti GU e i relativi testi, preservando codice redazionale, data di pubblicazione, URL, SHA-256 e stato della fonte. Non basarsi su un semplice file esterno non accessibile ai due motori.
-2. Aggiornare **entrambi** `tesi/pilota_tag_vs_sql.py` (evidenze TAG e schema delle query SQL) e il generatore del manifesto, mantenendo un'unica fotografia con hash.
-3. Non trasformare automaticamente le `ipotesi_classe` e i collegamenti `DA_VERIFICARE` in fatti ufficialmente accertati. Distinguere C(nn) indicata esplicitamente da C dedotta per assenza nelle liste A/H.
-4. Verificare il testo completo di atti ed eventuali allegati, poiché lo screening incrementale GU non è esaustivo e alcune fonti sono marcate parziali/non verificate.
-5. Stabilire il gold soltanto su dati **effettivamente presenti nella fotografia finale**. Solo dopo, eseguire la stessa domanda su TAG e Text-to-SQL.
+**Questo NON significa che i gold GU siano già validati.** Lo screening della Gazzetta è incrementale, non esaustivo: ogni atto e allegato devono essere verificati manualmente prima del giudizio sperimentale. L'importazione non promuove `ipotesi_classe` o collegamenti `DA_VERIFICARE` in fatti accertati.
+
+Le differenze di fine riga CRLF/LF sono accettate soltanto quando la normalizzazione del contenuto riproduce esattamente l'hash registrato; ogni altra difformità blocca la costruzione dello snapshot. Per le citazioni del gold sono previsti `GU:CODICE` e `GU:CODICE:atto#sN` / `GU:CODICE:allegato:HASH#sN`. Entrambi i metodi lavorano sulla fotografia congelata e non consultano il web durante il test.
 
 ## Fotografia temporale unica: cosa significa
 Lo snapshot del benchmark deve essere **un solo file SQLite immutabile** condiviso da TAG e Text-to-SQL; un manifesto SHA-256 deve attestarlo.
