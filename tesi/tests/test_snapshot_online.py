@@ -60,6 +60,20 @@ class SnapshotOnlineTests(unittest.TestCase):
                 self.assertTrue(all("#p" in r["fonte"] for r in plu))
                 self.assertTrue(any("PLUVICTO" in r["testo"].upper()
                                     for r in plu))
+                # Ricerca di categoria sul corpus regionale reale: fonte
+                # verificabile per ciascuna pagina (non una lista concatenata).
+                q=("Quali farmaci per malattie neuromuscolari "
+                   "si prescrivono al Federico II?")
+                docs=regional_candidates(db,q)
+                self.assertTrue(docs, "Nessun documento candidato per categoria")
+                self.assertTrue(all(
+                    r["fonte"].count("#p")==1 and " | archivio: " in r["fonte"]
+                    for r in docs))
+                self.assertTrue(all(
+                    len(r.get("fonti",[]))>=1 and
+                    all(ref.count("#p")==1 for ref in r["fonti"])
+                    for r in docs))
+                self.assertTrue(all("testo_selezione" in r for r in docs))
                 # Lo snapshot scientifico NON attribuisce C per esclusione.
                 self.assertGreater(
                     db.execute("SELECT COUNT(*) FROM aifa_confezioni "

@@ -159,6 +159,9 @@ def _facets(question):
             requested.discard("AIFA")
         if "ema" not in q and "europe" not in q and "decisione ue" not in q:
             requested.discard("EMA")
+    if categoria(question)[0] and "ema" not in q and "europe" not in q:
+        requested.discard("EMA")
+        requested.add("REGIONE")
     return requested
 
 
@@ -309,11 +312,16 @@ def evidence_candidates(db,question,max_rows=18):
     rows=[]
     seen=set()
 
-    def put(tipo,uid,description,source):
+    def put(tipo,uid,description,source,sources=None,selection_text=None):
         if uid not in seen and len(rows)<max_rows:
             seen.add(uid)
-            rows.append({"tipo":tipo,"chiave":uid,
-                         "testo":str(description)[:2600],"fonte":source})
+            row={"tipo":tipo,"chiave":uid,
+                 "testo":str(description)[:6000],"fonte":source}
+            if sources:
+                row["fonti"]=list(dict.fromkeys(sources))
+            if selection_text:
+                row["testo_selezione"]=selection_text
+            rows.append(row)
 
     aifa_limit=7 if kind=="AIFA" else 4
     aifa_data=_search_aifa(db,target,limit=aifa_limit)
@@ -351,7 +359,9 @@ def evidence_candidates(db,question,max_rows=18):
         expanded=regional_candidates(db,question,target,limit=min(22,max_rows))
         if expanded:
             for item in expanded:
-                put(item["tipo"],item["chiave"],item["testo"],item["fonte"])
+                put(item["tipo"],item["chiave"],item["testo"],item["fonte"],
+                    sources=item.get("fonti"),
+                    selection_text=item.get("testo_selezione"))
             return
         # Compatibilità con fixture minime e con vecchie sorgenti.
         for item in candidates(db,target,limit=5 if kind=="CENTRI" else 3):
@@ -496,7 +506,8 @@ def tag(db,question,model):
     mode=selection_mode()
     # Nessuna fonte viene eliminata per ridurre il costo: la selezione
     # raggruppata valuta più evidenze in un solo elemento semantico.
-    planned,members=semantic_plan(rows,mode=mode,max_groups=3)
+    planned,members=semantic_plan(
+        rows,mode=mode,max_groups=4 if category_question else 3)
     lm=_in_phase("inizializzazione TAG",LM,model,max_batch_size=4)
     _in_phase("inizializzazione TAG",lotus.settings.configure,lm=lm,enable_cache=False)
     frame=pd.DataFrame(planned)
@@ -565,6 +576,12 @@ def tag(db,question,model):
         "parti documentate se manca la fonte di una sola parte. "
         "Non dichiarare un centro autorizzato soltanto dal registro AIFA "
         "e non dedurlo da una semplice menzione in un PDF. "
+        "Per categorie implicite considera ogni nota separatamente: "
+        "collega il medicinale alla patologia e alla specifica struttura "
+        "indicata nei passaggi delle pagine, riportando soltanto le "
+        "associazioni effettivamente verificabili. Se una nota contiene "
+        "solo il nome della patologia ma non il centro, non aggiungerla. "
+        "Le intestazioni con nomi di ospedali non bastano da sole. "
         "Per una categoria implicita (es. neuromuscolare), verifica la "
         "patologia e il centro direttamente nel testo di ogni nota; i "
         "termini di ricerca NON certificano che il farmaco appartenga "
@@ -597,7 +614,11 @@ def tag(db,question,model):
         answer.casefold()):
         answer += ("\n\nCopertura: risultati candidati ricavati dalle note "
                    "recuperate; non è garantito un elenco esaustivo dei medicinali.")
-    return {"risposta":answer,"fonti":list(dict.fromkeys(x["fonte"] for x in evidence)),
+    citations=list(dict.fromkeys(
+        source for item in evidence
+        for source in (item.get("fonti") or [item["fonte"]])
+    ))
+    return {"risposta":answer,"fonti":citations,
             "evidenze_fonti":_source_previews(evidence),
             "stato":"OK","token_input":input_tokens,
             "token_output":output_tokens,"costo_usd":full_cost,
