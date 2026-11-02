@@ -1,0 +1,77 @@
+name: Tesi - verifica cinque gold sullo snapshot online
+
+on:
+  pull_request:
+    paths:
+      - 'tesi/gold_5_verificati_snapshot_online.json'
+      - 'tesi/applica_gold_verificati.py'
+      - '.github/workflows/tesi-valida-gold.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tesi/gold_5_verificati_snapshot_online.json'
+      - 'tesi/applica_gold_verificati.py'
+      - '.github/workflows/tesi-valida-gold.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  verifica-gold:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Recupera lo snapshot immutabile e le 36 domande
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p dist_tesi
+          gh run download 41436480339 \
+            -R MarcoFabozzi/farmaquery \
+            -n tesi-snapshot-fonti-online \
+            -D dist_tesi
+      - name: Controlla sintassi dei moduli gold
+        run: python -m py_compile tesi/applica_gold_verificati.py tesi/valida_gold.py
+      - name: Applica i cinque gold ai quesiti dello snapshot SHA-256 fisso
+        run: |
+          python -m tesi.applica_gold_verificati \
+            --db dist_tesi/esperimento_online.sqlite \
+            --manifest dist_tesi/manifest_fonti_online.json \
+            --benchmark dist_tesi/benchmark_36_da_validare.csv \
+            --gold tesi/gold_5_verificati_snapshot_online.json \
+            --out dist_tesi/benchmark_36_gold_5_validati.csv \
+            --report dist_tesi/verifica_citazioni_gold.json
+          python -m tesi.valida_gold \
+            --benchmark dist_tesi/benchmark_36_gold_5_validati.csv \
+            --db dist_tesi/esperimento_online.sqlite \
+            --report dist_tesi/rapporto_gold_validati.json
+      - name: Verifica i conteggi senza inventare risultati LLM
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('dist_tesi/verifica_citazioni_gold.json').read_text())
+          assert r['esito']=='OK'
+          assert r['totale']==36
+          assert r['validati']==5
+          assert r['da_verificare']==31
+          print('Gold approvati con PDF#pagina:',r['gold_pubblicati'])
+          print('Gold ancora da controllare:',r['da_verificare'])
+          PY
+      - name: Pubblica le risposte gold e i report (senza duplicare lo SQLite)
+        uses: actions/upload-artifact@v4
+        with:
+          name: tesi-cinque-gold-verificati
+          path: |
+            dist_tesi/benchmark_36_gold_5_validati.csv
+            dist_tesi/verifica_citazioni_gold.json
+            dist_tesi/rapporto_gold_validati.json
+            tesi/gold_5_verificati_snapshot_online.json
+          if-no-files-found: error
+          retention-days: 90

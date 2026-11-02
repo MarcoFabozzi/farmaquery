@@ -1,0 +1,118 @@
+{
+  "schema": 1,
+  "snapshot_sha256": "bb43ae4b00b6d581f4209ad83cbf9945054628868e6a52c59470ad32cada9a53",
+  "snapshot_git_commit": "630613a1b3e5353fe33e207e843fb8dad5591b2a",
+  "data_verifica": "2026-11-02",
+  "metodo_verifica": "Lettura visiva delle pagine dei PDF originali forniti dall'utente; corrispondenza SHA-256 con PDF acquisito online e confronto con pagine del database SQLite",
+  "nota": "La risposta attesta soltanto il contenuto della nota nella data indicata; non certifica automaticamente la situazione regolatoria odierna.",
+  "records": [
+    {
+      "id": "DIR-01",
+      "file_pdf": "note 2025 - 18.12.2025/PLUVICTO.pdf",
+      "sha256_documento": "b614b1d20625cb14cb2868d0bdff28e0dd8a4b4b701b1929facbcc9281352c73",
+      "pagine": [
+        1,
+        2
+      ],
+      "ancore_ocr": {
+        "1": [
+          "PLUVICTO",
+          "carcinoma prostatico metastatico"
+        ],
+        "2": [
+          "sono autorizzate alla prescrizione/somministrazione",
+          "AORN CARDARELLI"
+        ]
+      },
+      "risposta_gold": "La nota PG/2025/0201843 del 18/04/2025 autorizza le U.O. di Medicina Nucleare di AOU Federico II, AORN dei Colli, AORN Cardarelli, ASL Napoli 1 Centro – P.O. Ospedale del Mare e IRCCS Pascale per la prescrizione/somministrazione di PLUVICTO. L’indicazione riguarda adulti con carcinoma prostatico metastatico resistente alla castrazione (mCRPC), progressivo, PSMA-positivo, precedentemente trattati con un inibitore della via del recettore degli androgeni e chemioterapia con docetaxel e cabazitaxel o non candidabili a cabazitaxel. I centri devono essere autorizzati alla detenzione di lutezio-177 ed essere abilitati al registro AIFA.",
+      "fonti_gold": "note 2025 - 18.12.2025/PLUVICTO.pdf#p1|note 2025 - 18.12.2025/PLUVICTO.pdf#p2",
+      "note_revisore": "Verifica visiva PDF: indicazione clinica e numero di protocollo a p. 1; cinque centri e condizioni a p. 2. Riferimento storico al 18/04/2025, non attestazione di situazione odierna.",
+      "stato_validazione": "VALIDATO"
+    },
+    {
+      "id": "SEM-05",
+      "file_pdf": "note-regionali-2026 22.09.2026/DUVYZAT  Prot.N.0368583-2026.pdf",
+      "sha256_documento": "a189c0c213a0f39dd03341c52d9e729748f5874536815ea8037538cc78f5af1d",
+      "pagine": [
+        1,
+        2
+      ],
+      "ancore_ocr": {
+        "1": [
+          "Duvyzat (givinostat) è indicato"
+        ],
+        "2": [
+          "A.O.R.N. Santobono-Pausilipon",
+          "SINFONIA"
+        ]
+      },
+      "risposta_gold": "La nota 0368583/2026 del 17/04/2026 indica DUVYZAT (givinostat) per la distrofia muscolare di Duchenne in pazienti deambulanti di almeno 6 anni, in concomitanza con corticosteroidi. La confezione riportata è in classe H. I presidi regionali individuati (RFG080) sono AORN Santobono-Pausilipon, AOU San Giovanni di Dio e Ruggi d’Aragona, AOU Luigi Vanvitelli e AOU Federico II, con le rispettive U.O. elencate nella tabella. La nota prevede registro DUVYZAT, prescrizione limitativa RNRL, distribuzione diretta e piano terapeutico su SINFONIA 2.0; l'abilitazione operativa richiede attivazione dei centri e disponibilità effettiva del medicinale.",
+      "fonti_gold": "note-regionali-2026 22.09.2026/DUVYZAT  Prot.N.0368583-2026.pdf#p1|note-regionali-2026 22.09.2026/DUVYZAT  Prot.N.0368583-2026.pdf#p2",
+      "note_revisore": "Verifica visiva del PDF p. 1 per indicazione, fascia ed età; p. 2 per presidi, prescrizione e restrizioni operative.",
+      "stato_validazione": "VALIDATO"
+    },
+    {
+      "id": "SEM-09",
+      "file_pdf": "note-regionali-2026 22.09.2026/HETRONIFLY  Prot.N.0116163-2026.pdf",
+      "sha256_documento": "6cddd607b9de8bfade770c45488ee64f9afeb0fab9a60f740e2396716d0c4b99",
+      "pagine": [
+        1,
+        2
+      ],
+      "ancore_ocr": {
+        "1": [
+          "Hetronifly in combinazione con carboplatino ed etoposide"
+        ],
+        "2": [
+          "registro AIFA sarà attivato esclusivamente",
+          "GOM polmone"
+        ]
+      },
+      "risposta_gold": "La nota 0116163/2026 del 12/02/2026 indica HETRONIFLY (serplulimab) con carboplatino ed etoposide per la prima linea negli adulti con carcinoma polmonare a piccole cellule in stadio esteso (ES-SCLC). La confezione citata è in classe H, con utilizzo ospedaliero (OSP). La prescrizione è prevista presso le U.O. di Oncologia/Oncologia Medica aderenti ai GOM polmone della Rete Oncologica Campana, secondo l'elenco di strutture e aziende a p. 2. L'attivazione del registro AIFA richiede richiesta formale dell'azienda sanitaria e disponibilità effettiva del farmaco; essere elencati non basta per affermare che un centro sia già operativamente abilitato.",
+      "fonti_gold": "note-regionali-2026 22.09.2026/HETRONIFLY  Prot.N.0116163-2026.pdf#p1|note-regionali-2026 22.09.2026/HETRONIFLY  Prot.N.0116163-2026.pdf#p2",
+      "note_revisore": "Verifica visiva p. 1: combinazione, tumore, trattamento, classe H. P. 2: elenco delle strutture GOM e condizioni formali del registro.",
+      "stato_validazione": "VALIDATO"
+    },
+    {
+      "id": "RIM-06",
+      "file_pdf": "note-regionali-2026 22.09.2026/07-2026/FASENRA Prot.N.0520736-2026.pdf",
+      "sha256_documento": "93b63ca4db75d7744207aa901fd5d30d319e0471ccd78cb4c3200709ae484faf",
+      "pagine": [
+        2,
+        3
+      ],
+      "ancore_ocr": {
+        "2": [
+          "granulomatosi",
+          "sono autorizzate alla"
+        ],
+        "3": [
+          "in sostituzione e aggiornamento dei centri",
+          "Nota Prot. 2023/0172236"
+        ]
+      },
+      "risposta_gold": "Sì. La nota FASENRA 0520736/2026 del 09/06/2026 cita la nota prot. 2023/0172236 del 30/03/2023 e stabilisce che i Presidi di Riferimento autorizzati per benralizumab nell'EGPA (granulomatosi eosinofila con poliangite) siano analogamente autorizzati a prescrivere mepolizumab per la stessa indicazione, in sostituzione e aggiornamento dei centri indicati nel documento del 2023. I centri sono nella tabella a p. 2; il rapporto di modifica è esplicito a p. 3. Il testo non dichiara l'abrogazione integrale della nota del 2023.",
+      "fonti_gold": "note-regionali-2026 22.09.2026/07-2026/FASENRA Prot.N.0520736-2026.pdf#p2|note-regionali-2026 22.09.2026/07-2026/FASENRA Prot.N.0520736-2026.pdf#p3",
+      "note_revisore": "Verifica visiva delle pp. 2 e 3: riferimento al precedente protocollo e rapporto SOSTITUZIONE/AGGIORNAMENTO dei centri per mepolizumab, limitato alla stessa indicazione. La nota 2023 non è stata letta integralmente.",
+      "stato_validazione": "VALIDATO"
+    },
+    {
+      "id": "RIM-08",
+      "file_pdf": "note 2025 - 18.12.2025/CASGEVY  Prot.N.0655032-2025.pdf",
+      "sha256_documento": "329568fce87527c153aaa82f1690c218be71fa617daf49e4c59d046c820ae0a2",
+      "pagine": [
+        3
+      ],
+      "ancore_ocr": {
+        "3": [
+          "Come da Nota PG/2024/0503681",
+          "SINFONIA"
+        ]
+      },
+      "risposta_gold": "Sì. La nota CASGEVY 0655032/2025 del 25/11/2025 richiama la nota PG/2024/0503681 del 24/10/2024, «Chiarimento del Percorso di abilitazione sulla piattaforma regionale SINFONIA». Il richiamo riguarda l'implementazione delle prescrizioni su SINFONIA Piani Terapeutici 2.0: è un riferimento operativo, non una dichiarazione di modifica o sostituzione della nota del 2024. I centri HUB individuati per CASGEVY e le relative fasce di età sono prescrizioni specifiche del documento CASGEVY, distinte da quel rimando.",
+      "fonti_gold": "note 2025 - 18.12.2025/CASGEVY  Prot.N.0655032-2025.pdf#p3",
+      "note_revisore": "Verifica visiva della p. 3 della nota CASGEVY; richiamo esplicito alla nota del 2024 e natura meramente operativa. Non è stata esaminata integralmente la nota del 2024.",
+      "stato_validazione": "VALIDATO"
+    }
+  ]
+}

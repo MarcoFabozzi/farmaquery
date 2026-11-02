@@ -81,6 +81,28 @@ Ogni gold comprende risposta verificata, documento, pagina e criterio di valutaz
 - **TAG con LOTUS**: sem_filter/sem_map su DataFrame di pagine e strutture, con predicati in linguaggio naturale; eventuali sem_join solo su coppie candidate e con criteri verificabili. Documentazione: https://lotus-ai.readthedocs.io/en/latest/sem_filter.html e https://lotus-ai.readthedocs.io/en/latest/sem_join.html .
 - Non effettuare chiamate LLM quando i gold non sono ancora stati validati oppure quando la chiave/modello non sono stati configurati dall'utente.
 
+## Primo lotto di gold validati sullo snapshot online del 2 novembre 2026
+
+Sono stati verificati **visivamente sui PDF** 5 casi del benchmark:
+`DIR-01` (PLUVICTO), `SEM-05` (DUVYZAT), `SEM-09` (HETRONIFLY),
+`RIM-06` (FASENRA) e `RIM-08` (CASGEVY). I PDF allegati coincidono
+con quelli presenti nello snapshot online per **SHA-256**, non soltanto
+per nome. Il JSON `tesi/gold_5_verificati_snapshot_online.json` riporta
+risposta, pagine, ancore testuali e limiti della verifica.
+
+La validazione è riferita **esclusivamente al contenuto delle note nelle
+date indicate**; non prova da sola che strutture e indicazioni siano
+ancora attive nel presente. Per i rimandi a note precedenti viene
+specificato se si tratta di una sostituzione dei centri oppure di un
+semplice riferimento operativo.
+
+Il workflow **Tesi - verifica cinque gold sullo snapshot online** prende
+il benchmark immutabile del run GitHub Actions `41436480339`, verifica
+hash dello SQLite, hash di ogni PDF, percorso, pagina e ancore e produce
+`benchmark_36_gold_5_validati.csv`: **5 validati, 31 da verificare**.
+La verifica del file con `tesi/valida_gold.py` è obbligatoria; non vengono
+attribuiti automaticamente punteggi TAG o Text-to-SQL.
+
 ## Validazione dei gold e valutazione
 
 Dopo aver annotato `risposta_gold`, `fonti_gold` (formato
