@@ -91,6 +91,10 @@ Il programma di valutazione non assegna giudizi 0/1 automaticamente.
 3. Validare i 22 gold mancanti sui documenti ORIGINARI (e sulla loro
    versione presente nello SQLite), compilare risposta **completa**,
    fonti esatte e nota revisore, solo allora passare a VALIDATO.
+   Per un quesito NEGATIVA, riportare almeno l'ambito delle ricerche nel
+   corpus, gli alias/principi attivi verificati e le varianti dei nomi in
+   note_revisore (minimo 80 caratteri), con origine_validazione nel formato
+   `RICERCA_ESAUSTIVA: descrizione della revisione`.
 4. Test senza chiamate:
    
    `python -m tesi.esegui_benchmark --db dist_tesi/esperimento_online.sqlite --manifest dist_tesi/manifest_fonti_online.json --domande tesi/benchmark_regolatorio_8_validati.csv --max-domande 2`
