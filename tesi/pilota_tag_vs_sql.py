@@ -19,6 +19,7 @@ from errori_chatbot import EnginePhaseError
 from tesi.recupero_gu import domanda_gu, candidati_gu
 from tesi.recupero_regionale import regional_candidates, categoria
 from tesi.contesto_integrale import contesto_integrale,richiede_sezione_completa,AIC_RE
+from tesi.verifica_completezza_tag import revise_if_needed,enumeration_warning
 from tesi.sql_category_support import (category_sql_context,
                                       select_generation_guidance,CATEGORY_RETRY_RULES)
 from tesi.tag_budget import (selection_mode,semantic_plan,expand_selected,
@@ -666,18 +667,12 @@ def tag(db,question,model):
                          max_tokens=1100)
     else:
         answer,usage=ask(model,system_tag,payload)
-    aic_attesi=set()
-    for item in integral:
-        aic_attesi.update(item.get("aic_trovati_nel_testo") or [])
-    missing_aic=sorted(code for code in aic_attesi
-                       if code.casefold() not in answer.casefold())
-    if missing_aic and richiede_sezione_completa(question):
-        # Un controllo deterministico sulla stringa sorgente non produce
-        # risposte: rende però impossibile pubblicare "tutti gli AIC"
-        # quando il testo effettivamente contiene altri identificativi.
-        answer+=("\n\nControllo di completezza: la risposta non riporta "
-                 "tutti gli identificativi AIC presenti nell'atto "
-                 "consultato; l'elenco deve essere verificato.")
+    answer,extra_usage,revised,validation=revise_if_needed(
+        model,question,answer,integral,integral_complete,ask)
+    if extra_usage is not None:
+        usage=_accumulate(usage,extra_usage)
+    missing_aic=validation["aic_omessi_nella_risposta"]
+    answer+=enumeration_warning(answer,integral)
     if integral and not integral_complete:
         answer+=("\n\nAvvertenza: la sezione richiesta supera il "
                  "limite di contesto, pertanto la lista non può essere "
@@ -712,7 +707,13 @@ def tag(db,question,model):
             "stato":"RISULTATI_PARZIALI" if (integral and (not integral_complete or missing_aic)) else "OK",
             "contesto_integrale":bool(integral),
             "contesto_integrale_completo":bool(integral and integral_complete),
-            "aic_mancanti_rispetto_al_testo":len(missing_aic),
+            "aic_mancanti_rispetto_al_testo":missing_aic,
+            "aic_nel_testo_integrale":validation["aic_nel_testo"],
+            "revisione_completezza_llm":revised,
+            "verifica_contesto":(
+                "integrale" if integral and integral_complete else
+                "parziale" if integral else "non_recuperato"),
+            "versione_tag":"verifica-integrale-v2",
             "token_input":input_tokens,
             "token_output":output_tokens,"costo_usd":full_cost,
             "costo_completo":full_cost is not None,
