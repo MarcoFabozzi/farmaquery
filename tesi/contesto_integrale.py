@@ -24,6 +24,9 @@ def richiede_sezione_completa(question):
         r"tabella\s*\d+|articolo\s*\d+|art\.\s*\d+|"
         r"pagina\s*\d+|pag\.\s*\d+|"
         r"quali\s+protocolli|quale\s+precedente\s+nota|"
+        r"quale\s+nota(?:\s+del\s+20\d{2})?\s+(?:richiam\w*|cit\w*)|"
+        r"quali\s+sono\s+(?:esattamente\s+)?(?:i|le|gli)\s+"
+        r"(?:\w+\s+)?(?:centri|strutture|presidi)|"
         r"annulla\s+e\s+sostituisce)\b",q))
 
 
@@ -116,16 +119,35 @@ def contesto_integrale(db,question,target,max_chars=18500):
 
     escaped=(str(target).replace("\\","\\\\").replace("%","\\%")
              .replace("_","\\_"))
-    ids=[r[0] for r in db.execute(
-        "SELECT id FROM note WHERE farmaco_candidato=? COLLATE NOCASE "
+    notes=[dict(r) for r in db.execute(
+        "SELECT id,anno,nome_file FROM note "
+        "WHERE farmaco_candidato=? COLLATE NOCASE "
         "OR nome_file LIKE ? ESCAPE '\\' COLLATE NOCASE "
-        "ORDER BY anno DESC,id LIMIT 2",(target,"%"+escaped+"%"))]
-    if not ids:
+        "ORDER BY anno DESC,id LIMIT 8",(target,"%"+escaped+"%"))]
+    if not notes:
         return [],True
+
+    # In "CASGEVY nel 2025" il 2024 riguarda la nota RICHIAMATA:
+    # privilegiare l'anno vicino al nome del medicinale, non il primo
+    # anno presente nella domanda. Mai scegliere una fonte fuori dallo SQLite.
+    match_year=re.search(re.escape(str(target))+r".{0,55}?(20\d{2})",
+                         question,re.I)
+    if match_year:
+        matching=[r for r in notes if str(r["anno"])==match_year.group(1)]
+        if matching:
+            notes=matching
+    # Se è riportato un protocollo della nota oggetto della domanda,
+    # preferire la corrispondenza nel nome del PDF; NON cercare qui la
+    # nota precedente menzionata dal testo.
+    protocols=re.findall(r"\b\d{6,10}\b",question)
+    named=[r for r in notes if any(p in r["nome_file"] for p in protocols)]
+    if named:
+        notes=named
+    ids=[r["id"] for r in notes[:2]]
 
     page_matches=re.findall(r"\b(?:pagina|pag\.)\s*(\d+)\b",question,re.I)
     requested_pages=set(int(n) for n in page_matches)
-    for note_id in ids[:2]:
+    for note_id in ids:
         pages=[dict(r) for r in db.execute(
             "SELECT p.numero_pagina,p.testo,n.nome_file,n.percorso_zip,"
             "n.archivio_url FROM pagine p JOIN note n ON n.id=p.nota_id "
@@ -136,14 +158,38 @@ def contesto_integrale(db,question,target,max_chars=18500):
             pages=[p for p in pages if p["numero_pagina"] in requested_pages]
             if requested_pages - {p["numero_pagina"] for p in pages}:
                 complete=False
-        # Senza pagina esplicita, conserva l'ordine del PDF: le intestazioni
-        # delle tabelle e le clausole giuridiche non vanno separate arbitrariamente.
+        else:
+            # Con un budget limitato leggere PRIMA le pagine che rispondono
+            # alla domanda, non consumarlo sulla copertina/introduzione.
+            # Ogni pagina mantiene testo e citazione originali; i punteggi
+            # servono solo all'ordinamento, non sono prove regolatorie.
+            q=question.casefold()
+            words=set(re.findall(r"[a-zà-ÿ0-9]{4,}",q))
+            words-=set(("quali","quale","sono","della","delle","della",
+                        "secondo","nota","regionale","individuati",
+                        "esattamente","precedente","documento"))
+            def priority(page):
+                body=str(page["testo"]).casefold()
+                score=sum(2 for word in words if word in body)
+                if any(word in q for word in ("centr","struttur","prescr")):
+                    if re.search(r"\b(?:aou|aorn|irccs|tabella|u\.o\.)\b",body):
+                        score+=8
+                if any(word in q for word in ("requisit","condizion","abilitat")):
+                    if re.search(r"registro|detenzion|abilitat|autorizzat",body):
+                        score+=6
+                if any(word in q for word in ("richiam","rimand","sostitui")):
+                    if re.search(r"pg\s*/\s*20\d{2}|prot|sinfonia",body):
+                        score+=6
+                return (-score,page["numero_pagina"])
+            pages.sort(key=priority)
         for page in pages:
             src=(str(page["percorso_zip"])+"#p"+str(page["numero_pagina"])
                  +" | archivio: "+str(page["archivio_url"]))
             header=("TESTO DI PAGINA REGIONALE; interpretare la struttura "
                     "delle tabelle senza trasferire i centri ad altre "
-                    "indicazioni. Documento: "+str(page["nome_file"])+
+                    "indicazioni. Ogni affermazione va citata con la pagina "
+                    "che CONTIENE il relativo passo. Documento: "+
+                    str(page["nome_file"])+
                     "; pagina "+str(page["numero_pagina"])+"\n")
             remaining,ok=_append_with_budget(out,remaining,{
                 "tipo":"REGIONE",
