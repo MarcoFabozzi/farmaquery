@@ -81,75 +81,174 @@ def candidates(db,question,limit=12):
     return [dict(r) for r in db.execute(sql,(pattern,limit))]
 
 
-def evidence_candidates(db,question,max_rows=18):
-    """Seleziona righe sia strutturate EMA/AIFA sia regionali per LOTUS.
+def _question_kind(question):
+    """Instrada il recupero verso la fonte più utile, senza LLM."""
+    q=question.casefold()
+    if "principio attivo" in q or "principi attivi" in q:
+        return "PRINCIPIO_ATTIVO"
+    if any(word in q for word in ("centri", "centro prescritt",
+                                  "ospedal", "repart", "campania",
+                                  "somministrazion", "servizi oncologici")):
+        return "CENTRI"
+    if any(word in q for word in ("classe", "confezion", "formato",
+                                  "compresse", "flaconcin", "bustine",
+                                  "rimbors")):
+        return "AIFA"
+    if any(word in q for word in ("indicazion", "indicat", "patologia",
+                                  "malattia", "autorizzazion",
+                                  "europe", "pazienti", "quale età",
+                                  "quali condizioni")):
+        return "EMA"
+    return "GENERICA"
 
-    Il recupero preliminare e' testuale/deterministico, NON un RAG vettoriale.
-    Tutte le righe restano nello stesso SQLite congelato usato da Text-to-SQL.
+
+def _target(question):
+    """Prima entità significativa, non parole della domanda come 'attivo'.
+
+    Funziona con nomi commerciali e sostanze, evitando che 'principio'
+    diventi la prima keyword della ricerca e produca risultati casuali.
     """
-    tokens=terms(question)
-    if not tokens:
+    meaningful=terms(question)
+    return meaningful[0] if meaningful else ""
+
+
+def _search_aifa(db,target,limit=6):
+    """Prima marchio esatto, poi prefisso; sostanza come ripiego.
+
+    I match parziali di un principio attivo (es. combinazioni con
+    paracetamolo) sono ammessi solo se NON esistono riscontri più precisi.
+    """
+    if not target:
         return []
-    out=[]
+    columns=("SELECT aic,nome,principio_attivo,descrizione,"
+             "classe_a_h_snapshot,classe_a_h_data FROM aifa_confezioni")
+    query_templates=[
+        (f"{columns} WHERE nome = ? COLLATE NOCASE ORDER BY aic LIMIT ?",(target,limit)),
+        (f"{columns} WHERE nome LIKE ? ESCAPE '\\' COLLATE NOCASE "
+         "ORDER BY nome,aic LIMIT ?",(_like(target)+"",limit)),
+        (f"{columns} WHERE principio_attivo = ? COLLATE NOCASE "
+         "ORDER BY nome,aic LIMIT ?",(target,limit)),
+        (f"{columns} WHERE nome LIKE ? ESCAPE '\\' COLLATE NOCASE "
+         "ORDER BY nome,aic LIMIT ?",(_like(target),limit)),
+        (f"{columns} WHERE principio_attivo LIKE ? ESCAPE '\\' COLLATE NOCASE "
+         "ORDER BY nome,aic LIMIT ?",(_like(target),limit)),
+    ]
+    # Prefix match, not contains: '%TACHIPIRINA%' would admit other brand names.
+    prefix=target.replace("\\","\\\\").replace("%","\\%").replace("_","\\_")+"%"
+    query_templates[1]=(query_templates[1][0],(prefix,limit))
+    for statement,values in query_templates:
+        rows=[dict(r) for r in db.execute(statement,values)]
+        if rows:
+            return rows
+    return []
+
+
+def _search_ema(db,target,limit=3):
+    if not target:
+        return []
+    columns=("SELECT ema_id,nome,principio_attivo,stato_ema,data_decisione_ue,"
+             "indicazione_ema,url_ema FROM ema_medicinali")
+    prefix=target.replace("\\","\\\\").replace("%","\\%").replace("_","\\_")+"%"
+    for suffix,value in (
+        ("nome = ? COLLATE NOCASE",target),
+        ("nome LIKE ? ESCAPE '\\' COLLATE NOCASE",prefix),
+        ("principio_attivo = ? COLLATE NOCASE",target),
+        ("nome LIKE ? ESCAPE '\\' COLLATE NOCASE",_like(target)),
+        ("principio_attivo LIKE ? ESCAPE '\\' COLLATE NOCASE",_like(target)),
+    ):
+        records=[dict(r) for r in db.execute(
+            f"{columns} WHERE {suffix} ORDER BY nome LIMIT ?",(value,limit))]
+        if records:
+            return records
+    return []
+
+
+def evidence_candidates(db,question,max_rows=18):
+    """Recupero con entità precisa e priorità della fonte, prima di LOTUS.
+
+    LOTUS rimane il selettore semantico fra evidenze pertinenti.
+    Un match solo nel campo 'principio_attivo' di un medicinale composto
+    NON deve prevalere sul nome esatto del medicinale chiesto.
+    """
+    target=_target(question)
+    if not target:
+        return []
+    kind=_question_kind(question)
+    rows=[]
+    seen=set()
+
     def put(tipo,uid,description,source):
-        if len(out)<max_rows:
-            out.append({"tipo":tipo,"chiave":uid,"testo":str(description)[:2600],
-                        "fonte":source})
-    for item in candidates(db,question,limit=4):
-        put("REGIONE",item["nota_id"]+"#p"+str(item["numero_pagina"]),
-            item["testo"][:1750],
-            item["percorso_zip"]+"#p"+str(item["numero_pagina"]) +
-            " | archivio: "+str(item["archivio_url"]))
-    # Query LIKE per nome/principio attivo; no ricerche di centri sul solo
-    # elenco AIFA come prova di autorizzazione per indicazione.
-    seen={row["chiave"] for row in out}
-    for token in tokens[:4]:
-        like=_like(token)
-        for row in db.execute(
-            "SELECT aic,nome,principio_attivo,descrizione,"
-            "classe_a_h_snapshot,classe_a_h_data FROM aifa_confezioni "
-            "WHERE nome LIKE ? ESCAPE '\\' COLLATE NOCASE "
-            "OR principio_attivo LIKE ? ESCAPE '\\' COLLATE NOCASE LIMIT 4",
-            (like,like)):
-            uid="AIFA:"+row["aic"]
-            if uid in seen: continue
+        if uid not in seen and len(rows)<max_rows:
             seen.add(uid)
-            description=("AIC: "+str(row["aic"])+", nome: "+str(row["nome"])
-                         +", principio attivo: "+str(row["principio_attivo"])
-                         +", presentazione: "+str(row["descrizione"])
-                         +", classe per la demo: "+str(row["classe_a_h_snapshot"] or "C")
-                         +", data: "+str(row["classe_a_h_data"]))
-            put("AIFA",uid,description,"AIFA AIC "+str(row["aic"]))
-        for row in db.execute(
-            "SELECT ema_id,nome,principio_attivo,stato_ema,data_decisione_ue,"
-            "indicazione_ema,url_ema FROM ema_medicinali "
-            "WHERE nome LIKE ? ESCAPE '\\' COLLATE NOCASE OR "
-            "principio_attivo LIKE ? ESCAPE '\\' COLLATE NOCASE LIMIT 3",
-            (like,like)):
-            uid="EMA:"+str(row["ema_id"])
-            if uid in seen:continue
-            seen.add(uid)
-            descr=("EMA ID: "+str(row["ema_id"])+", medicinale: "+str(row["nome"])
-                   +", principio attivo: "+str(row["principio_attivo"])
-                   +", stato: "+str(row["stato_ema"])
-                   +", decisione UE: "+str(row["data_decisione_ue"])
-                   +", indicazione: "+str(row["indicazione_ema"]))
-            put("EMA",uid,descr,"EMA "+str(row["ema_id"])+" | "+str(row["url_ema"]))
-        for row in db.execute(
+            rows.append({"tipo":tipo,"chiave":uid,
+                         "testo":str(description)[:2600],"fonte":source})
+
+    aifa_limit=7 if kind=="AIFA" else 4
+    aifa_data=_search_aifa(db,target,limit=aifa_limit)
+    ema_data=_search_ema(db,target,limit=4 if kind=="EMA" else 2)
+
+    def add_aifa():
+        for item in aifa_data:
+            uid="AIFA:"+str(item["aic"])
+            desc=("Medicinale: "+str(item["nome"])
+                  +"; AIC: "+str(item["aic"])
+                  +"; principio attivo dichiarato: "+str(item["principio_attivo"])
+                  +"; confezione: "+str(item["descrizione"])
+                  +"; classe: "+str(item["classe_a_h_snapshot"] or "C")
+                  +"; data elenco A/H: "+str(item["classe_a_h_data"]))
+            put("AIFA",uid,desc,"AIFA AIC "+str(item["aic"]))
+
+    def add_ema():
+        for item in ema_data:
+            uid="EMA:"+str(item["ema_id"])
+            desc=("Medicinale: "+str(item["nome"])+
+                  "; principio attivo: "+str(item["principio_attivo"])+
+                  "; stato autorizzazione: "+str(item["stato_ema"])+
+                  "; decisione UE: "+str(item["data_decisione_ue"])+
+                  "; indicazione: "+str(item["indicazione_ema"]))
+            put("EMA",uid,desc,
+                "EMA "+str(item["ema_id"])+" | "+str(item["url_ema"]))
+
+    def add_regione():
+        if kind=="PRINCIPIO_ATTIVO":
+            return
+        for item in candidates(db,target,limit=5 if kind=="CENTRI" else 3):
+            put("REGIONE",str(item["nota_id"])+"#p"+str(item["numero_pagina"]),
+                str(item["testo"])[:1750],
+                str(item["percorso_zip"])+"#p"+str(item["numero_pagina"])+
+                " | archivio: "+str(item["archivio_url"]))
+
+    def add_registri():
+        if kind!="CENTRI":
+            return
+        pattern=_like(target)
+        for item in db.execute(
             "SELECT id,medicinale,patologia,indicazione,struttura,"
             "data_riferimento,fonte_url FROM strutture_registri "
             "WHERE medicinale LIKE ? ESCAPE '\\' COLLATE NOCASE "
-            "OR patologia LIKE ? ESCAPE '\\' COLLATE NOCASE LIMIT 3",
-            (like,like)):
-            uid="REGISTRO:"+row["id"]
-            if uid in seen:continue
-            seen.add(uid)
-            put("REGISTRO_AIFA",uid,
-                "Medicinale "+row["medicinale"]+", patologia "+str(row["patologia"])
-                +", indicazione "+str(row["indicazione"])+", struttura "+row["struttura"]
-                +", data "+row["data_riferimento"],
-                "AIFA strutture abilitate ai registri | "+row["fonte_url"])
-    return out[:max_rows]
+            "ORDER BY medicinale,struttura LIMIT 3",(pattern,)):
+            put("REGISTRO_AIFA","REGISTRO:"+str(item["id"]),
+                "Medicinale: "+str(item["medicinale"])+
+                "; patologia: "+str(item["patologia"])+
+                "; indicazione: "+str(item["indicazione"])+
+                "; struttura: "+str(item["struttura"])+
+                "; data: "+str(item["data_riferimento"]),
+                "AIFA strutture abilitate ai registri | "+str(item["fonte_url"]))
+
+    if kind=="CENTRI":
+        add_regione()
+        add_ema()
+        add_aifa()
+        add_registri()
+    elif kind=="EMA":
+        add_ema()
+        add_aifa()
+        add_regione()
+    else:
+        add_aifa()
+        add_ema()
+        add_regione()
+    return rows[:max_rows]
 
 
 def _in_phase(phase,func,*args,**kwargs):
@@ -202,10 +301,13 @@ def tag(db,question,model):
     _in_phase("inizializzazione TAG",lotus.settings.configure,lm=lm,enable_cache=False)
     frame=pd.DataFrame(rows)
     selected=_in_phase("selezione TAG",lambda: frame.sem_filter(
-        "Il contenuto di {testo} fornisce informazioni pertinenti alla domanda "
+        "La riga {testo} fornisce evidenza DIRETTA per rispondere "
+        "alla domanda specifica "
         +json.dumps(question,ensure_ascii=False)
-        +". I riferimenti a strutture nei registri AIFA non equivalgono "
-         "automaticamente a centri prescrittori autorizzati nella regione."
+        +". Se la domanda cita un medicinale, considera SOLO il nome commerciale "
+         "richiesto, non altri medicinali contenenti lo stesso principio attivo. "
+         "Un principio attivo è una sostanza, non necessariamente un medicinale. "
+         "Non confondere le strutture nei registri AIFA con centri regionali autorizzati."
     ).head(8))
     # L'assenza delle statistiche non deve annullare una risposta valida.
     selection_usage=getattr(getattr(lm,"stats",None),"physical_usage",None)
@@ -219,13 +321,21 @@ def tag(db,question,model):
                 "token_output":completion_tokens,
                 "costo_usd":selection_cost,"costo_completo":selection_cost is not None}
     evidence=selected[["tipo","testo","fonte"]].to_dict("records")
-    answer,usage=ask(model,"Rispondi in italiano esclusivamente dalle evidenze. "
+    answer,usage=ask(model,"Rispondi in italiano in modo breve e specifico, SOLO alla domanda. "
+        "La denominazione di un principio attivo non va trattata come il nome "
+        "di un medicinale che lo contiene: ad esempio, se si chiede il principio "
+        "attivo di una sostanza, spiega che la sostanza stessa è già un principio "
+        "attivo. Se viene chiesto il principio attivo di un medicinale, cita SOLO "
+        "le righe in cui il medicinale corrisponde al nome commerciale richiesto; "
+        "NON elencare altre specialità né combinazioni diverse. "
+        "Non aggiungere dettagli EMA, classi o liste di confezioni non richiesti. "
         "Distingui autorizzazione europea EMA, classe A/H di una confezione AIFA "
         "e centri prescrittori di specifiche note campane. "
         "Classifica ogni confezione in A se compare nella lista A, H se compare nella lista H; altrimenti rispondi semplicemente C. Non aggiungere qualifiche alla classe. "
         "Non dichiarare un centro autorizzato soltanto dal registro AIFA. "
         "Indica le fonti; se mancano, scrivi 'non documentato nello snapshot'.",
-        {"domanda":question,"evidenze":evidence})
+        {"domanda":question,"medicinale_o_sostanza_ricercata":_target(question),
+         "intento":_question_kind(question),"evidenze":evidence})
     input_tokens=(prompt_tokens+usage["token_input"]
                   if prompt_tokens is not None and usage["token_input"] is not None else None)
     output_tokens=(completion_tokens+usage["token_output"]
