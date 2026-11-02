@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+import csv
+from io import StringIO
 import hmac
 import sqlite3
 import sys
@@ -111,11 +113,39 @@ for item in history:
             st.caption("Metodo: "+item["metodo"]+" · "+
                        str(round(item["secondi"],1))+" s")
 
+@st.cache_data(show_spinner=False)
+def domande_della_tesi():
+    with (ROOT/"tesi"/"domande_utente_35.csv").open(
+        encoding="utf-8-sig",newline=""
+    ) as source:
+        return list(csv.DictReader(source,delimiter=";"))
+
+
+questions=domande_della_tesi()
+lookup={row["id"]:row for row in questions}
+by_text={row["domanda"]:row for row in questions}
+with st.expander("🧪 Le 35 domande della tesi (facoltativo)"):
+    st.caption("Seleziona una domanda già preparata, oppure scrivine "
+               "liberamente una nel campo della chat.")
+    selected_id=st.selectbox(
+        "Domanda di prova",
+        [row["id"] for row in questions],
+        format_func=lambda ident: ident+" · "+lookup[ident]["domanda"],
+        key="farmaquery_benchmark_selected",
+    )
+    selected_send=st.button(
+        "Invia la domanda selezionata",
+        disabled=not can_call,
+        key="farmaquery_benchmark_send"
+    )
+
 new_question=st.chat_input(
     "Es. Quali centri possono prescrivere DUVYZAT in Campania?",
     disabled=not can_call,
     max_chars=700,
 )
+if selected_send:
+    new_question=lookup[selected_id]["domanda"]
 
 if new_question:
     st.session_state["farmaquery_chat_count"]+=1
@@ -125,10 +155,12 @@ if new_question:
 
     with st.chat_message("assistant"):
         started=time.monotonic()
+        snapshot_hash=""
         with st.spinner("Ricerca nelle fonti ufficiali..."):
             try:
                 version=snapshot_version(ROOT)
                 db,manifest=cached_db(version)
+                snapshot_hash=manifest["sha256_sqlite"]
                 result=answer_question(db,new_question,method,model)
             except (ImportError,ModuleNotFoundError):
                 result={"risposta":"Il componente del metodo selezionato non "
@@ -162,9 +194,56 @@ if new_question:
             with st.expander("Query SQL generata"):
                 st.code(result["sql"],language="sql")
         st.caption("Metodo: "+method+" · "+str(seconds)+" s")
+        question_meta=by_text.get(new_question,{})
         history.append({"role":"assistant","text":result.get("risposta",""),
-                        "metodo":method,"secondi":seconds,
-                        "fonti":sources,"sql":result.get("sql","")})
+                        "domanda":new_question,"id":question_meta.get("id",""),
+                        "categoria":question_meta.get("categoria",""),
+                        "metodo":method,"modello":model,
+                        "snapshot_sha256":snapshot_hash,
+                        "token_input":result.get("token_input"),
+                        "token_output":result.get("token_output"),
+                        "costo_usd":result.get("costo_usd"),
+                        "stato":result.get("stato",""),
+                        "secondi":seconds,"fonti":sources,
+                        "sql":result.get("sql","")})
+
+# L'esportazione e' locale alla sessione Streamlit e non salva i dati
+# personali sul repository. Le due tecniche sono incluse nello stesso CSV.
+records=[]
+for technique in ("Text-to-SQL","TAG"):
+    for msg in st.session_state.get(history_key(technique),[]):
+        if msg.get("role")!="assistant":
+            continue
+        records.append({
+            "id":msg.get("id",""),
+            "categoria":msg.get("categoria",""),
+            "domanda":msg.get("domanda",""),
+            "metodo":msg.get("metodo",""),
+            "modello":msg.get("modello",""),
+            "snapshot_sha256":msg.get("snapshot_sha256",""),
+            "risposta":msg.get("text",""),
+            "fonti":" | ".join(msg.get("fonti",[])),
+            "secondi":msg.get("secondi",""),
+            "token_input":msg.get("token_input",""),
+            "token_output":msg.get("token_output",""),
+            "costo_usd":msg.get("costo_usd",""),
+            "valutazione_risposta":"",
+            "valutazione_citazioni":"",
+            "note_revisore":"",
+        })
+if records:
+    fields=list(records[0].keys())
+    buffer=StringIO()
+    writer=csv.DictWriter(buffer,fieldnames=fields,delimiter=";")
+    writer.writeheader()
+    writer.writerows(records)
+    st.download_button(
+        "⬇️ Scarica le risposte delle prove (CSV)",
+        data=buffer.getvalue().encode("utf-8-sig"),
+        file_name="farmaquery_risposte_chat.csv",
+        mime="text/csv",
+        help="Include entrambi i metodi e lascia vuoti i giudizi di correttezza.",
+    )
 
 st.divider()
 st.caption("Le classi A/H si riferiscono a elenchi AIFA datati. "
