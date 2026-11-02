@@ -56,6 +56,12 @@ class TagRetrievalTests(unittest.TestCase):
         self.assertEqual(terms("Che principio attivo ha paracetamolo?"),["paracetamolo"])
         self.assertEqual(_question_kind("Che principio attivo ha paracetamolo?"),
                          "PRINCIPIO_ATTIVO")
+        self.assertEqual(_target("Per quale malattia viene utilizzato Ozempic?"),
+                         "ozempic")
+        self.assertEqual(_target("Quali ospedali campani sono indicati per DUVYZAT?"),
+                         "duvyzat")
+        self.assertEqual(_target("Qualsiasi reparto di Neurologia in Campania "
+                                 "può prescrivere ULTOMIRIS?"),"ultomiris")
 
     def test_esclude_specialita_composte_se_esiste_nome_esatto(self):
         rows=_search_aifa(self.db,"paracetamolo")
