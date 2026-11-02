@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 import re
 import sqlite3
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parent
@@ -236,6 +237,15 @@ def pilota(db_path: Path, limit: int, provider: str, model: str, key: str) -> di
                 else:
                     record["analisi"] = {"stato": "SOLO_ANTEPRIMA_SENZA_LLM"}
                 esiti.append(record)
+            except HTTPError as err:
+                # urllib.error.HTTPError deriva da OSError: senza questo blocco
+                # l'errore dell'API viene etichettato come errore documento.
+                # Non salviamo mai chiavi API o messaggi grezzi del provider.
+                esiti.append({
+                    "codice": row["codice"], "stato": "ERRORE_API",
+                    "http_status": err.code,
+                    "tipo_errore": "HTTPError",
+                })
             except (OSError, ValueError, json.JSONDecodeError, KeyError,
                     sqlite3.DatabaseError) as err:
                 esiti.append({
