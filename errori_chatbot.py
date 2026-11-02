@@ -27,6 +27,8 @@ def diagnose_error(exc):
     low=kind.casefold()
     if http==429 or any(word in low for word in ("ratelimit","resourceexhausted","quota")):
         code="QUOTA"
+    elif http==503 or "serviceunavailable" in low:
+        code="SERVIZIO"
     elif http in (401,403) or any(word in low for word in ("authentication","unauthorized","permission")):
         code="AUTH"
     elif http==404 or "notfound" in low:
@@ -58,6 +60,10 @@ def label_error(exc):
     if http_code==429 or any(word in low for word in ("ratelimit","resourceexhausted","quota")):
         message="Gemini ha raggiunto un limite API (al minuto, ai token o giornaliero). Controlla le quote del modello; non è un errore nella risposta TAG."
         code="QUOTA"
+    elif http_code==503 or "serviceunavailable" in low:
+        message=("Gemini ha restituito un errore temporaneo di servizio (503). "
+                 "Non indica necessariamente che sia scaduto il timeout.")
+        code="SERVIZIO"
     elif http_code in (401,403) or any(word in low for word in ("authentication","unauthorized","permission")):
         message="La chiave API è rifiutata dal provider. Controlla i Secrets."
         code="AUTH"
