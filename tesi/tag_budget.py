@@ -105,3 +105,20 @@ def expand_selected(selected, members):
                 result.append(original)
                 seen.add(key)
     return result
+
+
+def preserve_category_recall(rows, semantic_rows):
+    """Elenco per categoria: LOTUS ordina, non certifica esclusioni.
+
+    La selezione di gruppi semantici non è una classificazione esaustiva
+    delle singole note. Le righe non selezionate rimangono nel contesto come
+    *candidati da verificare*, non come risposte positive.
+    """
+    ids=set()
+    ordered=[]
+    for row in list(semantic_rows)+list(rows):
+        uid=str(row["chiave"])
+        if uid not in ids:
+            ids.add(uid)
+            ordered.append(row)
+    return ordered
