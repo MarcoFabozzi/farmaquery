@@ -305,12 +305,12 @@ def regional_candidates(db,question,target="",limit=22):
                 nearest=disease_hits[0]
             at,term=nearest
             parts.append("INDICAZIONE NELLA PAGINA (DA VERIFICARE): "+
-                         body[max(0,at-260):min(len(body),at+210)])
+                         body[max(0,at-140):min(len(body),at+155)])
         if center_hits:
             hit=center_hits[-1]
             parts.append("RIGA DEL CENTRO (DA VERIFICARE): "+
-                         body[max(0,hit.start()-330):
-                              min(len(body),hit.end()+260)])
+                         body[max(0,hit.start()-200):
+                              min(len(body),hit.end()+170)])
         if not parts:
             return ""
         return " […] ".join(parts)[:1200]
