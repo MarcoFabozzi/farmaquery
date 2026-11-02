@@ -299,8 +299,11 @@ def evidence_candidates(db,question,max_rows=18):
     NON deve prevalere sul nome esatto del medicinale chiesto.
     """
     target=_target_db(db, question)
-    if not target:
+    category_question=bool(categoria(question)[0])
+    if not target and not category_question:
         return []
+    if category_question:
+        target=""
     kind=_question_kind(question)
     rows=[]
     seen=set()
@@ -387,7 +390,9 @@ def evidence_candidates(db,question,max_rows=18):
                 "; data: "+str(item["data_riferimento"]),
                 "AIFA strutture abilitate ai registri | "+str(item["fonte_url"]))
 
-    if kind=="GU":
+    if category_question:
+        add_regione()
+    elif kind=="GU":
         add_gu()
         add_ema()
         add_aifa()
@@ -482,6 +487,8 @@ def tag(db,question,model):
     # Conserviamo chiave e tipo per garantire copertura delle fonti senza
     # confondere una selezione semantica vuota con un database vuoto.
     semantic=selected[["tipo","chiave","testo","fonte"]].to_dict("records")
+    ids={r["chiave"] for r in rows}
+    semantic=[r for r in semantic if r.get("chiave") in ids]
     evidence=_multisource_evidence(rows,semantic,question,
                                  limit=18 if region_request else 10)
     # Una lista di centri richiesta come completa non può essere generata
@@ -654,16 +661,24 @@ def sql_method(db,question,model):
     finally:
         db.set_progress_handler(None,0)
     citations=_sql_sources(db,rows)
+    truncated=len(raw)>30
     answer,second=_in_phase("sintesi SQL",ask,model,
         "Rispondi in italiano SOLO in base alle righe SELECT e alle fonti. "
         "Non interpretare un dato AIFA/EMA come autorizzazione regionale. "
         "Se la classe_a_h_snapshot è NULL, indica C solo come deduzione per esclusione dagli elenchi A/H, mai come classe ufficialmente attestata. Distingui data della lista A/H e data della determina. "
+        "Le liste e i rimandi candidati non attestano autorizzazioni; "
+        "serve il testo integrale del provvedimento. "
+        "Se il risultato ha righe_troncate=true, non dichiarare completa la lista. "
         "Se mancano dati o evidenze, scrivi 'non documentato nello snapshot'. "
         "Non inventare citazioni.",
-        {"domanda":question,"righe_sql":rows,"fonti_recuperate":citations})
+        {"domanda":question,"righe_sql":rows,"fonti_recuperate":citations,
+          "righe_troncate":truncated})
+    if truncated:
+        answer+=("\n\nAvvertenza: query con più di 30 righe; "
+                 "elenco non verificabilmente completo.")
     total=_accumulate(first,second)
     return {"risposta":answer,"fonti":citations,"sql":sql,
-            "righe_sql":len(rows),"stato":"OK",**total,"costo_completo":True}
+            "righe_sql":len(rows),"righe_troncate":truncated,"stato":"OK",**total,"costo_completo":True}
 
 
 def main():
