@@ -36,5 +36,32 @@ deve essere valutato come errore semantico del TAG. Nessun fallimento di
 selezione viene sostituito artificialmente da un risultato documentale, e
 non sono abilitati retry automatici che consumino ulteriore quota.
 
+## Richiamo dei documenti nei quesiti a elenco
+
+Per le domande su **categorie implicite** (per esempio «quali medicinali
+neuromuscolari al Federico II?»), il sistema ricerca tutti i documenti
+candidati che contengono una patologia pertinente e la struttura richiesta
+in una delle pagine della stessa nota. Il recupero non si ferma più ai
+primi 8 documenti ordinati per frequenza testuale.
+
+In questi quesiti LOTUS continua a eseguire **sem_filter** per selezionare
+e prioritizzare gruppi di documenti, ma la non selezione di un gruppo **non
+costituisce una prova che i suoi medicinali non siano pertinenti**.
+Per preservare il richiamo, i documenti candidati non selezionati arrivano
+comunque alla sintesi come *candidati da verificare*, non come risultati
+positivi. Questa è una scelta esplicita del protocollo sperimentale e ne
+cambia la granularità della selezione rispetto alle domande nominative.
+
+Le citazioni sono associate alle singole pagine; le finestre di testo
+sono centrate su patologia e centro, non sull'intestazione OCR.
+I limiti di contesto sono dichiarati e la lista non viene presentata
+come esaustiva senza una verifica documentale completa.
+
+Il test sullo snapshot reale controlla che i documenti DUVYZAT e ULTOMIRIS,
+già individuati nelle evidenze normative di controllo, **raggiungano il
+payload finale**. Il codice di produzione non contiene liste predefinite di
+farmaci corretti né attribuisce automaticamente centri autorizzati.
+La correttezza delle associazioni rimane oggetto della revisione gold.
+
 ## Stato
 I test automatici verificano conservazione delle evidenze, tracciabilità dei gruppi, classificazione quota e arresto del runner. **Non eseguono chiamate a Gemini** e non dimostrano la correttezza clinico-regolatoria delle risposte.

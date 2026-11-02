@@ -19,7 +19,7 @@ from errori_chatbot import EnginePhaseError
 from tesi.recupero_gu import domanda_gu, candidati_gu
 from tesi.recupero_regionale import regional_candidates, categoria
 from tesi.tag_budget import (selection_mode,semantic_plan,expand_selected,
-                             sem_filter_controlled)
+                             sem_filter_controlled,preserve_category_recall)
 from tesi.sintesi_tag import (CATEGORY_SYSTEM, compact_category_evidence,
                               CATEGORY_RESPONSE_TIMEOUT_SECONDS)
 
@@ -315,7 +315,8 @@ def evidence_candidates(db,question,max_rows=18):
     rows=[]
     seen=set()
 
-    def put(tipo,uid,description,source,sources=None,selection_text=None):
+    def put(tipo,uid,description,source,sources=None,selection_text=None,
+            passages=None,document_count=None,documents_truncated=False):
         if uid not in seen and len(rows)<max_rows:
             seen.add(uid)
             row={"tipo":tipo,"chiave":uid,
@@ -324,6 +325,11 @@ def evidence_candidates(db,question,max_rows=18):
                 row["fonti"]=list(dict.fromkeys(sources))
             if selection_text:
                 row["testo_selezione"]=selection_text
+            if passages:
+                row["passaggi_sintesi"]=passages
+            if document_count is not None:
+                row["copertura_documenti"]=document_count
+                row["documenti_troncati"]=documents_truncated
             rows.append(row)
 
     aifa_limit=7 if kind=="AIFA" else 4
@@ -364,7 +370,10 @@ def evidence_candidates(db,question,max_rows=18):
             for item in expanded:
                 put(item["tipo"],item["chiave"],item["testo"],item["fonte"],
                     sources=item.get("fonti"),
-                    selection_text=item.get("testo_selezione"))
+                    selection_text=item.get("testo_selezione"),
+                    passages=item.get("passaggi_sintesi"),
+                    document_count=item.get("copertura_documenti"),
+                    documents_truncated=item.get("documenti_troncati",False))
             return
         # Compatibilità con fixture minime e con vecchie sorgenti.
         for item in candidates(db,target,limit=5 if kind=="CENTRI" else 3):
@@ -543,8 +552,14 @@ def tag(db,question,model):
     semantic=expand_selected(selected_groups,members)
     ids={r["chiave"] for r in rows}
     semantic=[r for r in semantic if r.get("chiave") in ids]
-    evidence=_multisource_evidence(rows,semantic,question,
-                                 limit=18 if region_request else 10)
+    if category_question:
+        # sem_filter valuta e ORDINA i documenti, ma un gruppo escluso
+        # non prova che le altre note siano irrilevanti: per una domanda
+        # elenco, non trasformare il filtro approssimativo in esclusione.
+        evidence=preserve_category_recall(rows,semantic)
+    else:
+        evidence=_multisource_evidence(rows,semantic,question,
+                                     limit=18 if region_request else 10)
     # Una lista di centri richiesta come completa non può essere generata
     # da una sola pagina selezionata: includiamo tutte le pagine della nota
     # già recuperate e verificate come leggibili. Non dichiariamo esaustive
@@ -612,7 +627,15 @@ def tag(db,question,model):
         # con riferimenti alla pagina e un prompt dedicato alla categoria.
         system_tag=CATEGORY_SYSTEM
         payload={"domanda":question,
-                 "evidenze":compact_category_evidence(evidence)}
+                 "evidenze":compact_category_evidence(evidence),
+                 "copertura_documentale":(
+                     "Documenti recuperati: "+str(len(rows))+
+                     "; documenti aggiuntivi rispetto a LOTUS: "+
+                     str(len(evidence)-len(semantic))+
+                     ". I documenti non selezionati da LOTUS sono "
+                     "solo candidati da verificare, non negativi accertati."),
+                 "copertura_limitata":any(r.get("documenti_troncati")
+                                          for r in evidence)}
         answer,usage=ask(model,system_tag,payload,
                          timeout=CATEGORY_RESPONSE_TIMEOUT_SECONDS,
                          max_tokens=1100)
@@ -629,6 +652,10 @@ def tag(db,question,model):
         answer+=("\n\nAvvertenza: almeno una pagina della fonte è stata "
                  "troncata per limiti di contesto; l'elenco va verificato "
                  "sul PDF integrale e non può essere considerato completo.")
+    if category_question and any(r.get("documenti_troncati") for r in rows):
+        answer+=("\n\nAttenzione: la ricerca documentale è stata "
+                 "limitata; ulteriori note candidate possono non "
+                 "essere state analizzate.")
     if category_question and not re.search(
         r"parzial|non esaustiv|non documentat|non verificabil",
         answer.casefold()):
