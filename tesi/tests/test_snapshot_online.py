@@ -35,6 +35,14 @@ class SnapshotOnlineTests(unittest.TestCase):
                 self.assertGreater(db.execute("SELECT COUNT(*) FROM strutture_registri").fetchone()[0],1000)
                 self.assertGreater(db.execute("SELECT COUNT(*) FROM aifa_confezioni").fetchone()[0],100000)
                 self.assertGreater(db.execute("SELECT COUNT(*) FROM ema_medicinali").fetchone()[0],1000)
+                self.assertGreater(db.execute("SELECT COUNT(*) FROM gu_atti").fetchone()[0],10)
+                self.assertGreater(db.execute("SELECT COUNT(*) FROM gu_segmenti_fts").fetchone()[0],10)
+                self.assertGreater(
+                    db.execute("SELECT COUNT(*) FROM gu_documenti "
+                               "WHERE tipo_documento='ALLEGATO'").fetchone()[0],0
+                )
+                self.assertGreater(info["conteggi"]["gu_documenti"],10)
+                self.assertIn("gazzetta",info["fonti_ufficiali"])
                 # Lo snapshot scientifico NON attribuisce C per esclusione.
                 self.assertGreater(
                     db.execute("SELECT COUNT(*) FROM aifa_confezioni "
