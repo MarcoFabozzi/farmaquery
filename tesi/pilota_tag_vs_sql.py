@@ -664,7 +664,9 @@ def tag(db,question,model):
                        "Non dichiarare un elenco esaustivo senza averlo "
                        "riconciliato con tutti gli identificativi elencati "
                        "nel documento. Distingui testo estratto e "
-                       "autorizzazione regolatoria. ")
+                       "autorizzazione regolatoria. Se la domanda attribuisce "
+                       "alla pagina un riferimento non presente nel testo, "
+                       "segnala che non vi compare; non inventare collegamenti. ")
         payload["evidenze"]=integral
         payload["sezione_integralmente_disponibile"]=integral_complete
         payload["origine_evidenze"]="pagine/atti dello stesso SQLite, non gold"
