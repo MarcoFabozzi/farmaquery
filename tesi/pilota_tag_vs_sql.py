@@ -27,7 +27,7 @@ rimandi_candidati(nota_id, numero_pagina, riferimento, stato)
 fonti_snapshot(fonte, url, sha256, data_riferimento)
 pagine_fts(nota_id, numero_pagina, testo) -- FTS5, opzionale.
 
-AIFA: classe_a_h_snapshot vale A/H oppure NULL. In FarmaQuery, NULL viene mostrato come C residuale per convenzione, ma non certifica C/C(nn) ufficiale.
+AIFA: se classe_a_h_snapshot e' A o H usa quel valore, altrimenti mostra C. La regola e' quella scelta per la classificazione dell'app.
 Regione: centri_candidati e strutture_registri non certificano autorizzazione
 per una indicazione, senza testo esplicito della nota regionale.
 Per citare, seleziona aic per AIFA; ema_id per EMA;
@@ -115,7 +115,7 @@ def evidence_candidates(db,question,max_rows=18):
             description=("AIC: "+str(row["aic"])+", nome: "+str(row["nome"])
                          +", principio attivo: "+str(row["principio_attivo"])
                          +", presentazione: "+str(row["descrizione"])
-                         +", classe per la demo: "+str(row["classe_a_h_snapshot"] or "C (residuale)")
+                         +", classe per la demo: "+str(row["classe_a_h_snapshot"] or "C")
                          +", data: "+str(row["classe_a_h_data"]))
             put("AIFA",uid,description,"AIFA AIC "+str(row["aic"]))
         for row in db.execute(
@@ -207,7 +207,7 @@ def tag(db,question,model):
     answer,usage=ask(model,"Rispondi in italiano esclusivamente dalle evidenze. "
         "Distingui autorizzazione europea EMA, classe A/H di una confezione AIFA "
         "e centri prescrittori di specifiche note campane. "
-        "Se una confezione non compare né in A né in H, usa C residuale nella classificazione semplificata. La C residuale NON dimostra una determina AIFA di classe C o C(nn). "
+        "Classifica ogni confezione in A se compare nella lista A, H se compare nella lista H; altrimenti rispondi semplicemente C. Non aggiungere qualifiche alla classe. "
         "Non dichiarare un centro autorizzato soltanto dal registro AIFA. "
         "Indica le fonti; se mancano, scrivi 'non documentato nello snapshot'.",
         {"domanda":question,"evidenze":evidence})
@@ -288,7 +288,7 @@ def sql_method(db,question,model):
         "PRAGMA né più istruzioni. LIMIT 30. Per citazioni includi "
         "aic, ema_id oppure nota_id e numero_pagina nel risultato, "
         "e archivio_url o fonte_url quando pertinenti. "
-        "Per la risposta sulla classe, considera A e H gli AIC presenti in tali liste; negli altri casi indica C residuale (criterio semplificato FarmaQuery, non determina ufficiale).",
+        "Per le classi usa: CASE WHEN classe_a_h_snapshot IN ('A','H') THEN classe_a_h_snapshot ELSE 'C' END AS classe. Non aggiungere qualifiche alla classe.",
         {"schema":SCHEMA,"domanda":question})
     sql=validate_sql(generated)
     start=time.monotonic()
@@ -303,7 +303,7 @@ def sql_method(db,question,model):
     answer,second=ask(model,
         "Rispondi in italiano SOLO in base alle righe SELECT e alle fonti. "
         "Non interpretare un dato AIFA/EMA come autorizzazione regionale. "
-        "La classe semplificata FarmaQuery è C residuale quando classe_a_h_snapshot è NULL. Spiega che non si tratta di classificazione C/C(nn) AIFA ufficialmente confermata. "
+        "Se la classe_a_h_snapshot è NULL, indica classe C. Non distinguere fra C e altri sottotipi nelle risposte. "
         "Se mancano dati o evidenze, scrivi 'non documentato nello snapshot'. "
         "Non inventare citazioni.",
         {"domanda":question,"righe_sql":rows,"fonti_recuperate":citations})
