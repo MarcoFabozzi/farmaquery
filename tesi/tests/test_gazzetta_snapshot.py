@@ -63,7 +63,7 @@ class GazzettaSnapshotTests(unittest.TestCase):
     def test_tutti_segmenti_esplicito_senza_perdere_ultima_confezione(self):
         # Il nome del farmaco compare all'inizio, l'ultima confezione
         # solo nel segmento finale: FTS top-2 non basta.
-        self.body=("WEGOVY classe C. " * 170 +
+        self.body=("WEGOVY classe C. " * 400 +
                    "AIC 049883111/E ultima confezione 3 penne")
         self.file.write_text(self.body,encoding="utf-8")
         self.digest=hashlib.sha256(self.file.read_bytes()).hexdigest()
