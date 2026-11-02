@@ -129,7 +129,7 @@ def classe_con_fonti(registry_class, ah, evento, cnn_matches):
         cls = evento["classe_nuova"]
         if cls in ("C", "C(nn)"):
             ref = _date_from_iso(evento["data_pubblicazione"])
-            return cls + " (atto storico " + ref + ")"
+            return cls + " (atto storico sul medicinale " + ref + ")"
     if cnn_matches:
         return etichetta_cnn_storica(cnn_matches)
     return "N/D"
