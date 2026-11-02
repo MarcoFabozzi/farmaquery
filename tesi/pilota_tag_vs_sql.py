@@ -46,7 +46,13 @@ STOP = {"quali","quale","quali","della","delle","nelle","degli","sono",
         "autorizzato","autorizzata","rimborsato","rimborsata",
         "invece","dopo","secondo","presso","farmacista","medico",
         "posso","quale","quando","nota","italia","disponibile",
-        "esiste","delle","essere","sulle","della","dalla","paziente"}
+        "esiste","delle","essere","sulle","della","dalla","paziente",
+        "principio","principi","attivo","attivi","quali","quale",
+        "come","perche","attualmente","sostanza","sostanze",
+        "formulazione","formulazioni","confezione","confezioni",
+        "formato","formati","compresse","bustine","flaconcino",
+        "ospedali","reparti","strutture","possibile","prevista",
+        "prescrizione","somministrazione","nelle","negli","agli"}
 
 
 def read_only(path):
