@@ -686,8 +686,9 @@ def tag(db,question,model):
                    if completion_tokens is not None and usage["token_output"] is not None else None)
     full_cost=(selection_cost+usage["costo_usd"]
                if selection_cost is not None and usage["costo_usd"] is not None else None)
-    if complete_request and (len(rows)>=22 or any("ESTRATTO PARZIALE" in r["testo"]
-                                for r in evidence)):
+    if (complete_request and not (integral and integral_complete) and
+        (len(rows)>=22 or any("ESTRATTO PARZIALE" in r["testo"]
+                                for r in evidence))):
         answer+=("\n\nAvvertenza: almeno una pagina della fonte è stata "
                  "troncata per limiti di contesto; l'elenco va verificato "
                  "sul PDF integrale e non può essere considerato completo.")
@@ -705,7 +706,7 @@ def tag(db,question,model):
         for source in (item.get("fonti") or [item["fonte"]])
     ))
     return {"risposta":answer,"fonti":citations,
-            "evidenze_fonti":_source_previews(evidence),
+            "evidenze_fonti":_source_previews(integral or evidence),
             "stato":"RISULTATI_PARZIALI" if (integral and (not integral_complete or missing_aic)) else "OK",
             "contesto_integrale":bool(integral),
             "contesto_integrale_completo":bool(integral and integral_complete),
