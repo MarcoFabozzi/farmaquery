@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - 'tesi/prepara_snapshot_online.py'
+      - 'tesi/crea_benchmark_documentato.py'
       - '.github/workflows/crea-snapshot-tesi-online.yml'
 
 permissions:
@@ -28,6 +29,15 @@ jobs:
           python tesi/prepara_snapshot_online.py \
             --output dist_tesi/esperimento_online.sqlite \
             --manifest dist_tesi/manifest_fonti_online.json
+      - name: Genera le 36 domande e le evidenze da verificare
+        run: |
+          python tesi/crea_benchmark_documentato.py \
+            --db dist_tesi/esperimento_online.sqlite \
+            --manifest dist_tesi/manifest_fonti_online.json \
+            --out dist_tesi/benchmark_36_da_validare.csv \
+            --evidenze dist_tesi/evidenze_da_controllare.jsonl \
+            --report dist_tesi/rapporto_benchmark.json
+
       - name: Controlla file e hash
         run: |
           python - <<'PY'
