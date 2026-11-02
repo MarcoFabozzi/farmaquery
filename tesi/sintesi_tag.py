@@ -37,7 +37,7 @@ CATEGORY_SYSTEM = (
 )
 
 
-def compact_category_evidence(rows, per_page_chars=900, per_doc_chars=2700):
+def compact_category_evidence(rows, per_page_chars=790, per_doc_chars=2370):
     """Conserva riferimenti e finestre indicazione/centro di ciascun PDF.
 
     Ritorna evidenze per la chiamata finale, NON per la selezione LOTUS.
