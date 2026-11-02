@@ -61,7 +61,9 @@ STOP = {"quali","quale","quali","della","delle","nelle","degli","sono",
         "oncologici","servizi","neurologia","possono","potrebbe",
         "prescrittori","autorizzazione","autorizzati","ricevuto",
         "stessi","stesse","impiegato","farmaci","quale","europea",
-        "qual","quell","quello","quella","queste","questi"}
+        "qual","quell","quello","quella","queste","questi",
+        "prescrivono","prescritta","prescritti","prescritte",
+        "prescrittive","possiamo","rientrano","stadio","avanzato"}
 
 
 def read_only(path):
