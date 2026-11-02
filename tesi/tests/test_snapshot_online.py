@@ -74,6 +74,18 @@ class SnapshotOnlineTests(unittest.TestCase):
                     all(ref.count("#p")==1 for ref in r["fonti"])
                     for r in docs))
                 self.assertTrue(all("testo_selezione" in r for r in docs))
+                # Verifica di RICHIAMO sulle note presenti e già controllate:
+                # un recupero top-k non deve perdere i documenti per Duchenne
+                # e miastenia solo perché altre note hanno più occorrenze.
+                file_names=" | ".join(
+                    str(r["testo"]).split("; farmaco candidato:",1)[0]
+                    for r in docs).upper()
+                self.assertIn("DUVYZAT",file_names,
+                              "Il recupero categoria ha escluso la nota DUVYZAT")
+                self.assertIn("ULTOMIRIS",file_names,
+                              "Il recupero categoria ha escluso la nota ULTOMIRIS")
+                self.assertTrue(all("copertura_documenti" in r for r in docs))
+
                 # Lo snapshot scientifico NON attribuisce C per esclusione.
                 self.assertGreater(
                     db.execute("SELECT COUNT(*) FROM aifa_confezioni "
