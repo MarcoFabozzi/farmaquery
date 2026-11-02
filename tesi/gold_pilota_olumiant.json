@@ -1,0 +1,13 @@
+{
+  "id": "GOLD-PILOTA-001",
+  "categoria": "DIRETTE",
+  "domanda": "Secondo la nota regionale del 2 agosto 2023 relativa a OLUMIANT, l'A.O. Cardarelli è tra i centri autorizzati per l'indicazione alopecia areata?",
+  "risposta_gold": "Sì. La nota indica le U.O./Ambulatori di Dermatologia dell'A.O. Cardarelli tra i centri autorizzati per la prescrizione di OLUMIANT nell'indicazione alopecia areata.",
+  "documento": "note_regionali/PTR_NoteRegionali2023_020124/OLUMIANT_nota prot. 0391134 del 02.08.23.pdf",
+  "sha256_documento": "788ffb8c8797b9c41426324bb691794131b83ad62a259d889c139e3cfc192036",
+  "pagina": 2,
+  "protocollo": "0391134/2023",
+  "stato_gold": "VALIDATO_VISIVAMENTE_SUL_PDF",
+  "limite_temporale": "Risposta riferita alla nota 2023, non certificazione attuale; verificare note successive",
+  "data_verifica": "2026-11-02"
+}
