@@ -135,6 +135,20 @@ def classe_con_fonti(registry_class, ah, evento, cnn_matches):
     return "N/D"
 
 
+def classe_sintetica_demo(etichetta_evidenza):
+    """Tre sole categorie per la UI; C residuale, NON dato AIFA ufficiale.
+
+    La classificazione dettagliata resta intatta per audit e benchmark.
+    Nessuna classe C derivata qui va scritta nel database regolatorio.
+    """
+    testo = str(etichetta_evidenza or "")
+    if testo.startswith("A ("):
+        return "A"
+    if testo.startswith("H ("):
+        return "H"
+    return "C"
+
+
 def _date_from_iso(val):
     try:
         return date.fromisoformat(str(val)[:10]).strftime("%d/%m/%Y")
