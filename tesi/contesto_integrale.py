@@ -21,7 +21,8 @@ def richiede_sezione_completa(question):
         r"quante\s+(?:confezioni|penne)|"
         r"quanti\s+(?:centri|aic|farmaci|medicinali)|"
         r"numero\s+d(?:i|elle?)\s+(?:confezioni|centri|aic)|"
-        r"tabella\s*\d+|articolo\s*\d+|art\.\s*\d+|"\n        r"pagina\s*\d+|pag\.\s*\d+|"
+        r"tabella\s*\d+|articolo\s*\d+|art\.\s*\d+|"
+        r"pagina\s*\d+|pag\.\s*\d+|"
         r"quali\s+protocolli|quale\s+precedente\s+nota|"
         r"annulla\s+e\s+sostituisce)\b",q))
 
