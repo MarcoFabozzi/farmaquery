@@ -88,6 +88,8 @@ class FullDocumentContextTests(unittest.TestCase):
             "Quali protocolli sono citati in CAMZYOS?"))
         self.assertTrue(richiede_sezione_completa(
             "Quante confezioni sono riportate nella determina?"))
+        self.assertFalse(richiede_sezione_completa(
+            "Qual è il numero di pazienti trattati in Campania?"))
 
 
 if __name__=="__main__":
