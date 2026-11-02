@@ -478,7 +478,7 @@ def tag(db,question,model):
         "e centri prescrittori di specifiche note campane. "
         "Classifica ogni confezione in A se compare nella lista A, H se compare nella lista H; altrimenti indica C come deduzione per esclusione e non come classificazione ufficialmente verificata. "
         "Per domande con più parti: rispondi separatamente a ciascuna, "
-        "usando EMA per le indicazioni, AIFA per le classi delle confezioni "
+        "usando EMA per le indicazioni, AIFA per le classi delle confezioni, "
         "le note regionali per i centri e gli atti GU per le determine. "
          "I testi GU possono essere parziali; non inferire lo stato vigente. "
          "NON rinunciare a rispondere alle "
