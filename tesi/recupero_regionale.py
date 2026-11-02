@@ -274,6 +274,31 @@ def regional_candidates(db,question,target="",limit=22):
     # ma non è più il primo top-8 arbitrario.
     eligible.sort(key=lambda item:(-item[0][0],-item[0][1],
                                   -item[0][2],item[1]))
+    def focused_passage(page, terms):
+        """Estrae distintamente centro e patologia dalla stessa pagina.
+
+        Le intestazioni OCR occupano spesso centinaia di caratteri: le
+        finestre sono ancorate al termine, non all'inizio della pagina.
+        """
+        body=" ".join(str(page["testo"]).split())
+        low=body.casefold()
+        extracts=[]
+        if institution:
+            hits=list(re.finditer(re.escape(institution),low))
+            for hit in (hits[:1]+hits[-1:]):
+                start=max(0,hit.start()-390)
+                end=min(len(body),hit.end()+270)
+                snippet=body[start:end]
+                if snippet not in extracts:
+                    extracts.append("CENTRO: "+snippet)
+        for term in sorted(terms):
+            match=re.search(re.escape(term),low)
+            if match:
+                start=max(0,match.start()-220)
+                end=min(len(body),match.end()+300)
+                extracts.append("PATOLOGIA: "+body[start:end])
+        return " […] ".join(extracts)[:1100]
+
     for _,note_id,readable,terms in eligible[:limit]:
         indexed={p["numero_pagina"]:p for p in readable}
         priority=lambda p:(
@@ -289,7 +314,8 @@ def regional_candidates(db,question,target="",limit=22):
             before=indexed.get(p["numero_pagina"]-1)
             if before and before not in picked and len(picked)<6:
                 picked.append(before)
-        picked=sorted(picked,key=lambda p:p["numero_pagina"])
+        # LLM riceve prima le pagine più probanti, non la copertina.
+        picked.sort(key=priority)
         first=picked[0]
         passages=[
             "[pagina "+str(p["numero_pagina"])+"] "+
@@ -318,6 +344,11 @@ def regional_candidates(db,question,target="",limit=22):
             ),
             "fonte":sources[0],
             "fonti":sources,
+            "passaggi_sintesi":[
+                {"pagina":p["numero_pagina"],
+                 "estratto":focused_passage(p,terms)}
+                for p in picked if focused_passage(p,terms)
+            ],
             "testo_selezione":(
                 "Documento: "+str(first.get("nome_file") or "")+
                 "; farmaco candidato: "+str(first.get("farmaco_candidato") or "")+
