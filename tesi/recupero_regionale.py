@@ -190,6 +190,10 @@ def regional_candidates(db,question,target="",limit=22):
             "SELECT id FROM note WHERE farmaco_candidato = ? COLLATE NOCASE "
             "OR nome_file LIKE ? ESCAPE '\\' COLLATE NOCASE ORDER BY anno DESC LIMIT 4",
             (target,"%"+escaped+"%"))]
+    complete=bool(re.search(
+        r"\b(?:tutt[ieo]|elenco completo|quante confezioni|quanti aic)\b",
+        question,re.I))
+    explicit_page=re.search(r"\bpagina\s+(\d+)\b",question,re.I)
     if exact:
         for note in exact[:3]:
             pages=_doc_pages(db,note["id"])
@@ -197,9 +201,41 @@ def regional_candidates(db,question,target="",limit=22):
                        for p in pages)
             selected=_seleziona_pagine(pages,full=True)
             partial=usable>len(selected)
+            if complete and explicit_page:
+                # Una tabella individuata da pagina esplicita ha priorità
+                # sulle copertine e sulle pagine di contesto.
+                selected=sorted(selected,key=lambda p:(
+                    p["numero_pagina"]!=int(explicit_page.group(1)),
+                    p["numero_pagina"]))
             for p in selected:
-                add(_evidence(p,"ESTRATTO PARZIALE: altre pagine della nota "
-                                  "non incluse nel contesto" if partial else ""))
+                if complete and (not explicit_page or
+                                 p["numero_pagina"]==int(explicit_page.group(1))):
+                    # Per gli elenchi completi la pagina non può essere
+                    # troncata a 2150 caratteri: suddivisione controllata
+                    # in finestre con sovrapposizione e fonte identica.
+                    whole=str(p["testo"])
+                    stride=1500
+                    for offset in range(0,len(whole),stride):
+                        chunk=whole[offset:offset+1650]
+                        ev=_evidence(p,"Sezione della pagina "+
+                                     str(offset//stride+1)+
+                                     "; non è una pagina integrale")
+                        ev["chiave"]+=":parte:"+str(offset//stride+1)
+                        ev["testo"]=(
+                            "Documento: "+str(p.get("nome_file") or "")+
+                            "; farmaco candidato: "+
+                            str(p.get("farmaco_candidato") or "")+
+                            "; pagina "+str(p["numero_pagina"])+
+                            "; parte "+str(offset//stride+1)+
+                            "; testo: "+chunk)
+                        add(ev)
+                        if len(found)>=limit:
+                            break
+                else:
+                    add(_evidence(p,"ESTRATTO PARZIALE: altre pagine della nota "
+                                      "non incluse nel contesto" if partial else ""))
+                if len(found)>=limit:
+                    break
             linked, warnings=_rimandi(db,note["id"],limit=3)
             for p in linked:
                 add(p)

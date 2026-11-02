@@ -60,6 +60,26 @@ class GazzettaSnapshotTests(unittest.TestCase):
         self.assertEqual(_sql_sources(self.db, [{"gu_codice":"23A02767"}]),
                          ["GU 23A02767 | https://www.gazzettaufficiale.it/eli/id/2023/05/01/23A02767/sg"])
 
+    def test_tutti_segmenti_esplicito_senza_perdere_ultima_confezione(self):
+        # Il nome del farmaco compare all'inizio, l'ultima confezione
+        # solo nel segmento finale: FTS top-2 non basta.
+        self.body=("WEGOVY classe C. " * 400 +
+                   "AIC 049883111/E ultima confezione 3 penne")
+        self.file.write_text(self.body,encoding="utf-8")
+        self.digest=hashlib.sha256(self.file.read_bytes()).hexdigest()
+        self.source.execute("UPDATE gazzetta_atti SET sha256_testo=?",
+                            (self.digest,))
+        importa_gu(self.db,self.source,self.root)
+        results=candidati_gu(
+            self.db,
+            "Quante confezioni elenca l'articolo 1 della determina 23A02767? "
+            "Riporta tutti gli AIC.",limit=18)
+        self.assertGreater(len(results),2)
+        self.assertTrue(any("049883111/E" in item["testo"]
+                            for item in results))
+        self.assertEqual(len(results),self.db.execute(
+            "SELECT COUNT(*) FROM gu_segmenti").fetchone()[0])
+
     def test_sql_sola_lettura_gu(self):
         q = validate_sql(
             "SELECT a.codice AS gu_codice, s.testo FROM gu_atti a "

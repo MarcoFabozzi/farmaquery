@@ -161,6 +161,25 @@ class RegionalSemanticRetrievalTests(unittest.TestCase):
         for row in rows:
             self.assertLessEqual(len(row.get("passaggi_sintesi",[])),6)
 
+    def test_tabella_pagina_specifica_preserva_ultimi_centri(self):
+        self.db.execute("INSERT INTO note VALUES(?,?,?,?,?,?,?)",
+                        ("table","FARMACO X.pdf","2026/FARMACO X.pdf",2026,
+                         "FARMACO X",None,"https://regione.test/n.zip"))
+        original=("Tabella 1 ATTR-CM centri. " +
+                  "Prima riga. "*220 +
+                  "Centro finale: AO CARD ARELLI Napoli.")
+        self.db.execute("INSERT INTO pagine VALUES(?,?,?,?)",
+                        ("table",2,original,"TESTO"))
+        docs=regional_candidates(
+            self.db,
+            "Quali sono tutti i centri della Tabella 1 pagina 2 di "
+            "FARMACO X?","FARMACO X",limit=22)
+        text=" ".join(d["testo"] for d in docs)
+        self.assertIn("Centro finale: AO CARD ARELLI Napoli",text)
+        self.assertTrue(any(":parte:" in d["chiave"] for d in docs))
+        self.assertTrue(all("#p2" in d["fonte"] for d in docs
+                            if ":parte:" in d["chiave"]))
+
     def test_rimando_ambiguo_non_sceglie_documento_a_caso(self):
         self.db.execute(
            "INSERT INTO note VALUES(?,?,?,?,?,?,?)",

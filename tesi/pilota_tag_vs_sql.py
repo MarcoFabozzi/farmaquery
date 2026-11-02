@@ -386,7 +386,7 @@ def evidence_candidates(db,question,max_rows=18):
                 " | archivio: "+str(item["archivio_url"]))
 
     def add_gu():
-        for item in candidati_gu(db,question,limit=6):
+        for item in candidati_gu(db,question,limit=min(18,max_rows) if re.search(r"\b(?:tutt[ieo]|quante confezioni|quanti aic|elenco completo)\b",question,re.I) else 6):
             uid=("GU:"+str(item["documento_id"])+"#s"+
                  str(item["numero_segmento"]))
             text=("GU "+str(item["codice"])+"; pubblicazione: "+
@@ -555,7 +555,9 @@ def tag(db,question,model):
     semantic=expand_selected(selected_groups,members)
     ids={r["chiave"] for r in rows}
     semantic=[r for r in semantic if r.get("chiave") in ids]
-    if category_question:
+    if complete_request and _question_kind(question)=="GU":
+        evidence=preserve_category_recall(rows,semantic)
+    elif category_question:
         # sem_filter valuta e ORDINA i documenti, ma un gruppo escluso
         # non prova che le altre note siano irrilevanti: per una domanda
         # elenco, non trasformare il filtro approssimativo in esclusione.
