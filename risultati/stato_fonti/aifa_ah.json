@@ -1,0 +1,28 @@
+{
+  "fonte": "aifa_ah",
+  "esito": "OK",
+  "ultimo_successo_utc": "2026-11-02T08:46:50+00:00",
+  "precedente_successo_utc": null,
+  "statistiche": {
+    "data_riferimento_ah": "2026-06-30",
+    "a_file": 10766,
+    "h_file": 2487,
+    "nuove_righe_snapshot": 2132,
+    "confezioni_abbinate": 2186,
+    "metodo_scoperta": "pagina_aifa",
+    "ultima_scoperta_indice_utc": "2026-11-02T08:44:12+00:00"
+  },
+  "fonti": {
+    "aifa_a": {
+      "url": "https://www.aifa.gov.it/documents/20142/3815901/Classe-A_per_nome-commerciale_30-6-2026.csv",
+      "bytes": 1520349,
+      "sha256": "2ea1df4035c5495efe70472e6dd2589af223521956a978f39714fa14eb4a1827"
+    },
+    "aifa_h": {
+      "url": "https://www.aifa.gov.it/documents/20142/3815901/Classe-H_per_nome-commerciale_30-6-2026.csv",
+      "bytes": 396740,
+      "sha256": "dba87eb2512aef2c156de64c1385f953ed2ca44ddd6f8e86abf42edfd6655948"
+    }
+  },
+  "nota": "Controllo della fonte completato, non certificazione di stato regolatorio corrente"
+}
