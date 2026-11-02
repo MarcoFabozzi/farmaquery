@@ -49,7 +49,8 @@ try:
 except (FileNotFoundError,RuntimeError):
     keys={}
 model=model_from_settings(keys)
-can_call=enable_server_key(model,keys)
+has_key=enable_server_key(model,keys)
+can_call=has_key
 secret_password=str(keys.get("FARMAQUERY_CHAT_PASSWORD") or "").strip()
 if can_call and not secret_password:
     st.warning("Per proteggere la quota API, configura anche "
@@ -78,11 +79,11 @@ if st.session_state["farmaquery_chat_count"]>=12:
 def cached_db(version):
     return prepare_snapshot(ROOT)
 
-if not can_call:
+if not has_key:
     st.info("Il chatbot è predisposto, ma per generare risposte serve "
-            "configurare una chiave API nelle impostazioni riservate "
-            "di Streamlit Cloud. Non inserire chiavi in chat o su GitHub.")
-else:
+            "configurare una chiave API nei segreti di Streamlit Cloud. "
+            "Non inserire chiavi in chat o su GitHub.")
+elif can_call:
     st.caption("Modello configurato: "+model+" · Fonti acquisite da EMA, AIFA e Campania.")
 
 key=history_key(method)
