@@ -332,6 +332,10 @@ def build_db(zip_inputs, structure_input=None, ocr=True, output=DB_GZ, report=RE
             raise ValueError("Snapshot regionale troppo grande per GitHub")
         meta={"esito":"OK" if counts["pagine_da_ocr"]==0 else "PARZIALE_OCR",
               "statistiche":counts,"fonti":sources,
+              "strutture":({"url":structure_input[0],
+                            "sha256":sha256(structure_input[1]).hexdigest(),
+                            "data_riferimento":structure_input[2]}
+                           if structure_input else None),
               "archivio_compresso_sha256":sha256(packed.read_bytes()).hexdigest(),
               "nota":"Centri individuati in PDF come candidati DA_VERIFICARE. "
                      "La presenza nella lista registri non prova di per se' ogni indicazione regionale."}
@@ -370,6 +374,24 @@ def main():
         structures=(AIFA,args.structures_csv.read_bytes(),args.structures_date) if args.structures_csv else None
     else:
         archive,structures=online_sources()
+    new_sources=[{"anno":year,"url":url,"sha256":sha256(blob).hexdigest()}
+                 for year,url,blob in archive]
+    structure_meta=({"url":structures[0],"sha256":sha256(structures[1]).hexdigest(),
+                     "data_riferimento":structures[2]} if structures else None)
+    if args.db_out.is_file() and args.report_out.is_file():
+        try:
+            prior=json.loads(args.report_out.read_text(encoding="utf-8"))
+            old_sources=[{"anno":row["anno"],"url":row["url"],
+                          "sha256":row["sha256"]} for row in prior["fonti"]]
+            if (prior.get("esito")=="OK" and old_sources==new_sources
+                and prior.get("strutture")==structure_meta
+                and not args.skip_ocr):
+                print(json.dumps({"esito":"INVARIATO",
+                                   "nota":"Fonti ufficiali immutate, snapshot precedente mantenuto."},
+                                  ensure_ascii=False))
+                return
+        except (OSError,KeyError,ValueError,TypeError):
+            pass
     print(json.dumps(build_db(archive,structures,not args.skip_ocr,args.db_out,
                               args.report_out),ensure_ascii=False,indent=2))
 if __name__=="__main__":
