@@ -94,8 +94,13 @@ def sql_method(db,question,model):
         "Non dedurre prescrivibilità da menzioni di centri o dall'assenza "
         "di una nota. Se mancano prove, scrivi non documentato nel corpus.",
         {"domanda":question,"righe":rows})
-    refs=[str(r["nota_id"])+"#p"+str(r["numero_pagina"]) for r in rows
-          if r.get("nota_id") and r.get("numero_pagina")]
+    refs=[]
+    for row in rows:
+        if row.get("nota_id") and row.get("numero_pagina"):
+            source=db.execute("SELECT percorso_zip FROM note WHERE id=?",
+                              (row["nota_id"],)).fetchone()
+            if source:
+                refs.append(str(source["percorso_zip"])+"#p"+str(row["numero_pagina"]))
     return {"risposta":answer,"sql":sql,"fonti":list(dict.fromkeys(refs)),
             "token_sql":used,"token_sintesi":tokens}
 
