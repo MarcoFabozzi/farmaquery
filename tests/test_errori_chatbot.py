@@ -30,8 +30,8 @@ class DiagnosticTests(unittest.TestCase):
         fake=MagicMock()
         fake.choices[0].message.content="OK"
         with patch("litellm.completion",return_value=fake) as mocked:
-            self.assertTrue(verify_provider("gemini/gemini-2.5-flash"))
-            self.assertEqual(mocked.call_args.kwargs["model"],"gemini/gemini-2.5-flash")
+            self.assertTrue(verify_provider("gemini/gemini-3.5-flash-lite"))
+            self.assertEqual(mocked.call_args.kwargs["model"],"gemini/gemini-3.5-flash-lite")
             self.assertEqual(mocked.call_args.kwargs["max_tokens"],12)
 
     def test_text_to_sql_usa_veramente_le_righe(self):
