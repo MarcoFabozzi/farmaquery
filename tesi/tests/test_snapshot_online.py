@@ -116,7 +116,13 @@ class SnapshotOnlineTests(unittest.TestCase):
                     self.assertTrue(any("federico" in content.casefold()
                                         for content in pages_with_expected),
                                     medicine+": manca il centro nel passaggio inviato; "+repr(pages_with_expected)[:1500])
-                    print("PASSAGGIO",medicine,"PAGINA",page,repr(pages_with_expected)[:1700])
+                    print("PASSAGGIO",medicine,"PAGINA",page,repr(pages_with_expected)[:1400])
+                    self.assertTrue(any(
+                        any(term in passage.casefold()
+                            for term in ("mgg","miastenia","rfg101"))
+                        for passage in pages_with_expected),
+                        medicine+": manca il collegamento con l'indicazione "
+                        "neuromuscolare nello stesso estratto di pagina")
 
                 print("Documenti recuperati per categoria:",len(docs),
                       "documenti consegnati alla sintesi:",len(compact),
