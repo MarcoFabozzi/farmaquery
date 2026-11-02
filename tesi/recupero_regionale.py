@@ -208,104 +208,122 @@ def regional_candidates(db,question,target="",limit=22):
                     add(warning)
         return found[:limit]
 
-    # Nessun medicinale individuato: ricerca trasversale alle note.
-    # Le espansioni della categoria producono solo candidati: non assegnano
-    # automaticamente la categoria o un'autorizzazione a una struttura.
+    # Domande per categoria: prima MASSIMIZZIAMO IL RICHIAMO dei documenti.
+    # La precedente top-8, fondata sul numero di occorrenze FTS, escludeva
+    # note corrette: un PDF breve con una tabella centri poteva essere superato
+    # da un PDF con molti richiami alla patologia.
     stem, expanded=categoria(question)
     queries=list(expanded) if stem else _tokens(question)
-    score={}
-    notes={}
-    for ix,term in enumerate(queries[:7]):
-        for row in _sql_fts(db,term,limit=35):
-            note=row["nota_id"]
-            score[note]=score.get(note,0)+(4 if stem else 1)
-            notes[note]=True
-    # La presenza di una struttura nella domanda è una condizione da
-    # verificare sul testo della nota, non un'abilitazione automaticamente data.
+    terms_by_note={}
+    for term in queries[:10]:
+        # Non troncare ai primi 35 risultati PER TERMINE: l'unità di
+        # recupero è la nota, non la singola occorrenza sulla pagina.
+        for hit in _sql_fts(db,term,limit=1000):
+            terms_by_note.setdefault(hit["nota_id"],set()).add(term)
     q=question.casefold()
     institution=("federico" if "federico" in q else
                  "cardarelli" if "cardarelli" in q else
                  "vanvitelli" if "vanvitelli" in q else
                  "salerno" if "salerno" in q else None)
-    if institution:
-        # La nota deve contenere almeno una patologia candidata E il centro;
-        # la corrispondenza resta da interpretare semanticamente con LOTUS.
-        eligible={}
-        for note_id in score:
-            hit=db.execute(
-                "SELECT 1 FROM pagine WHERE nota_id=? AND "
-                "metodo IN ('TESTO','OCR') AND lower(testo) LIKE ? LIMIT 1",
-                (note_id,"%"+institution+"%")).fetchone()
-            if hit:
-                eligible[note_id]=score[note_id]+7
-        score=eligible
 
-    def excerpt(text, keywords, radius=340, cap=1350):
-        """Finestre attorno ai termini utili, non all'intestazione OCR."""
-        content=" ".join(text.split())
-        folded=content.casefold()
-        locations=[]
-        for keyword in keywords:
-            at=folded.find(keyword.casefold())
-            if at>=0:
-                locations.append(at)
-        if not locations:
-            return content[:cap]
-        windows=[]
-        for at in sorted(set(locations))[:3]:
-            left=max(0,at-radius)
-            right=min(len(content),at+radius)
-            if windows and left<=windows[-1][1]:
-                windows[-1]=(windows[-1][0],max(right,windows[-1][1]))
+    def extract_window(text, terms, radius=450, cap=1650):
+        """Finestre su condizioni/centri; NON taglia la tabella all'intestazione."""
+        body=" ".join(str(text).split())
+        lower=body.casefold()
+        centers=[m.start() for m in re.finditer(
+            re.escape(institution),lower)] if institution else []
+        diseases=[]
+        for t in terms:
+            diseases += [m.start() for m in re.finditer(re.escape(t),lower)][:3]
+        # Le occorrenze centrali sono più importanti delle intestazioni:
+        # conserva gli ultimi centri nelle tabelle, oltre alla prima.
+        positions=(centers[:2]+centers[-2:]+diseases[:3])
+        if not positions:
+            return body[:cap]
+        result=[]
+        intervals=[]
+        for pos in sorted(set(positions)):
+            left=max(0,pos-radius)
+            right=min(len(body),pos+radius)
+            if intervals and left<=intervals[-1][1]:
+                intervals[-1]=(intervals[-1][0],max(intervals[-1][1],right))
             else:
-                windows.append((left,right))
-        return " […] ".join(content[a:b] for a,b in windows)[:cap]
+                intervals.append((left,right))
+        for left,right in intervals:
+            result.append(body[left:right])
+        return " […] ".join(result)[:cap]
 
-    for note_id,_ in sorted(score.items(),key=lambda kv:(-kv[1],str(kv[0])))[:8]:
+    eligible=[]
+    for note_id,terms in terms_by_note.items():
         pages=_doc_pages(db,note_id)
         readable=[p for p in pages if p["metodo"] in ("TESTO","OCR")
-                  and p["testo"].strip()]
+                  and str(p["testo"]).strip()]
         if not readable:
             continue
-        terms=tuple(expanded)+(institution,) if institution else tuple(expanded)
-        ranked=sorted(readable,key=lambda p:(
-            0 if institution and institution in p["testo"].casefold() else 1,
-            0 if any(w in p["testo"].casefold() for w in expanded) else 1,
-            p["numero_pagina"]))
-        selected=ranked[:4]
-        first=selected[0]
+        center_pages=[p for p in readable if institution and
+                      institution in p["testo"].casefold()]
+        if institution and not center_pages:
+            continue
+        both=sum(1 for p in center_pages
+                 if any(t in p["testo"].casefold() for t in terms))
+        # Numero di DIVERSI indizi patologici, non frequenza di parole.
+        rank=(1 if both else 0,len(terms),len(center_pages))
+        eligible.append((rank,str(note_id),readable,terms))
+
+    # Il tetto è controllato da limit e dalla dimensione del contesto,
+    # ma non è più il primo top-8 arbitrario.
+    eligible.sort(key=lambda item:(-item[0][0],-item[0][1],
+                                  -item[0][2],item[1]))
+    for _,note_id,readable,terms in eligible[:limit]:
+        indexed={p["numero_pagina"]:p for p in readable}
+        priority=lambda p:(
+            0 if institution and institution in p["testo"].casefold()
+                  and any(t in p["testo"].casefold() for t in terms) else
+            1 if institution and institution in p["testo"].casefold() else
+            2 if any(t in p["testo"].casefold() for t in terms) else 3,
+            p["numero_pagina"])
+        picked=sorted(readable,key=priority)[:5]
+        # Una patologia nella pagina precedente deve restare visibile
+        # anche quando il centro è presente solo nella tabella seguente.
+        for p in list(picked):
+            before=indexed.get(p["numero_pagina"]-1)
+            if before and before not in picked and len(picked)<6:
+                picked.append(before)
+        picked=sorted(picked,key=lambda p:p["numero_pagina"])
+        first=picked[0]
         passages=[
             "[pagina "+str(p["numero_pagina"])+"] "+
-            excerpt(str(p["testo"]),terms)
-            for p in selected
+            extract_window(p["testo"],terms,radius=530,cap=2350)
+            for p in picked
+        ]
+        selection_passages=[
+            "[pagina "+str(p["numero_pagina"])+"] "+
+            extract_window(p["testo"],terms,radius=210,cap=830)
+            for p in picked
         ]
         sources=[
             str(p["percorso_zip"])+"#p"+str(p["numero_pagina"])+
             " | archivio: "+str(p["archivio_url"])
-            for p in selected
+            for p in picked
         ]
         add({
             "tipo":"REGIONE",
             "chiave":"REGIONE:DOC:"+str(note_id),
             "testo":(
-                "CANDIDATO DOCUMENTALE, NON AUTORIZZAZIONE ACCERTATA: "
-                "verificare insieme patologia, medicinale e specifico centro. "
-                "Estratti selezionati, non lista esaustiva. "
+                "DOCUMENTO CANDIDATO, NON AUTORIZZAZIONE VERIFICATA. "
+                "Controllare la corrispondenza tra indicazione e centro. "
                 "Documento: "+str(first.get("nome_file") or "")+
                 "; farmaco candidato: "+str(first.get("farmaco_candidato") or "")+
                 "; "+" ".join(passages)
             ),
             "fonte":sources[0],
             "fonti":sources,
-            # La selezione LOTUS consulta una finestra più corta per ogni
-            # pagina; la sintesi riceve invece gli estratti più ampi.
             "testo_selezione":(
                 "Documento: "+str(first.get("nome_file") or "")+
                 "; farmaco candidato: "+str(first.get("farmaco_candidato") or "")+
-                "; " +
-                " ".join("[pagina "+str(p["numero_pagina"])+"] "+
-                         excerpt(str(p["testo"]),terms,radius=165,cap=360)
-                         for p in selected)
+                "; "+" ".join(selection_passages)
             ),
+            "copertura_documenti":len(eligible),
+            "documenti_troncati":len(eligible)>limit,
         })
     return found[:limit]
