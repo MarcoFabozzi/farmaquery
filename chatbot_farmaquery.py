@@ -13,7 +13,7 @@ import tempfile
 
 ROOT=Path(__file__).resolve().parent
 DATA=ROOT/"risultati"
-MODEL_DEFAULT="gemini/gemini-2.5-flash"
+MODEL_DEFAULT="gemini/gemini-3.5-flash-lite"
 REQUIRED=(
     "risultati/regione_campania.sqlite.gz",
     "risultati/aifa_confezioni_complete.sqlite.gz",
