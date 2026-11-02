@@ -297,5 +297,15 @@ def regional_candidates(db,question,target="",limit=22):
             ),
             "fonte":sources[0],
             "fonti":sources,
+            # La selezione LOTUS consulta una finestra più corta per ogni
+            # pagina; la sintesi riceve invece gli estratti più ampi.
+            "testo_selezione":(
+                "Documento: "+str(first.get("nome_file") or "")+
+                "; farmaco candidato: "+str(first.get("farmaco_candidato") or "")+
+                "; " +
+                " ".join("[pagina "+str(p["numero_pagina"])+"] "+
+                         excerpt(str(p["testo"]),terms,radius=165,cap=360)
+                         for p in selected)
+            ),
         })
     return found[:limit]
