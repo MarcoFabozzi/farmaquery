@@ -1,7 +1,7 @@
 # Assistente flottante FarmaQuery
 
 Nella dashboard il pulsante **💬** resta fisso in **basso a destra**.
-Cliccandolo si apre un pannello con una chat e un menu a tendina per scegliere
+Cliccandolo si apre una finestra Streamlit indipendente con un campo di scrittura e un menu a tendina per scegliere
 **Text-to-SQL** oppure **TAG (LOTUS)**.
 
 **Non esiste password di accesso.** Le chiavi del modello sono
@@ -13,7 +13,7 @@ FARMAQUERY_LLM_MODEL = "gemini/gemini-2.5-flash"
 Il Secret `FARMAQUERY_CHAT_PASSWORD` non viene più utilizzato e può essere
 rimosso dal pannello Secrets.
 
-L'assistente è integrato nella dashboard (nessun cambio pagina). Non ci sono
+L'assistente è integrato nella dashboard (nessun cambio pagina). La bolla apre un dialog indipendente: il testo non è dentro il contenitore CSS del pulsante. Non ci sono
 domande precompilate e non sono salvate le domande dell'utente nel repository.
 Ogni utente può digitare liberamente qualsiasi domanda, entro 700 caratteri.
 
@@ -34,3 +34,13 @@ Non è possibile verificare chiamate reali a Gemini tramite le GitHub Actions
 senza aggiungere segreti API ai workflow (non farlo). Se la pagina non
 risponde, verificare Python 3.12 e gli errori nei log del deployment
 Streamlit Cloud.
+
+## Classificazione A/H/C
+
+La classificazione mostrata dall'interfaccia usa la regola stabilita per
+FarmaQuery: A se la confezione è nell'elenco A, H se è nell'elenco H,
+**C in tutti gli altri casi**. L'etichetta esposta è semplicemente A, H o C,
+senza ulteriori distinzioni.
+
+La data dello snapshot e la data di riferimento degli elenchi A/H sono
+registrate separatamente nel manifesto delle fonti.

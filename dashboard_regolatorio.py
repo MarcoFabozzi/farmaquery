@@ -199,19 +199,16 @@ def atti_classificazione_per_aic(aics):
 
 
 def classificazioni_presentazione(packages):
-    from classi_complementari import classe_con_fonti, classe_sintetica_demo
+    # La classe mostrata dipende esclusivamente dalla presenza dell'AIC
+    # nell'elenco A o H acquisito. Se assente da entrambi, mostra C.
     ids=[str(p['aic']) for p in packages]
     ah=classi_ah_per_aic(ids)
     acts=atti_classificazione_per_aic(ids)
     cnn=riferimenti_cnn_per_confezioni(packages)
     result={}
-    for p in packages:
-        aic=str(p['aic'])
-        evidenza=classe_con_fonti(
-            p.get('classe_da_anagrafica'),ah.get(aic),acts.get(aic),
-            cnn.get(aic,[])
-        )
-        result[aic]=classe_sintetica_demo(evidenza)
+    for aic in ids:
+        row=ah.get(aic)
+        result[aic]=row[0] if row and row[0] in ('A','H') else 'C'
     return result,acts,cnn
 
 
@@ -301,11 +298,8 @@ def scheda_confezione(aic):
                    'non attribuisce la classe vigente alla singola confezione.')
         st.link_button('Apri elenco storico C(nn) AIFA',
                        'https://www.aifa.gov.it/legge-189-2012')
-    st.caption('Per semplificare questa demo, C comprende anche C(nn) e le confezioni '
-               'che non risultano negli elenchi A/H acquisiti. '
-               'Per queste ultime C è solo una categoria residuale, '
-               'non una classificazione ufficiale verificata. '
-               'Consulta gli atti e le date sopra per il dato regolatorio.')
+    st.caption('Classi FarmaQuery: A e H per le confezioni presenti nelle '
+               'rispettive liste AIFA; tutte le altre sono indicate come C.')
 
     documented=query('SELECT l.ema_id,e.nome,l.codice_presentazione_ue,'
                      'l.metodo,l.fonte_provvedimento FROM link_verificati l '
@@ -467,10 +461,8 @@ if term.strip():
                            if k not in ('aic','nome','principio_attivo')}
                     })
                 st.dataframe(ordinati,hide_index=True,use_container_width=True)
-                st.caption('Classi semplificate per la demo: A e H dalle liste AIFA datate; '
-                           'C raggruppa anche C(nn) e, per convenzione, le confezioni non '
-                           'presenti nelle liste A/H. La C residuale non è una determina '
-                           'di classificazione verificata.')
+                st.caption('Classi FarmaQuery: A e H quando presenti negli elenchi '
+                           'AIFA acquisiti; in tutti gli altri casi C.')
             else:
                 st.info('Nessuna confezione trovata nell’ultimo archivio AIFA disponibile.')
         except (OSError,ValueError,sqlite3.DatabaseError) as exc:
@@ -566,10 +558,8 @@ try:
                 '<tbody>'+''.join(table_rows)+'</tbody></table></div>',
                 unsafe_allow_html=True
             )
-            st.caption('Visualizzazione semplificata A/H/C. C comprende C(nn) e, '
-                       'per convenzione, anche le confezioni non presenti negli '
-                       'elenchi A/H acquisiti: non è sempre una classe ufficiale '
-                       'accertata. La fonte rimane consultabile nella scheda.')
+            st.caption('Classificazione A/H/C di FarmaQuery: le confezioni '
+                       'non presenti negli elenchi A oppure H sono in C.')
             if len(rows)>100:
                 st.caption('Visualizzate le prime 100 confezioni.')
         else:
