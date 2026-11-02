@@ -19,7 +19,7 @@ from errori_chatbot import EnginePhaseError
 from tesi.recupero_gu import domanda_gu, candidati_gu
 from tesi.recupero_regionale import regional_candidates, categoria
 from tesi.tag_budget import (selection_mode,semantic_plan,expand_selected,
-                             sem_filter_controlled)
+                             sem_filter_controlled,preserve_category_recall)
 from tesi.sintesi_tag import (CATEGORY_SYSTEM, compact_category_evidence,
                               CATEGORY_RESPONSE_TIMEOUT_SECONDS)
 
@@ -547,8 +547,7 @@ def tag(db,question,model):
         # sem_filter valuta e ORDINA i documenti, ma un gruppo escluso
         # non prova che le altre note siano irrilevanti: per una domanda
         # elenco, non trasformare il filtro approssimativo in esclusione.
-        selected_keys={r["chiave"] for r in semantic}
-        evidence=semantic+[r for r in rows if r["chiave"] not in selected_keys]
+        evidence=preserve_category_recall(rows,semantic)
     else:
         evidence=_multisource_evidence(rows,semantic,question,
                                      limit=18 if region_request else 10)
