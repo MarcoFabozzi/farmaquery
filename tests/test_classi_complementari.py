@@ -5,7 +5,7 @@ from pathlib import Path
 
 from classi_complementari import (
     costruisci_indice_cnn, leggi_indice_cnn, riferimenti_cnn,
-    etichetta_cnn_storica, classe_con_fonti,
+    etichetta_cnn_storica, classe_con_fonti, classe_sintetica_demo,
 )
 
 
@@ -60,6 +60,17 @@ class ClassiComplementariTests(unittest.TestCase):
         self.assertEqual(classe_con_fonti("", None, None, []), "N/D")
         self.assertEqual(classe_con_fonti("C", None, None, []),
                          "C (anagrafica AIFA)")
+
+    def test_classe_ui_tre_categorie_senza_alterare_evidenza(self):
+        self.assertEqual(classe_sintetica_demo("A (lista 30/06/2026)"), "A")
+        self.assertEqual(classe_sintetica_demo("H (lista 30/06/2026)"), "H")
+        self.assertEqual(classe_sintetica_demo("C (atto storico sul medicinale)"), "C")
+        self.assertEqual(classe_sintetica_demo("C(nn) (storica 14/10/2026)"), "C")
+        self.assertEqual(classe_sintetica_demo("N/D"), "C")
+        self.assertEqual(classe_sintetica_demo(""), "C")
+        # C residuale e' soltanto una convenzione di presentazione, non
+        # deve trasformare il dato privo di evidenza in una classe verificata.
+        self.assertEqual(classe_con_fonti("", None, None, []), "N/D")
 
     def test_rifiuta_json_alterato(self):
         with tempfile.TemporaryDirectory() as d:
