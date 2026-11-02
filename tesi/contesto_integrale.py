@@ -64,6 +64,13 @@ def contesto_integrale(db,question,target,max_chars=18500):
                 "ORDER BY CASE WHEN tipo_documento='ATTO' THEN 0 ELSE 1 END,"
                 "documento_id",(code,))]
             for doc in documents:
+                # Articolo puntuale: l'atto è l'unità richiesta; non
+                # consumare la quota su allegati non menzionati.
+                if (re.search(r"\b(?:articolo|art\.)\s*\d+\b",
+                              question,re.I)
+                    and doc["tipo_documento"]!="ATTO"
+                    and "allegat" not in question.casefold()):
+                    continue
                 body=str(doc["testo"])
                 # Se si chiede un articolo preciso, nessun altro articolo
                 # deve consumare il budget riservato alla sua enumerazione.
