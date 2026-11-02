@@ -18,7 +18,7 @@ Confrontare le stesse domande e lo stesso snapshot nelle due modalità su un pic
 ## Rate limit e ripresa
 Un errore HTTP 429 o `RateLimitError` è classificato `QUOTA`: **non è una risposta errata del TAG**. Il runner interrompe la sequenza dopo aver salvato l'errore (senza usare un'ulteriore chiamata al metodo successivo). Il limite può essere al minuto, ai token o giornaliero: l'app non tenta di indovinarlo.
 
-In caso di limite API: controllare quota e modello su Google AI Studio; riprendere con lo stesso snapshot e una modalità coerente. Gli errori sono classificati senza inserire nelle registrazioni il testo grezzo delle eccezioni, che potrebbe contenere informazioni riservate.
+In caso di limite API: controllare quota e modello su Google AI Studio e riprendere con `--riprendi`, sullo stesso snapshot e nella stessa modalità TAG. I tentativi QUOTA/ERRORE restano nello storico CSV e sono ritentati alla ripresa: per la valutazione considerare soltanto i risultati riusciti, ignorando le righe dei tentativi falliti. Il codice impedisce di mescolare nello stesso CSV modalità TAG differenti. Gli errori sono classificati senza registrare il testo grezzo delle eccezioni, che potrebbe contenere informazioni riservate.
 
 ## Stato
 I test automatici verificano conservazione delle evidenze, tracciabilità dei gruppi, classificazione quota e arresto del runner. **Non eseguono chiamate a Gemini** e non dimostrano la correttezza clinico-regolatoria delle risposte.
