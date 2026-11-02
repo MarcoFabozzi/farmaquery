@@ -51,8 +51,16 @@ STOP = {"quali","quale","quali","della","delle","nelle","degli","sono",
         "come","perche","attualmente","sostanza","sostanze",
         "formulazione","formulazioni","confezione","confezioni",
         "formato","formati","compresse","bustine","flaconcino",
-        "ospedali","reparti","strutture","possibile","prevista",
-        "prescrizione","somministrazione","nelle","negli","agli"}
+        "ospedali","reparti","reparto","strutture","possibile","prevista",
+        "previsto","previsti","prescrizione","somministrazione","nelle",
+        "negli","agli","campani","campane","indicato","indicati",
+        "indicata","indicate","malattia","malattie","patologia",
+        "patologie","utilizzato","utilizzata","utilizzati","viene",
+        "vengono","qualsiasi","persone","pazienti","trattati",
+        "trattate","trattamento","terapia","condizioni","controllo",
+        "oncologici","servizi","neurologia","possono","potrebbe",
+        "prescrittori","autorizzazione","autorizzati","ricevuto",
+        "stessi","stesse","impiegato","farmaci","quale","europea"}
 
 
 def read_only(path):
