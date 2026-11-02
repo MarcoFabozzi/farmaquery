@@ -12,8 +12,10 @@ import re
 # Espansioni di recupero pubbliche e indipendenti da medicinali/ospedali.
 # Servono a trovare testi per i quali il termine ombrello non compare nel PDF.
 ESPANSIONI = {
-    "neuromuscolar": ("miastenia", "muscolare", "spinale", "sclerosi",
-                      "duchenne", "atrofia"),
+    # La sclerosi multipla non va automaticamente considerata una
+    # patologia neuromuscolare: evitare espansioni troppo generiche.
+    "neuromuscolar": ("miastenia", "muscolare", "spinale", "duchenne",
+                      "atrofia", "distrofia", "motoneurone"),
     "oncol": ("carcinoma", "tumore", "neoplasia", "linfoma"),
     "autoimmun": ("miastenia", "artrite", "sclerosi", "lupus"),
     "cardiomiopat": ("cardiomiopatia", "amiloidosi", "attr"),
@@ -226,38 +228,74 @@ def regional_candidates(db,question,target="",limit=22):
                  "vanvitelli" if "vanvitelli" in q else
                  "salerno" if "salerno" in q else None)
     if institution:
-        for row in _sql_fts(db,institution,limit=80):
-            note=row["nota_id"]
-            if note in notes:
-                score[note]=score.get(note,0)+7
+        # La nota deve contenere almeno una patologia candidata E il centro;
+        # la corrispondenza resta da interpretare semanticamente con LOTUS.
+        eligible={}
+        for note_id in score:
+            hit=db.execute(
+                "SELECT 1 FROM pagine WHERE nota_id=? AND "
+                "metodo IN ('TESTO','OCR') AND lower(testo) LIKE ? LIMIT 1",
+                (note_id,"%"+institution+"%")).fetchone()
+            if hit:
+                eligible[note_id]=score[note_id]+7
+        score=eligible
+
+    def excerpt(text, keywords, radius=340, cap=1350):
+        """Finestre attorno ai termini utili, non all'intestazione OCR."""
+        content=" ".join(text.split())
+        folded=content.casefold()
+        locations=[]
+        for keyword in keywords:
+            at=folded.find(keyword.casefold())
+            if at>=0:
+                locations.append(at)
+        if not locations:
+            return content[:cap]
+        windows=[]
+        for at in sorted(set(locations))[:3]:
+            left=max(0,at-radius)
+            right=min(len(content),at+radius)
+            if windows and left<=windows[-1][1]:
+                windows[-1]=(windows[-1][0],max(right,windows[-1][1]))
+            else:
+                windows.append((left,right))
+        return " […] ".join(content[a:b] for a,b in windows)[:cap]
+
     for note_id,_ in sorted(score.items(),key=lambda kv:(-kv[1],str(kv[0])))[:8]:
         pages=_doc_pages(db,note_id)
         readable=[p for p in pages if p["metodo"] in ("TESTO","OCR")
                   and p["testo"].strip()]
         if not readable:
             continue
-        # Aggregazione documentale: LOTUS valuta insieme il testo della
-        # patologia e la pagina dei centri, anche se sono pagine diverse.
-        # Evita un falso match basato sulla sola menzione di Federico II.
+        terms=tuple(expanded)+(institution,) if institution else tuple(expanded)
         ranked=sorted(readable,key=lambda p:(
             0 if institution and institution in p["testo"].casefold() else 1,
             0 if any(w in p["testo"].casefold() for w in expanded) else 1,
             p["numero_pagina"]))
         selected=ranked[:4]
-        combined="; ".join(
-            "[pagina "+str(p["numero_pagina"])+"] "+p["testo"][:530]
-            for p in selected)
         first=selected[0]
-        docs=[str(p["percorso_zip"])+"#p"+str(p["numero_pagina"])
-              for p in selected]
-        annotation=("CANDIDATO PER CATEGORIA: verificare nel testo sia la "
-                    "patologia sia il centro; relazione non verificata; "
-                    "estratti parziali, risultati NON esaustivi. ")
+        passages=[
+            "[pagina "+str(p["numero_pagina"])+"] "+
+            excerpt(str(p["testo"]),terms)
+            for p in selected
+        ]
+        sources=[
+            str(p["percorso_zip"])+"#p"+str(p["numero_pagina"])+
+            " | archivio: "+str(p["archivio_url"])
+            for p in selected
+        ]
         add({
             "tipo":"REGIONE",
             "chiave":"REGIONE:DOC:"+str(note_id),
-            "testo":annotation+" Documento "+str(first.get("nome_file") or "")+
-                     "; "+combined,
-            "fonte":" | ".join(docs)+" | archivio: "+str(first["archivio_url"]),
+            "testo":(
+                "CANDIDATO DOCUMENTALE, NON AUTORIZZAZIONE ACCERTATA: "
+                "verificare insieme patologia, medicinale e specifico centro. "
+                "Estratti selezionati, non lista esaustiva. "
+                "Documento: "+str(first.get("nome_file") or "")+
+                "; farmaco candidato: "+str(first.get("farmaco_candidato") or "")+
+                "; "+" ".join(passages)
+            ),
+            "fonte":sources[0],
+            "fonti":sources,
         })
     return found[:limit]
