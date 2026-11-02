@@ -115,7 +115,7 @@ class SnapshotOnlineTests(unittest.TestCase):
                                     medicine+": pagina rilevante non inviata alla sintesi")
                     self.assertTrue(any("Federico" in content
                                         for content in pages_with_expected),
-                                    medicine+": manca il centro nel passaggio inviato")
+                                    medicine+": manca il centro nel passaggio inviato; "+repr(pages_with_expected)[:2500])
 
                 print("Documenti recuperati per categoria:",len(docs),
                       "documenti consegnati alla sintesi:",len(compact),
