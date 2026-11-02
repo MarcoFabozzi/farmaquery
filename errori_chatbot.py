@@ -16,6 +16,32 @@ class EnginePhaseError(Exception):
         super().__init__(f"{phase}: {self.error_type}")
 
 
+def diagnose_error(exc):
+    """Diagnostica sicura senza messaggi, URL o chiavi del provider."""
+    cause=(exc.__cause__ or exc.original) if isinstance(exc,EnginePhaseError) else exc
+    kind=type(cause).__name__
+    try:
+        http=int(getattr(cause,"status_code",0) or 0)
+    except (TypeError,ValueError):
+        http=0
+    low=kind.casefold()
+    if http==429 or any(word in low for word in ("ratelimit","resourceexhausted","quota")):
+        code="QUOTA"
+    elif http in (401,403) or any(word in low for word in ("authentication","unauthorized","permission")):
+        code="AUTH"
+    elif http==404 or "notfound" in low:
+        code="MODELLO"
+    elif http in (502,503,504) or any(word in low for word in ("timeout","connection","connect")):
+        code="CONNESSIONE"
+    elif http==400 or "badrequest" in low or "invalidrequest" in low:
+        code="RICHIESTA"
+    else:
+        code="ALTRO"
+    return {"codice":code,
+            "fase":exc.phase if isinstance(exc,EnginePhaseError) else "esecuzione",
+            "tipo":kind}
+
+
 def label_error(exc):
     """Restituisce SOLO informazioni diagnostiche sicure, mai str(exc)."""
     cause=(exc.__cause__ or exc.original) if isinstance(exc,EnginePhaseError) else exc
@@ -30,7 +56,7 @@ def label_error(exc):
     except (TypeError,ValueError):
         http_code=0
     if http_code==429 or any(word in low for word in ("ratelimit","resourceexhausted","quota")):
-        message="Gemini ha esaurito la quota di richieste per questo modello."
+        message="Gemini ha raggiunto un limite API (al minuto, ai token o giornaliero). Controlla le quote del modello; non è un errore nella risposta TAG."
         code="QUOTA"
     elif http_code in (401,403) or any(word in low for word in ("authentication","unauthorized","permission")):
         message="La chiave API è rifiutata dal provider. Controlla i Secrets."
