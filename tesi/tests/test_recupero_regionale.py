@@ -84,6 +84,8 @@ class RegionalSemanticRetrievalTests(unittest.TestCase):
         self.assertTrue(all("#p" in r["fonte"] for r in evidence))
         full=evidence_candidates(self.db,question,max_rows=18)
         self.assertTrue(any(x["tipo"]=="REGIONE" for x in full))
+        self.assertTrue(any(x.get("passaggi_sintesi") for x in full),
+                        "I passaggi di verifica vanno propagati al motore")
 
     def test_citazioni_ciascuna_pagina_e_finestre_rilevanti(self):
         self.db.execute("UPDATE pagine SET testo=? "
