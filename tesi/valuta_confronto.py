@@ -38,6 +38,9 @@ def evaluate(benchmark,results,manifest):
                 "nota":"Prima validare risposte gold e PDF; nessuna metrica inventata."}
     manifest=json.loads(Path(manifest).read_text(encoding="utf-8"))
     digest=manifest["sha256_sqlite"]
+    if any(row.get("snapshot_sha256") and row["snapshot_sha256"] != digest
+           for row in gold.values()):
+        raise ValueError("Le risposte gold appartengono a uno snapshot differente")
     with Path(results).open(encoding="utf-8-sig",newline="") as fh:
         responses=list(csv.DictReader(fh,delimiter=";"))
     required={"id","metodo","modello","snapshot_sha256","risposta","fonti","secondi",
