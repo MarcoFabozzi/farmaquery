@@ -182,6 +182,15 @@ def assistant_dialog():
                         st.caption(f'{item["secondi"]:.1f} s · {method}')
                     if method=="TAG" and item.get("versione_tag"):
                         st.caption("TAG "+str(item["versione_tag"])+" · fonte "+str(item.get("verifica_contesto","?"))+" · AIC "+str(item.get("aic_nel_testo_integrale",0)))
+                    if method=="TAG" and item.get("versione_tag"):
+                        st.caption("TAG: "+str(item["versione_tag"])+
+                                   " · testo originale: "+
+                                   str(item.get("verifica_contesto","n.d."))+
+                                   " · AIC nell'atto: "+
+                                   str(item.get("aic_nel_testo_integrale","n.d."))+
+                                   " · revisione LLM: "+
+                                   ("sì" if item.get("revisione_completezza_llm")
+                                    else "no"))
                     if method=="TAG" and item.get("modalita_selezione"):
                         st.caption(
                             "Selezione TAG: "+str(item["modalita_selezione"])+
@@ -212,6 +221,10 @@ def assistant_dialog():
                         "sql_iniziale":result.get("sql_iniziale"),
                         "sql_tentativi":result.get("sql_tentativi"),
                         "secondi":round(time.monotonic()-start,2),
+                        "versione_tag":result.get("versione_tag"),
+                        "verifica_contesto":result.get("verifica_contesto"),
+                        "aic_nel_testo_integrale":result.get("aic_nel_testo_integrale"),
+                        "revisione_completezza_llm":result.get("revisione_completezza_llm"),
                         "modalita_selezione":result.get("modalita_selezione"),
                         "righe_recuperate":result.get("righe_recuperate"),
                         "righe_sem_filter":result.get("righe_sem_filter"),

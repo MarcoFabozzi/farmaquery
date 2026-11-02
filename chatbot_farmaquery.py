@@ -29,8 +29,11 @@ REQUIRED=(
 def snapshot_version(root=ROOT):
     """La cache Streamlit si invalida quando cambia una fonte ufficiale."""
     base=Path(root)
+    relevant=REQUIRED+("tesi/pilota_tag_vs_sql.py",
+                       "tesi/contesto_integrale.py",
+                       "tesi/verifica_completezza_tag.py")
     return tuple((name, (base/name).stat().st_mtime_ns,
-                  (base/name).stat().st_size) for name in REQUIRED)
+                  (base/name).stat().st_size) for name in relevant)
 
 
 def prepare_snapshot(root=ROOT):
