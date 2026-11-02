@@ -684,9 +684,12 @@ def tag(db,question,model):
         # Un controllo deterministico sulla stringa sorgente non produce
         # risposte: rende però impossibile pubblicare "tutti gli AIC"
         # quando il testo effettivamente contiene altri identificativi.
-        answer+=("\n\nControllo di completezza: la risposta non riporta "
-                 "tutti gli identificativi AIC presenti nell'atto "
-                 "consultato; l'elenco deve essere verificato.")
+        answer+=("\n\nControllo documentale automatico: la sintesi LLM "
+                 "ha omesso "+str(len(missing_aic))+" identificativi AIC "
+                 "presenti nel testo dell'atto. Identificativi omessi: "
+                 +", ".join(missing_aic)+". L'elenco prodotto dal modello "
+                 "NON è completo; verificare le confezioni associate "
+                 "all'articolo originale.")
     if integral and not integral_complete:
         answer+=("\n\nAvvertenza: la sezione richiesta supera il "
                  "limite di contesto, pertanto la lista non può essere "
