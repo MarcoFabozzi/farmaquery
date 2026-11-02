@@ -98,6 +98,25 @@ class SnapshotOnlineTests(unittest.TestCase):
                 self.assertIn("ULTOMIRIS",combined,
                               "ULTOMIRIS perso tra recupero e sintesi TAG")
                 self.assertTrue(all(d.get("passaggi") for d in compact))
+                # GOLD su PDF originali già verificati: la pagina che
+                # identifica la sezione miastenia e il Federico II deve
+                # comparire negli estratti destinati a Gemini.
+                for medicine,page in (("ULTOMIRIS",3),("SOLIRIS",4)):
+                    docs_for_med=[
+                        item for item in compact
+                        if medicine in item["documento_e_medicinale_candidato"].upper()
+                    ]
+                    self.assertTrue(docs_for_med,medicine+" non recuperato")
+                    pages_with_expected=[
+                        p["estratto"] for item in docs_for_med
+                        for p in item["passaggi"] if p["pagina"]==page
+                    ]
+                    self.assertTrue(pages_with_expected,
+                                    medicine+": pagina rilevante non inviata alla sintesi")
+                    self.assertTrue(any("Federico" in content
+                                        for content in pages_with_expected),
+                                    medicine+": manca il centro nel passaggio inviato")
+
                 print("Documenti recuperati per categoria:",len(docs),
                       "documenti consegnati alla sintesi:",len(compact),
                       "documenti nello snapshot:",docs[0]["copertura_documenti"])
