@@ -1,0 +1,109 @@
+{
+  "schema": 1,
+  "origine": "REVISIONE_MANUALE_PDF",
+  "data": "2026-11-02",
+  "snapshot_sha256": "bb43ae4b00b6d581f4209ad83cbf9945054628868e6a52c59470ad32cada9a53",
+  "validazioni_precedenti": 5,
+  "nuovi_gold": 7,
+  "totale_validato": 12,
+  "non_validati": 24,
+  "validazioni": [
+    {
+      "id": "DIR-02",
+      "medicinale": "ULTOMIRIS",
+      "pdf": "ptr-note-regionali-11.12.24 ore 16.40/ULTOMIRIS neurolielite e miastenia.pdf",
+      "sha256_pdf": "a24fa26fd79e45c495afe9fb1888d2ff55254ad2126325bf9527e1973a432342",
+      "refs": [
+        "ptr-note-regionali-11.12.24 ore 16.40/ULTOMIRIS neurolielite e miastenia.pdf#p2",
+        "ptr-note-regionali-11.12.24 ore 16.40/ULTOMIRIS neurolielite e miastenia.pdf#p3"
+      ],
+      "risposta_gold": "La nota PG/2024/0427490 distingue i centri Neurologia/Sclerosi Multipla per NMOSD AQP4+ (AOU Federico II, Vanvitelli, Ruggi d'Aragona, AORN Cardarelli, San Pio, Sant'Anna e San Sebastiano, Moscati, Dei Colli-CTO, e specifici P.O. ASL Napoli 1, Salerno e Caserta; p.2) dai presidi di riferimento per MGg refrattaria AChR+ RFG101 (Cardarelli, Dei Colli-Monaldi, Moscati, Santobono-Pausilipon, Ruggi, Vanvitelli, Federico II, Sant'Anna e San Sebastiano e San Pio-Rummo; p.3). I medici devono essere abilitati sui registri/SINFONIA.",
+      "stato": "VALIDATO_SU_PDF_ORIGINALE",
+      "nota": "Verifica della nota storica, non della situazione prescrittiva attuale. Le pagine sono state esaminate visivamente e il PDF è identico per SHA256 a quello dello snapshot online."
+    },
+    {
+      "id": "DIR-05",
+      "medicinale": "AMVUTTRA",
+      "pdf": "note-regionali-2026 22.09.2026/07-2026/AMVUTTRA Prot.N.0634617-2026.pdf",
+      "sha256_pdf": "df776281364ffdf35081520c815780f83f64b33f3d1a7e110e850225712cc415",
+      "refs": [
+        "note-regionali-2026 22.09.2026/07-2026/AMVUTTRA Prot.N.0634617-2026.pdf#p1",
+        "note-regionali-2026 22.09.2026/07-2026/AMVUTTRA Prot.N.0634617-2026.pdf#p2",
+        "note-regionali-2026 22.09.2026/07-2026/AMVUTTRA Prot.N.0634617-2026.pdf#p3"
+      ],
+      "risposta_gold": "La nota 0634617/2026 distingue i centri per ATTR-CM (p.2, RCG130): AO Dei Colli, AOU Ruggi, AORN Moscati, AO Sant'Anna e San Sebastiano, AOU Federico II e AORN Cardarelli; per polineuropatia ereditaria (p.3, RFG060): AOU Federico II, AOU Vanvitelli e AO Dei Colli. La tabella 3 elenca invece i centri coinvolti nella migrazione dei piani terapeutici, non una terza lista per la nuova indicazione.",
+      "stato": "VALIDATO_SU_PDF_ORIGINALE",
+      "nota": "Verifica della nota storica, non della situazione prescrittiva attuale. Le pagine sono state esaminate visivamente e il PDF è identico per SHA256 a quello dello snapshot online."
+    },
+    {
+      "id": "DIR-07",
+      "medicinale": "SOLIRIS",
+      "pdf": "PTR_Note regionali 2022/SOLIRIS.pdf",
+      "sha256_pdf": "caf609adb5ec0e3cdd553c8de9b85f125566cdda998fcb215717af4dd413c44c",
+      "refs": [
+        "PTR_Note regionali 2022/SOLIRIS.pdf#p1",
+        "PTR_Note regionali 2022/SOLIRIS.pdf#p3",
+        "PTR_Note regionali 2022/SOLIRIS.pdf#p4",
+        "PTR_Note regionali 2022/SOLIRIS.pdf#p5"
+      ],
+      "risposta_gold": "La nota 0499252 del 12/10/2022 indica per NMOSD le U.O. Neurologia dei centri per sclerosi multipla di Federico II, Vanvitelli, Ruggi, Cardarelli, San Pio, Sant'Anna e San Sebastiano, Moscati, Dei Colli-CTO e i P.O. delle ASL espressamente elencati a p.3; per MGg refrattaria i presidi RFG101 della tabella a p.4: Cardarelli, Centro Clinico NEMO, Dei Colli-Monaldi, Moscati, Santobono-Pausilipon, Ruggi, Vanvitelli, Federico II e Sant'Anna e San Sebastiano. La rettifica p.5 modifica la rendicontazione e non i centri.",
+      "stato": "VALIDATO_SU_PDF_ORIGINALE",
+      "nota": "Verifica della nota storica, non della situazione prescrittiva attuale. Le pagine sono state esaminate visivamente e il PDF è identico per SHA256 a quello dello snapshot online."
+    },
+    {
+      "id": "DIR-09",
+      "medicinale": "KEYTRUDA 2025",
+      "pdf": "note 2025 - 18.12.2025/KEYTRUDA 2025.pdf",
+      "sha256_pdf": "ab2c97102351c65cad113a5ee9366f078266a6ba6fdc56cb999ff8a2c10f30cb",
+      "refs": [
+        "note 2025 - 18.12.2025/KEYTRUDA 2025.pdf#p2",
+        "note 2025 - 18.12.2025/KEYTRUDA 2025.pdf#p3",
+        "note 2025 - 18.12.2025/KEYTRUDA 2025.pdf#p4"
+      ],
+      "risposta_gold": "La nota PG/2025/0153576 individua le U.O. Oncologia dei centri aderenti ai GOM specifici: GOM stomaco per adenocarcinoma gastrico/giunzione gastroesofagea HER2+ e HER2-, GOM polmone per trattamento neoadiuvante-adiuvante NSCLC, GOM colangiocarcinoma e GOM rene per adiuvante renale. Le liste a pp.3-4 includono Cardarelli, Dei Colli, San Pio, Moscati, Sant'Anna e San Sebastiano, AOU Vanvitelli, Federico II, Ruggi, Pascale e P.O. ASL secondo il rispettivo GOM; non si presume un'autorizzazione generale trasversale alle indicazioni.",
+      "stato": "VALIDATO_SU_PDF_ORIGINALE",
+      "nota": "Verifica della nota storica, non della situazione prescrittiva attuale. Le pagine sono state esaminate visivamente e il PDF è identico per SHA256 a quello dello snapshot online."
+    },
+    {
+      "id": "SEM-07",
+      "medicinale": "KEYTRUDA 2026",
+      "pdf": "note-regionali-2026 22.09.2026/KEYTRUDA  Prot.N.0116205-2026.pdf",
+      "sha256_pdf": "bbc98deadaf3a06552274b5d8578499467ad58f944fd10d1ea76e6659f614171",
+      "refs": [
+        "note-regionali-2026 22.09.2026/KEYTRUDA  Prot.N.0116205-2026.pdf#p1",
+        "note-regionali-2026 22.09.2026/KEYTRUDA  Prot.N.0116205-2026.pdf#p2",
+        "note-regionali-2026 22.09.2026/KEYTRUDA  Prot.N.0116205-2026.pdf#p3",
+        "note-regionali-2026 22.09.2026/KEYTRUDA  Prot.N.0116205-2026.pdf#p4"
+      ],
+      "risposta_gold": "La nota 0116205/2026 descrive pembrolizumab con enfortumab vedotin in prima linea per carcinoma uroteliale non resecabile/metastatico, con carboplatino e paclitaxel per carcinoma endometriale primario avanzato/ricorrente dMMR e con chemioradioterapia per carcinoma della cervice localmente avanzato FIGO III-IVA senza precedente trattamento definitivo. Classe H/OSP. Prescrizione presso U.O. Oncologia dei GOM urotelio, endometrio e cervice uterina della ROC pertinenti alla specifica indicazione, registri AIFA/tracciabilità obbligatori.",
+      "stato": "VALIDATO_SU_PDF_ORIGINALE",
+      "nota": "Verifica della nota storica, non della situazione prescrittiva attuale. Le pagine sono state esaminate visivamente e il PDF è identico per SHA256 a quello dello snapshot online."
+    },
+    {
+      "id": "SEM-08",
+      "medicinale": "RYBREVANT",
+      "pdf": "note-regionali-2026 22.09.2026/RYBREVANT  Prot.N.0403588-2026.pdf",
+      "sha256_pdf": "786d2f50e54f97fde60e01432a3efa0a176c40e2ce326e9cffb84a1585770468",
+      "refs": [
+        "note-regionali-2026 22.09.2026/RYBREVANT  Prot.N.0403588-2026.pdf#p1",
+        "note-regionali-2026 22.09.2026/RYBREVANT  Prot.N.0403588-2026.pdf#p2",
+        "note-regionali-2026 22.09.2026/RYBREVANT  Prot.N.0403588-2026.pdf#p3"
+      ],
+      "risposta_gold": "La nota 0403588/2026 descrive tre nuove indicazioni NSCLC avanzato EGFR: prima linea ex20 con carboplatino/pemetrexed solo EV; dopo EGFR-TKI per del19/L858R con carboplatino/pemetrexed solo EV; prima linea del19/L858R con lazertinib EV o SC. Ricorda anche monoterapia preesistente ex20 dopo platino. Classe H/OSP; registro RYBREVANT I LINEA per ex20. U.O. Oncologia dei GOM polmone già autorizzate/abilitate, secondo la nota p.3.",
+      "stato": "VALIDATO_SU_PDF_ORIGINALE",
+      "nota": "Verifica della nota storica, non della situazione prescrittiva attuale. Le pagine sono state esaminate visivamente e il PDF è identico per SHA256 a quello dello snapshot online."
+    },
+    {
+      "id": "RIM-04",
+      "medicinale": "AMVUTTRA — rimando",
+      "pdf": "note-regionali-2026 22.09.2026/07-2026/AMVUTTRA Prot.N.0634617-2026.pdf",
+      "sha256_pdf": "df776281364ffdf35081520c815780f83f64b33f3d1a7e110e850225712cc415",
+      "refs": [
+        "note-regionali-2026 22.09.2026/07-2026/AMVUTTRA Prot.N.0634617-2026.pdf#p3"
+      ],
+      "risposta_gold": "La nota AMVUTTRA 0634617/2026 richiama la nota 0493819 del 16/10/2023 e qualifica come novativa la nuova disciplina di somministrazione e rendicontazione: File F canale E ambulatoriale, canale D domiciliare. È una modifica puntuale di tali modalità, non l'abrogazione integrale della nota precedente. Il testo integrale della nota precedente non è stato confrontato.",
+      "stato": "VALIDATO_SU_PDF_ORIGINALE",
+      "nota": "Verifica della nota storica, non della situazione prescrittiva attuale. Le pagine sono state esaminate visivamente e il PDF è identico per SHA256 a quello dello snapshot online."
+    }
+  ]
+}
