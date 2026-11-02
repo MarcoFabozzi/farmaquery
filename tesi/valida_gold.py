@@ -15,6 +15,7 @@ STATI={"VALIDATO","DA_VERIFICARE","SCARTATO"}
 REF=re.compile(r"^(.*?)#p([1-9]\d*)$")
 REF_EMA=re.compile(r"^EMA:(.+)$")
 REF_AIFA=re.compile(r"^AIFA:([0-9]{9})$")
+REF_GU=re.compile(r"^GU:([0-9]{2}[A-Z][0-9]{5})(?::(atto|allegato:[0-9a-f]{16})#s([1-9][0-9]*))?$")
 
 
 def read(path):
@@ -57,7 +58,7 @@ def inspect(rows,connection):
             result["errori"].append(key+": motivazione del revisore mancante")
             continue
         refs=[part.strip() for part in rec["fonti_gold"].split("|") if part.strip()]
-        is_negative=category=="NEGATIVE"
+        is_negative=category in ("NEGATIVE","ASSENZA_DOCUMENTALE")
         if not is_negative and not refs:
             result["errori"].append(key+": nessuna citazione verificabile (EMA:ID, AIFA:AIC o file.pdf#pN)")
             continue
@@ -70,6 +71,7 @@ def inspect(rows,connection):
             ema=REF_EMA.fullmatch(ref)
             aifa=REF_AIFA.fullmatch(ref)
             regional=REF.fullmatch(ref)
+            gu=REF_GU.fullmatch(ref)
             if ema:
                 exists=connection.execute(
                     "SELECT 1 FROM ema_medicinali WHERE ema_id=?",
@@ -88,6 +90,27 @@ def inspect(rows,connection):
                     result["errori"].append(key+": AIC assente: "+ref)
                     bad=True
                 continue
+            if gu:
+                codice = gu.group(1)
+                document = gu.group(2)
+                segment = gu.group(3)
+                if document:
+                    exists = connection.execute(
+                        "SELECT 1 FROM gu_segmenti s "
+                        "JOIN gu_documenti d ON d.documento_id=s.documento_id "
+                        "WHERE d.codice=? AND d.documento_id=? "
+                        "AND s.numero_segmento=?",
+                        (codice, codice + ":" + document, int(segment))
+                    ).fetchone()
+                else:
+                    exists = connection.execute(
+                        "SELECT 1 FROM gu_atti WHERE codice=?", (codice,)
+                    ).fetchone()
+                cited.add("GU")
+                if not exists:
+                    result["errori"].append(key+": documento GU assente: "+ref)
+                    bad=True
+                continue
             if not regional:
                 result["errori"].append(key+": formato citazione non valido: "+ref)
                 bad=True
@@ -101,8 +124,8 @@ def inspect(rows,connection):
             if row is None or not row[0].strip() or row[1] not in ("TESTO","OCR"):
                 result["errori"].append(key+": pagina non trovata/non leggibile: "+ref)
                 bad=True
-        if state=="VALIDATO" and not is_negative and rec.get("fonti_previste"):
-            needed=set(rec["fonti_previste"].split("+"))
+        if state=="VALIDATO" and not is_negative and (rec.get("fonti_richieste") or rec.get("fonti_previste")):
+            needed=set((rec.get("fonti_richieste") or rec.get("fonti_previste")).split("+"))
             if not needed.issubset(cited):
                 result["errori"].append(key+": citazioni mancanti per: "+
                                          ", ".join(sorted(needed-cited)))
