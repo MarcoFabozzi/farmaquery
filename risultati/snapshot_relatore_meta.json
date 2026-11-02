@@ -1,0 +1,28 @@
+{
+  "raccolta": "snapshot_sperimentale_relatore",
+  "data_congelamento": "2026-11-02",
+  "note_zip": {
+    "filename": "Note_regionali_PDF 1(1).zip",
+    "sha256": "8e444cb36f94ff0b73518ace3003f43eaf847f7e658da9b3913ac1d0e9a308a5",
+    "documenti_pdf": 209,
+    "pagine": 580,
+    "pagine_senza_testo_sufficiente": 294,
+    "per_anno": {
+      "2022": 41,
+      "2023": 48,
+      "2024": 38,
+      "2025": 43,
+      "2026": 39
+    }
+  },
+  "strutture_aifa": {
+    "filename": "Strutture_registri_regioni_2026-09-14.csv",
+    "sha256": "f4b1ec6f3123b441e240080867b37dd4ba19f2b54cd5b37b82fb869bffa155da",
+    "righe_totali": 161453,
+    "righe_campania": 10527,
+    "medicinali_distinti_campania": 260,
+    "strutture_distinte_campania": 312,
+    "riferimento": "2026-09-14"
+  },
+  "avvertenza": "I PDF e il CSV originali forniti dal relatore NON vengono sostituiti dai successivi download automatici. Il confronto TAG vs Text-to-SQL usa lo snapshot di questi hash. Gli archivi annuali del portale regionale possono differire."
+}
