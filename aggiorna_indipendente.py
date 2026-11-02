@@ -239,6 +239,13 @@ def run(source, db_path=DEFAULT_DB):
                 raise ValueError('Indice completo A/H non generato')
             leggi_indice(indice)
             shutil.copy2(indice,db_path.parent/INDICE_FILE)
+        if source=='aifa_cnn':
+            from classi_complementari import CNN_FILE, leggi_indice_cnn
+            indice=work/CNN_FILE
+            if not indice.is_file():
+                raise ValueError('Indice storico C(nn) non generato')
+            leggi_indice_cnn(indice)
+            shutil.copy2(indice,db_path.parent/CNN_FILE)
         os.replace(staged,db_path)
         record={'fonte':source,'esito':'OK','ultimo_successo_utc':now(),
                 'precedente_successo_utc':old.get('ultimo_successo_utc'),
