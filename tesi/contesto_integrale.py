@@ -17,7 +17,10 @@ CODE_RE=re.compile(r"\b\d{2}[A-Za-z]\d{5}\b")
 def richiede_sezione_completa(question):
     q=question.casefold()
     return bool(re.search(
-        r"\b(tutti|tutte|complet[oaie]|quante|quanti|numero\s+di|"
+        r"\b(tutti|tutte|complet[oaie]|"
+        r"quante\s+(?:confezioni|penne)|"
+        r"quanti\s+(?:centri|aic|farmaci|medicinali)|"
+        r"numero\s+d(?:i|elle?)\s+(?:confezioni|centri|aic)|"
         r"tabella\s*\d+|articolo\s*\d+|art\.\s*\d+|"
         r"quali\s+protocolli|quale\s+precedente\s+nota|"
         r"annulla\s+e\s+sostituisce)\b",q))
