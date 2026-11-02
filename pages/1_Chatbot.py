@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import hmac
 import sqlite3
 import sys
 import time
@@ -49,6 +50,29 @@ except (FileNotFoundError,RuntimeError):
     keys={}
 model=model_from_settings(keys)
 can_call=enable_server_key(model,keys)
+secret_password=str(keys.get("FARMAQUERY_CHAT_PASSWORD") or "").strip()
+if can_call and not secret_password:
+    st.warning("Per proteggere la quota API, configura anche "
+               "FARMAQUERY_CHAT_PASSWORD nei segreti di Streamlit Cloud.")
+    can_call=False
+elif can_call:
+    if not st.session_state.get("farmaquery_chat_authorized",False):
+        candidate=st.text_input("Password di accesso al chatbot",
+                                type="password",key="farmaquery_chat_password_input")
+        if st.button("Accedi al chatbot"):
+            if hmac.compare_digest(candidate,secret_password):
+                st.session_state["farmaquery_chat_authorized"]=True
+                st.rerun()
+            else:
+                st.error("Password non corretta.")
+    can_call=bool(st.session_state.get("farmaquery_chat_authorized",False))
+
+if "farmaquery_chat_count" not in st.session_state:
+    st.session_state["farmaquery_chat_count"]=0
+if st.session_state["farmaquery_chat_count"]>=12:
+    st.info("Limite della sessione di prova raggiunto (12 domande). "
+            "La quota protegge le chiamate al modello.")
+    can_call=False
 
 @st.cache_resource(show_spinner="Preparazione delle fonti aggiornate...",max_entries=2)
 def cached_db(version):
@@ -93,6 +117,7 @@ new_question=st.chat_input(
 )
 
 if new_question:
+    st.session_state["farmaquery_chat_count"]+=1
     history.append({"role":"user","text":new_question})
     with st.chat_message("user"):
         st.markdown(new_question)
