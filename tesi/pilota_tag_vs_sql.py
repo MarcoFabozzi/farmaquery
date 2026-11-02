@@ -15,6 +15,8 @@ import re
 import sqlite3
 import time
 
+from errori_chatbot import EnginePhaseError
+
 
 SCHEMA = """Tabelle disponibili (SQLite, SOLA LETTURA):
 aifa_confezioni(aic, nome, principio_attivo, descrizione, classe_a_h_snapshot, classe_a_h_data)
@@ -150,13 +152,23 @@ def evidence_candidates(db,question,max_rows=18):
     return out[:max_rows]
 
 
+def _in_phase(phase,func,*args,**kwargs):
+    try:
+        return func(*args,**kwargs)
+    except EnginePhaseError:
+        raise
+    except Exception as exc:
+        raise EnginePhaseError(phase,exc) from exc
+
+
 def ask(model,system,payload):
     """LiteLLM con restituzione di token e costo quando disponibili."""
     from litellm import completion
-    result=completion(model=model,temperature=0,messages=[
-        {"role":"system","content":system},
-        {"role":"user","content":json.dumps(payload,ensure_ascii=False,default=str)}
-    ])
+    result=_in_phase("connessione LLM",completion,model=model,temperature=0,
+        messages=[
+            {"role":"system","content":system},
+            {"role":"user","content":json.dumps(payload,ensure_ascii=False,default=str)}
+        ],timeout=40,num_retries=0)
     usage=getattr(result,"usage",None)
     data={
         "token_input":getattr(usage,"prompt_tokens",None),
@@ -189,20 +201,23 @@ def tag(db,question,model):
     lm=LM(model=model,max_batch_size=4)
     lotus.settings.configure(lm=lm,enable_cache=False)
     frame=pd.DataFrame(rows)
-    selected=frame.sem_filter(
+    selected=_in_phase("selezione TAG",lambda: frame.sem_filter(
         "Il contenuto di {testo} fornisce informazioni pertinenti alla domanda "
         +json.dumps(question,ensure_ascii=False)
         +". I riferimenti a strutture nei registri AIFA non equivalgono "
          "automaticamente a centri prescrittori autorizzati nella regione."
-    ).head(8)
-    # LOTUS registra token e costo delle chiamate sem_filter; non ignorarli.
-    selection_usage=lm.stats.physical_usage
+    ).head(8))
+    # L'assenza delle statistiche non deve annullare una risposta valida.
+    selection_usage=getattr(getattr(lm,"stats",None),"physical_usage",None)
+    prompt_tokens=getattr(selection_usage,"prompt_tokens",None)
+    completion_tokens=getattr(selection_usage,"completion_tokens",None)
+    selection_cost=getattr(selection_usage,"total_cost",None)
     if selected.empty:
         return {"risposta":"Informazione non documentata nello snapshot consultato.",
                 "fonti":[],"stato":"NESSUNA_EVIDENZA",
-                "token_input":selection_usage.prompt_tokens,
-                "token_output":selection_usage.completion_tokens,
-                "costo_usd":selection_usage.total_cost,"costo_completo":True}
+                "token_input":prompt_tokens,
+                "token_output":completion_tokens,
+                "costo_usd":selection_cost,"costo_completo":selection_cost is not None}
     evidence=selected[["tipo","testo","fonte"]].to_dict("records")
     answer,usage=ask(model,"Rispondi in italiano esclusivamente dalle evidenze. "
         "Distingui autorizzazione europea EMA, classe A/H di una confezione AIFA "
@@ -211,12 +226,12 @@ def tag(db,question,model):
         "Non dichiarare un centro autorizzato soltanto dal registro AIFA. "
         "Indica le fonti; se mancano, scrivi 'non documentato nello snapshot'.",
         {"domanda":question,"evidenze":evidence})
-    input_tokens=(selection_usage.prompt_tokens+usage["token_input"]
-                  if usage["token_input"] is not None else None)
-    output_tokens=(selection_usage.completion_tokens+usage["token_output"]
-                   if usage["token_output"] is not None else None)
-    full_cost=(selection_usage.total_cost+usage["costo_usd"]
-               if usage["costo_usd"] is not None else None)
+    input_tokens=(prompt_tokens+usage["token_input"]
+                  if prompt_tokens is not None and usage["token_input"] is not None else None)
+    output_tokens=(completion_tokens+usage["token_output"]
+                   if completion_tokens is not None and usage["token_output"] is not None else None)
+    full_cost=(selection_cost+usage["costo_usd"]
+               if selection_cost is not None and usage["costo_usd"] is not None else None)
     return {"risposta":answer,"fonti":list(dict.fromkeys(x["fonte"] for x in evidence)),
             "stato":"OK","token_input":input_tokens,
             "token_output":output_tokens,"costo_usd":full_cost,
@@ -282,7 +297,7 @@ def _sql_sources(db,rows):
 
 
 def sql_method(db,question,model):
-    generated,first=ask(model,
+    generated,first=_in_phase("generazione SQL",ask,model,
         "Genera SOLO UNA query SELECT SQLite eseguibile, senza Markdown. "
         "Usa esclusivamente le tabelle documentate; non generare DDL, DML, "
         "PRAGMA né più istruzioni. LIMIT 30. Per citazioni includi "
@@ -290,17 +305,17 @@ def sql_method(db,question,model):
         "e archivio_url o fonte_url quando pertinenti. "
         "Per le classi usa: CASE WHEN classe_a_h_snapshot IN ('A','H') THEN classe_a_h_snapshot ELSE 'C' END AS classe. Non aggiungere qualifiche alla classe.",
         {"schema":SCHEMA,"domanda":question})
-    sql=validate_sql(generated)
+    sql=_in_phase("validazione SQL",validate_sql,generated)
     start=time.monotonic()
     db.set_progress_handler(lambda:1 if time.monotonic()-start>12 else 0,10000)
     try:
-        raw=db.execute(sql).fetchmany(31)
+        raw=_in_phase("esecuzione SQL",lambda:db.execute(sql).fetchmany(31))
         rows=[{key:(str(value)[:2500] if value is not None else None)
                for key,value in dict(r).items()} for r in raw[:30]]
     finally:
         db.set_progress_handler(None,0)
     citations=_sql_sources(db,rows)
-    answer,second=ask(model,
+    answer,second=_in_phase("sintesi SQL",ask,model,
         "Rispondi in italiano SOLO in base alle righe SELECT e alle fonti. "
         "Non interpretare un dato AIFA/EMA come autorizzazione regionale. "
         "Se la classe_a_h_snapshot è NULL, indica classe C. Non distinguere fra C e altri sottotipi nelle risposte. "
