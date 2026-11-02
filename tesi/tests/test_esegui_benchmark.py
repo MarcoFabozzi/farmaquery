@@ -138,6 +138,22 @@ class ExperimentsTests(unittest.TestCase):
         self.assertEqual(rows[0]["stato"],"QUOTA")
         self.assertEqual(rows[0]["fase_errore"],"selezione TAG")
         self.assertNotIn("CHIAVE_MOCK",str(rows))
+        # Il limite di quota non deve risultare completato alla ripresa.
+        def resumed_tag(db,question,model):
+            invoked["tag"]+=1
+            return {"stato":"OK","risposta":"Risposta dopo ripristino",
+                    "modalita_selezione":"raggruppata",
+                    "righe_recuperate":8,"righe_sem_filter":3,
+                    "chiamate_semantiche_stimate":3,"chiamate_llm_stimate":4}
+        def resumed_sql(db,question,model):
+            invoked["sql"]+=1
+            return {"stato":"OK","risposta":"SQL valido"}
+        continued=execute(self.db,self.manifest,self.questions,self.out,
+                          "mock-model",max_questions=2,confirm=True,resume=True,
+                          tag_fn=resumed_tag,sql_fn=resumed_sql)
+        self.assertEqual(continued["esito"],"ESECUZIONE_COMPLETATA")
+        self.assertEqual(invoked["tag"],3)
+        self.assertEqual(invoked["sql"],2)
 
     def test_csv_comma_e_sql_sicuro(self):
         comma=self.path/"comma.csv"
