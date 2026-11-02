@@ -41,21 +41,26 @@ def render_assistant():
     .st-key-farmaquery_floating {
        position:fixed!important;
        right:22px!important;
-       bottom:64px!important;
-       width:66px!important;
+       bottom:72px!important;
+       width:90px!important;
+       max-width:90px!important;
        z-index:99999!important;
        padding:0!important;
     }
-    .st-key-farmaquery_floating div[data-testid="stPopover"] > button {
-       width:62px!important;
-       height:62px!important;
-       min-height:62px!important;
-       border-radius:50%!important;
+    .st-key-farmaquery_floating div[data-testid="stPopover"] > button,
+    .st-key-farmaquery_floating button[data-testid="stPopoverButton"] {
+       width:84px!important;
+       min-width:84px!important;
+       max-width:84px!important;
+       height:84px!important;
+       min-height:84px!important;
+       border-radius:9999px!important;
+       aspect-ratio:1/1!important;
        background:#116b70!important;
        border:2px solid #ffffff!important;
        box-shadow:0 7px 26px rgba(0,0,0,.22)!important;
        color:white!important;
-       font-size:1.6rem!important;
+       font-size:2.0rem!important;
        padding:0!important;
     }
     .st-key-farmaquery_floating div[data-testid="stPopover"] > button:hover {
@@ -63,7 +68,12 @@ def render_assistant():
        transform:translateY(-2px);
     }
     @media(max-width:650px) {
-       .st-key-farmaquery_floating {right:13px!important;bottom:48px!important;}
+       .st-key-farmaquery_floating {right:13px!important;bottom:56px!important;width:82px!important;max-width:82px!important;}
+       .st-key-farmaquery_floating div[data-testid="stPopover"] > button,
+       .st-key-farmaquery_floating button[data-testid="stPopoverButton"] {
+          width:78px!important;min-width:78px!important;max-width:78px!important;
+          height:78px!important;min-height:78px!important;border-radius:9999px!important;
+       }
     }
     </style>""",unsafe_allow_html=True)
 
@@ -126,36 +136,47 @@ def render_assistant():
 
             # Nessuna lista di esempi e nessuna domanda inserita nel codice.
             with st.form("farmaquery_float_form_"+method,clear_on_submit=True):
+                # Il campo resta SEMPRE scrivibile: nessuna impostazione API
+                # o quota deve disabilitare la digitazione.
                 question=st.text_input("La tua domanda",max_chars=700,
                                        placeholder="Scrivi qui...",
-                                       disabled=(not has_key or remaining<=0))
+                                       disabled=False)
                 sent=st.form_submit_button("Invia",type="primary",
-                                            disabled=(not has_key or remaining<=0),
                                             use_container_width=True)
 
             if sent and question.strip():
-                st.session_state["farmaquery_chat_count"]+=1
                 history.append({"role":"user","text":question.strip()})
                 start=time.monotonic()
-                with st.spinner("Sto consultando le fonti..."):
-                    try:
-                        db,manifest=_cached_snapshot(snapshot_version())
-                        result=answer_question(db,question,method,model)
-                    except (ImportError,ModuleNotFoundError):
-                        result={"risposta":"Il modulo di risposta non è disponibile "
-                                "nell'ambiente del server.","fonti":[]}
-                    except (OSError,ValueError,sqlite3.DatabaseError) as err:
-                        result={"risposta":"Non riesco ad accedere al database "
-                                f"({type(err).__name__}).","fonti":[]}
-                    except Exception as err:
-                        msg=str(err).lower()
-                        if "429" in msg or "resource_exhausted" in msg or "rate limit" in msg:
-                            info="La quota del modello è esaurita. Riprova più tardi."
-                        elif "api key" in msg or "401" in msg or "authentication" in msg:
-                            info="La chiave API del modello deve essere controllata."
-                        else:
-                            info="Non è stato possibile ottenere una risposta dal modello."
-                        result={"risposta":info,"fonti":[]}
+                if not has_key:
+                    result={"risposta":"La domanda è stata ricevuta, ma il modello non "
+                            "è ancora collegato. Controlla i Secrets sul server: "
+                            "GEMINI_API_KEY e FARMAQUERY_LLM_MODEL.","fonti":[]}
+                elif remaining<=0:
+                    result={"risposta":"Hai raggiunto il limite di richieste di "
+                            "questa sessione. Il campo resta disponibile, ma "
+                            "per altre risposte serve una nuova sessione.",
+                            "fonti":[]}
+                else:
+                    st.session_state["farmaquery_chat_count"]+=1
+                    with st.spinner("Sto consultando le fonti..."):
+                        try:
+                            db,manifest=_cached_snapshot(snapshot_version())
+                            result=answer_question(db,question,method,model)
+                        except (ImportError,ModuleNotFoundError):
+                            result={"risposta":"Il modulo di risposta non è disponibile "
+                                    "nell'ambiente del server.","fonti":[]}
+                        except (OSError,ValueError,sqlite3.DatabaseError) as err:
+                            result={"risposta":"Non riesco ad accedere al database "
+                                    f"({type(err).__name__}).","fonti":[]}
+                        except Exception as err:
+                            msg=str(err).lower()
+                            if "429" in msg or "resource_exhausted" in msg or "rate limit" in msg:
+                                info="La quota del modello è esaurita. Riprova più tardi."
+                            elif "api key" in msg or "401" in msg or "authentication" in msg:
+                                info="La chiave API del modello deve essere controllata."
+                            else:
+                                info="Non è stato possibile ottenere una risposta dal modello."
+                            result={"risposta":info,"fonti":[]}
                 history.append({"role":"assistant",
                                 "text":result.get("risposta","Nessuna risposta disponibile."),
                                 "fonti":result.get("fonti",[]),
