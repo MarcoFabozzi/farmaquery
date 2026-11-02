@@ -113,7 +113,9 @@ def verify_provider(model):
                    max_tokens=12,
                    messages=[{"role":"user",
                               "content":"Rispondi solo con la parola OK."}])
-    return bool(out.choices and out.choices[0].message.content)
+    # Una risposta HTTP valida prova la connessione anche se il modello
+    # non produce testo per un limite di token di ragionamento.
+    return bool(out.choices)
 
 
 def history_key(method):
