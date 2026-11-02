@@ -12,6 +12,7 @@ def domanda_gu(question):
 
 
 def candidati_gu(db, question, limit=6):
+    complete=bool(re.search(r"\b(?:tutt[ieo]|elenco completo|quante confezioni|quanti aic)\b",question,re.I))
     if not db.execute(
         "SELECT 1 FROM sqlite_master WHERE type='table' AND name='gu_segmenti_fts'"
     ).fetchone():
@@ -50,6 +51,21 @@ def candidati_gu(db, question, limit=6):
                 out.append(rec)
                 seen.add(ident)
 
+    if codici and complete:
+        # Una domanda che chiede TUTTI gli AIC di un atto identificato
+        # deve poter leggere anche gli ultimi segmenti, non solo i primi
+        # due hit FTS; le righe rimangono segmenti reali e citabili.
+        placeholders=",".join("?" for _ in codici)
+        append(db.execute(
+            """SELECT a.codice,a.data_pubblicazione,a.completezza,
+                      d.documento_id,d.tipo_documento,d.url_fonte,
+                      s.numero_segmento,s.testo
+                 FROM gu_atti a JOIN gu_documenti d ON d.codice=a.codice
+                 JOIN gu_segmenti s ON s.documento_id=d.documento_id
+                 WHERE a.codice IN ("""+placeholders+""")
+                 ORDER BY a.codice,d.documento_id,s.numero_segmento
+                 LIMIT ?""",(*codici,limit)))
+        return out[:limit]
     if codici:
         for code in codici:
             for name in names[:2]:
