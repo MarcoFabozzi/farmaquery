@@ -579,6 +579,9 @@ try:
 except (sqlite3.DatabaseError,OSError,ValueError) as exc:
     st.warning(f'Impossibile visualizzare l’elenco: {exc}')
 
+from regione_campania_dashboard import mostra_sezione_regione
+mostra_sezione_regione(DATA)
+
 with st.expander('Stato degli aggiornamenti'):
     st.write('EMA:',ultimo('ema'))
     st.write('AIFA · confezioni:',ultimo('aifa_anagrafica'))
