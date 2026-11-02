@@ -154,6 +154,31 @@ class SnapshotOnlineTests(unittest.TestCase):
                 self.assertEqual(len(ids),6,
                                  "Sei confezioni nel testo GU del 2023")
                 self.assertIn("049883111/E",ids)
+                # Le domande effettivamente inserite nella chat hanno
+                # ulteriori frasi rispetto al pilota abbreviato.
+                am_user=(
+                    "Quali sono tutti i centri elencati nella Tabella 1, "
+                    "pagina 2, della nota AMVUTTRA 0634617/2026 per ATTR-CM? "
+                    "Riporta esclusivamente questa indicazione."
+                )
+                am_user_data,am_user_complete=contesto_integrale(
+                    db,am_user,_target_db(db,am_user))
+                self.assertTrue(am_user_complete)
+                self.assertTrue(am_user_data)
+                self.assertIn("cardarelli"," ".join(
+                    item["testo"] for item in am_user_data).casefold())
+                weg_user=(
+                    "Quante confezioni di WEGOVY sono presenti nell'articolo "
+                    "1 della determina 23A02767? Riporta tutti gli AIC, "
+                    "distinguendo le diverse confezioni da 2,4 mg."
+                )
+                weg_user_data,weg_user_complete=contesto_integrale(
+                    db,weg_user,_target_db(db,weg_user))
+                self.assertTrue(weg_user_complete)
+                self.assertEqual(len({code for item in weg_user_data
+                                      for code in item.get(
+                                          "aic_trovati_nel_testo",())}),6)
+
 
                 cam_q=("Quali protocolli precedenti sono citati nel "
                        "documento CAMZYOS del 20 novembre 2025?")
