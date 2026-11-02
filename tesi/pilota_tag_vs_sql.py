@@ -19,6 +19,7 @@ from errori_chatbot import EnginePhaseError
 from tesi.recupero_gu import domanda_gu, candidati_gu
 from tesi.recupero_regionale import regional_candidates, categoria
 from tesi.tag_budget import selection_mode,semantic_plan,expand_selected
+from tesi.sintesi_tag import CATEGORY_SYSTEM,compact_category_evidence
 
 
 SCHEMA = """Tabelle disponibili (SQLite, SOLA LETTURA):
@@ -433,14 +434,17 @@ def _in_phase(phase,func,*args,**kwargs):
         raise EnginePhaseError(phase,exc) from exc
 
 
-def ask(model,system,payload):
+def ask(model,system,payload,*,timeout=40,max_tokens=None):
     """LiteLLM con restituzione di token e costo quando disponibili."""
     from litellm import completion
-    result=_in_phase("connessione LLM",completion,model=model,temperature=0,
-        messages=[
-            {"role":"system","content":system},
-            {"role":"user","content":json.dumps(payload,ensure_ascii=False,default=str)}
-        ],timeout=40,num_retries=0)
+    request={"model":model,"temperature":0,
+             "messages":[{"role":"system","content":system},
+                         {"role":"user","content":json.dumps(
+                             payload,ensure_ascii=False,default=str)}],
+             "timeout":timeout,"num_retries":0}
+    if max_tokens is not None:
+        request["max_tokens"]=max_tokens
+    result=_in_phase("connessione LLM",completion,**request)
     usage=getattr(result,"usage",None)
     data={
         "token_input":getattr(usage,"prompt_tokens",None),
@@ -555,7 +559,7 @@ def tag(db,question,model):
                 "token_input":prompt_tokens,
                 "token_output":completion_tokens,
                 "costo_usd":selection_cost,"costo_completo":selection_cost is not None}
-    answer,usage=ask(model,"Rispondi in italiano in modo breve e specifico, SOLO alla domanda. "
+    system_tag=("Rispondi in italiano in modo breve e specifico, SOLO alla domanda. "
         "La denominazione di un principio attivo non va trattata come il nome "
         "di un medicinale che lo contiene: ad esempio, se si chiede il principio "
         "attivo di una sostanza, spiega che la sostanza stessa è già un principio "
@@ -592,12 +596,21 @@ def tag(db,question,model):
         "espressamente che è parziale e non inventare elementi. "
         "Indica PDF, pagina e passo rilevante per ogni conclusione. "
         "Indica le fonti pertinenti e per le parti non documentate scrivi "
-        "'non documentato nello snapshot'.",
-        {"domanda":question,"medicinale_o_sostanza_ricercata":_target_db(db, question),
+        "'non documentato nello snapshot'.")
+    payload={"domanda":question,"medicinale_o_sostanza_ricercata":_target_db(db, question),
          "intento":_question_kind(question),
          "parti_richieste":sorted(_facets(question)),
          "fonti_presenti":sorted({r["tipo"] for r in evidence}),
-         "evidenze":evidence})
+         "evidenze":evidence}
+    if category_question:
+        # LOTUS ha già selezionato. Per la sintesi usiamo passaggi brevi
+        # con riferimenti alla pagina e un prompt dedicato alla categoria.
+        system_tag=CATEGORY_SYSTEM
+        payload={"domanda":question,
+                 "evidenze":compact_category_evidence(evidence)}
+        answer,usage=ask(model,system_tag,payload,timeout=48,max_tokens=1100)
+    else:
+        answer,usage=ask(model,system_tag,payload)
     input_tokens=(prompt_tokens+usage["token_input"]
                   if prompt_tokens is not None and usage["token_input"] is not None else None)
     output_tokens=(completion_tokens+usage["token_output"]
