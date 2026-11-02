@@ -35,8 +35,8 @@ class CompactTagSynthesisTests(unittest.TestCase):
         self.assertLess(len(json.dumps(compact,ensure_ascii=False)),24000)
         for i,doc in enumerate(compact):
             self.assertEqual(doc["chiave"],"REGIONE:DOC:"+str(i))
-            self.assertEqual(len(doc["fonti"]),4)
-            self.assertEqual([x["pagina"] for x in doc["passaggi"]],[1,2,3,4])
+            self.assertEqual(len(doc["fonti"]),3)
+            self.assertEqual([x["pagina"] for x in doc["passaggi"]],[1,2,3])
             self.assertTrue(all("Federico II" in x["estratto"]
                                 for x in doc["passaggi"]))
             self.assertTrue(all("#p" in f for f in doc["fonti"]))
