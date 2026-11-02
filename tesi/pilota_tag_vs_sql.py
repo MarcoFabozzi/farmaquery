@@ -95,7 +95,7 @@ def evidence_candidates(db,question,max_rows=18):
         if len(out)<max_rows:
             out.append({"tipo":tipo,"chiave":uid,"testo":str(description)[:2600],
                         "fonte":source})
-    for item in candidates(db,question,limit=7):
+    for item in candidates(db,question,limit=4):
         put("REGIONE",item["nota_id"]+"#p"+str(item["numero_pagina"]),
             item["testo"][:1750],
             item["percorso_zip"]+"#p"+str(item["numero_pagina"]) +
@@ -193,13 +193,13 @@ def tag(db,question,model):
     import pandas as pd
     import lotus
     from lotus.models import LM
-    rows=evidence_candidates(db,question)
+    rows=evidence_candidates(db,question,max_rows=10)
     if not rows:
         return {"risposta":"Informazione non documentata nello snapshot consultato.",
                 "fonti":[],"stato":"NESSUNA_EVIDENZA","token_input":0,
                 "token_output":0,"costo_usd":0.0,"costo_completo":True}
-    lm=LM(model=model,max_batch_size=4)
-    lotus.settings.configure(lm=lm,enable_cache=False)
+    lm=_in_phase("inizializzazione TAG",LM,model=model,max_batch_size=4)
+    _in_phase("inizializzazione TAG",lotus.settings.configure,lm=lm,enable_cache=False)
     frame=pd.DataFrame(rows)
     selected=_in_phase("selezione TAG",lambda: frame.sem_filter(
         "Il contenuto di {testo} fornisce informazioni pertinenti alla domanda "
