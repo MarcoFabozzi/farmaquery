@@ -191,6 +191,10 @@ def assistant_dialog():
                                    " · revisione LLM: "+
                                    ("sì" if item.get("revisione_completezza_llm")
                                     else "no"))
+                    if method=="TAG" and item.get("fallback_pagina_integrale"):
+                        st.caption("LOTUS non ha selezionato gruppi: risposta "
+                                   "elaborata dal testo integrale della "
+                                   "pagina identificata, recuperata dallo SQLite.")
                     if method=="TAG" and item.get("modalita_selezione"):
                         st.caption(
                             "Selezione TAG: "+str(item["modalita_selezione"])+
@@ -225,6 +229,7 @@ def assistant_dialog():
                         "verifica_contesto":result.get("verifica_contesto"),
                         "aic_nel_testo_integrale":result.get("aic_nel_testo_integrale"),
                         "revisione_completezza_llm":result.get("revisione_completezza_llm"),
+                        "fallback_pagina_integrale":result.get("fallback_pagina_integrale"),
                         "modalita_selezione":result.get("modalita_selezione"),
                         "righe_recuperate":result.get("righe_recuperate"),
                         "righe_sem_filter":result.get("righe_sem_filter"),
