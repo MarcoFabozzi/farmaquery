@@ -17,6 +17,7 @@ import time
 
 from errori_chatbot import EnginePhaseError
 from tesi.recupero_gu import domanda_gu, candidati_gu
+from tesi.recupero_integrale import regional_precise_evidence,gu_article_evidence
 from tesi.recupero_regionale import regional_candidates, categoria
 from tesi.sql_category_support import (category_sql_context,
                                       select_generation_guidance,CATEGORY_RETRY_RULES)
@@ -318,11 +319,13 @@ def evidence_candidates(db,question,max_rows=18):
     seen=set()
 
     def put(tipo,uid,description,source,sources=None,selection_text=None,
-            passages=None,document_count=None,documents_truncated=False):
+            passages=None,document_count=None,documents_truncated=False,
+            full_text=False):
         if uid not in seen and len(rows)<max_rows:
             seen.add(uid)
             row={"tipo":tipo,"chiave":uid,
-                 "testo":str(description)[:6000],"fonte":source}
+                 "testo":str(description)[:15000 if full_text else 6000],
+                 "fonte":source}
             if sources:
                 row["fonti"]=list(dict.fromkeys(sources))
             if selection_text:
@@ -363,6 +366,15 @@ def evidence_candidates(db,question,max_rows=18):
     def add_regione():
         if kind=="PRINCIPIO_ATTIVO":
             return
+        # Quando la domanda individua una pagina/tabella o un rimando,
+        # leggere il passo esatto invece dei primi 2150 caratteri del PDF.
+        exact_passages=regional_precise_evidence(db,question,target)
+        if exact_passages:
+            for item in exact_passages:
+                put(item["tipo"],item["chiave"],item["testo"],item["fonte"],
+                    sources=item.get("fonti"),
+                    selection_text=item.get("testo_selezione"),full_text=True)
+            return
         # Se il documento nominativo esiste, carica tutte le pagine
         # leggibili (entro limiti controllati) e gli eventuali protocolli
         # richiamati. Per categorie implicite interroga più note e LOTUS
@@ -385,6 +397,13 @@ def evidence_candidates(db,question,max_rows=18):
                 " | archivio: "+str(item["archivio_url"]))
 
     def add_gu():
+        full_articles=gu_article_evidence(db,question)
+        if full_articles:
+            for item in full_articles:
+                put(item["tipo"],item["chiave"],item["testo"],item["fonte"],
+                    sources=item.get("fonti"),
+                    selection_text=item.get("testo_selezione"),full_text=True)
+            return
         for item in candidati_gu(db,question,limit=6):
             uid=("GU:"+str(item["documento_id"])+"#s"+
                  str(item["numero_segmento"]))
@@ -418,10 +437,15 @@ def evidence_candidates(db,question,max_rows=18):
     if category_question:
         add_regione()
     elif kind=="GU":
-        add_gu()
-        add_ema()
-        add_aifa()
-        add_regione()
+        # Se la domanda individua un atto puntuale, non confondere il suo
+        # elenco storico con classificazioni AIFA/EMA di altre date.
+        if gu_article_evidence(db,question):
+            add_gu()
+        else:
+            add_gu()
+            add_ema()
+            add_aifa()
+            add_regione()
     elif kind=="CENTRI":
         add_regione()
         add_ema()
