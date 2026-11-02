@@ -19,10 +19,14 @@ import sys
 import time
 
 from tesi import pilota_tag_vs_sql as motori
+from errori_chatbot import diagnose_error
 
 FIELDS=["id","categoria","domanda","metodo","modello","snapshot_sha256",
         "risposta","fonti","secondi","token_input","token_output","costo_usd",
-        "costo_completo","stato","errore","sql","data_utc",
+        "costo_completo","stato","errore","codice_errore","fase_errore",
+        "modalita_selezione","righe_recuperate","righe_sem_filter",
+        "righe_selezionate_lotus","chiamate_semantiche_stimate",
+        "chiamate_llm_stimate","sql","data_utc",
         "valutazione_risposta","valutazione_citazioni","note_revisore"]
 
 METHODS=("TAG","Text-to-SQL")
@@ -145,6 +149,7 @@ def execute(db_path,manifest_path,question_path,out_path,model=None,
     sql_fn=sql_fn or motori.sql_method
     count=0
     errors=0
+    stop_for_quota=False
     with file.open("a",encoding="utf-8-sig" if not file.exists() else "utf-8",
                    newline="") as output:
         writer=csv.DictWriter(output,fieldnames=FIELDS,delimiter=";",extrasaction="ignore")
@@ -156,20 +161,25 @@ def execute(db_path,manifest_path,question_path,out_path,model=None,
                     continue
                 started=time.monotonic()
                 result={}
+                detail={}
                 status="OK"
                 error=""
                 try:
                     with closing(motori.read_only(db_path)) as db:
                         result=runner(db,item["domanda"],model)
                     status=result.get("stato","OK")
-                    if status not in ("OK","NESSUNA_EVIDENZA"):
+                    if status not in ("OK","NESSUNA_EVIDENZA",
+                                      "NESSUNA_EVIDENZA_SEMANTICA","RISULTATI_PARZIALI"):
                         status="ERRORE"
                     if status=="ERRORE":
                         errors+=1
                 except Exception as e:
-                    status="ERRORE"
-                    error=type(e).__name__+": "+str(e)[:250]
+                    detail=diagnose_error(e)
+                    status="QUOTA" if detail["codice"]=="QUOTA" else "ERRORE"
+                    error=detail["tipo"]+" nella fase "+detail["fase"]
                     errors+=1
+                    if status=="QUOTA":
+                        stop_for_quota=True
                 row={
                     "id":item["id"],"categoria":item["categoria"],
                     "domanda":item["domanda"],"metodo":method,"modello":model,
@@ -182,6 +192,14 @@ def execute(db_path,manifest_path,question_path,out_path,model=None,
                     "costo_usd":result.get("costo_usd"),
                     "costo_completo":result.get("costo_completo"),
                     "stato":status,"errore":error,
+                    "codice_errore":detail.get("codice",""),
+                    "fase_errore":detail.get("fase",""),
+                    "modalita_selezione":result.get("modalita_selezione",""),
+                    "righe_recuperate":result.get("righe_recuperate"),
+                    "righe_sem_filter":result.get("righe_sem_filter"),
+                    "righe_selezionate_lotus":result.get("righe_selezionate_lotus"),
+                    "chiamate_semantiche_stimate":result.get("chiamate_semantiche_stimate"),
+                    "chiamate_llm_stimate":result.get("chiamate_llm_stimate"),
                     "sql":result.get("sql",""),
                     "data_utc":datetime.now(timezone.utc).isoformat(timespec="seconds"),
                     "valutazione_risposta":"","valutazione_citazioni":"",
@@ -190,11 +208,18 @@ def execute(db_path,manifest_path,question_path,out_path,model=None,
                 writer.writerow({k:"" if v is None else v for k,v in row.items()})
                 output.flush()
                 count+=1
-    return {"esito":"ESECUZIONE_COMPLETATA_CON_ERRORI" if errors else "ESECUZIONE_COMPLETATA",
+                if stop_for_quota:
+                    break
+            if stop_for_quota:
+                break
+    return {"esito":("INTERROTTO_PER_QUOTA" if stop_for_quota else
+                     "ESECUZIONE_COMPLETATA_CON_ERRORI" if errors else
+                     "ESECUZIONE_COMPLETATA"),
             "righe_aggiunte":count,"errori":errors,"risultati":str(file),
             "riepilogo":preview,
             "nota":"Le valutazioni manuali rimangono vuote. "
-                   "I costi TAG escludono la selezione LOTUS salvo contabilizzazione separata."}
+                   "Le chiamate semantiche sono stime per elementi LOTUS "
+                   "e non misure del provider; i costi possono essere parziali."}
 
 
 def main():
