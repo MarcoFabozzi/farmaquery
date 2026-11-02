@@ -2,6 +2,13 @@ name: FarmaQuery - aifa cnn indipendente
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'aifa_componenti.py'
+      - 'classi_complementari.py'
+      - 'aggiorna_indipendente.py'
+      - '.github/workflows/aggiorna-aifa-cnn.yml'
   schedule:
     - cron: '51 * * * *'
 
@@ -45,7 +52,9 @@ jobs:
               if timestamp.tzinfo is None or info.get('esito')!='OK':timestamp=None
           except (OSError,ValueError,KeyError,TypeError):
               timestamp=None
-          due=os.environ.get('EVENT_NAME')=='workflow_dispatch' or timestamp is None or timestamp<cutoff
+          due=(os.environ.get('EVENT_NAME') in ('workflow_dispatch','push')
+               or not Path('risultati/aifa_riferimenti_cnn.json').is_file()
+               or timestamp is None or timestamp<cutoff)
           print('Fonte: aifa_cnn | ultimo successo:',timestamp,'| tentativo:',due)
           with open(os.environ['GITHUB_OUTPUT'],'a') as f:
               f.write('run='+str(due).lower()+'\n')
@@ -53,11 +62,15 @@ jobs:
 
       - name: Check Python source files
         if: steps.due.outputs.run == 'true'
-        run: python -m py_compile pipeline.py aggiorna_automatico.py aifa_componenti.py aggiorna_indipendente.py gazzetta_incrementale.py
+        run: python -m py_compile pipeline.py aggiorna_automatico.py aifa_componenti.py classi_complementari.py dashboard_regolatorio.py aggiorna_indipendente.py gazzetta_incrementale.py
 
       - name: Test separazione fonti AIFA
         if: steps.due.outputs.run == 'true'
         run: python -m unittest -v tests.test_aifa_componenti
+
+      - name: Test integrazione documentata C e C(nn)
+        if: steps.due.outputs.run == 'true'
+        run: python -m unittest -v tests.test_classi_complementari
 
       - name: Update AIFA and validate snapshot
         if: steps.due.outputs.run == 'true'
@@ -68,7 +81,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add risultati/farmaci_automatico.sqlite risultati/stato_fonti/aifa_cnn.json
+          git add risultati/farmaci_automatico.sqlite risultati/stato_fonti/aifa_cnn.json risultati/aifa_riferimenti_cnn.json
           if [ 'aifa' = 'gazzetta' ]; then
             git add risultati/gazzetta_testi/
           fi
