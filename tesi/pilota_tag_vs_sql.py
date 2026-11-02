@@ -18,6 +18,8 @@ import time
 from errori_chatbot import EnginePhaseError
 from tesi.recupero_gu import domanda_gu, candidati_gu
 from tesi.recupero_regionale import regional_candidates, categoria
+from tesi.sql_category_support import (category_sql_context,
+                                      select_generation_guidance,CATEGORY_RETRY_RULES)
 from tesi.tag_budget import (selection_mode,semantic_plan,expand_selected,
                              sem_filter_controlled,preserve_category_recall)
 from tesi.sintesi_tag import (CATEGORY_SYSTEM, compact_category_evidence,
@@ -781,39 +783,82 @@ def _sql_context(raw):
     return output,cut
 
 
-def sql_method(db,question,model):
-    generated,first=_in_phase("generazione SQL",ask,model,
-        "Genera SOLO UNA query SELECT SQLite eseguibile, senza Markdown. "
-        "Usa esclusivamente le tabelle documentate; non generare DDL, DML, "
-        "PRAGMA né più istruzioni. LIMIT massimo 80. Se la domanda chiede " 
-        "l'elenco completo non usare limiti più bassi. Per citazioni includi "
-        "aic, ema_id oppure nota_id e numero_pagina nel risultato, "
-         "e per GU codice AS gu_codice o documento_id, "
-        "e archivio_url o fonte_url quando pertinenti. "
-        "Per le classi usa: CASE WHEN classe_a_h_snapshot IN ('A','H') THEN classe_a_h_snapshot ELSE 'C (dedotta per esclusione)' END AS classe. Includi anche classe_a_h_snapshot e classe_a_h_data per distinguere fonte e deduzione.",
-        {"schema":SCHEMA,"domanda":question})
-    sql=_in_phase("validazione SQL",validate_sql,generated)
+def _execute_generated_select(db,sql):
+    """Esegue una SELECT validata con gli stessi limiti per tutti i tentativi."""
     start=time.monotonic()
     db.set_progress_handler(lambda:1 if time.monotonic()-start>12 else 0,10000)
     try:
         raw=_in_phase("esecuzione SQL",
                       lambda:db.execute(sql).fetchmany(SQL_ROW_LIMIT+1))
         rows,context_cut=_sql_context(raw[:SQL_ROW_LIMIT])
-        max_from_query=_limit_from_sql(sql)
+        query_limit=_limit_from_sql(sql)
         truncated=(len(raw)>SQL_ROW_LIMIT or context_cut or
-                   (max_from_query is not None and len(raw)>=max_from_query))
+                   (query_limit is not None and len(raw)>=query_limit))
     finally:
         db.set_progress_handler(None,0)
+    return rows,truncated
+
+
+def sql_method(db,question,model):
+    category_context=category_sql_context(question)
+    request={"schema":SCHEMA,"domanda":question}
+    if category_context:
+        request["contesto_categoria"]=category_context
+    generated,first=_in_phase("generazione SQL",ask,model,
+                              select_generation_guidance(question),request)
+    sql=_in_phase("validazione SQL",validate_sql,generated)
+    first_sql=sql
+    rows,truncated=_execute_generated_select(db,sql)
+    attempts=1
+
+    if category_context and not rows:
+        # Solo con un risultato ZERO per categoria implicita: una seconda
+        # traduzione SQL, sempre prodotta dal medesimo LLM e validata.
+        # Non è una query sostitutiva nascosta né una lista gold manuale.
+        retry_payload={
+            "schema":SCHEMA,
+            "domanda":question,
+            "contesto_categoria":category_context,
+            "query_precedente_senza_righe":first_sql,
+            "righe_primo_tentativo":0
+        }
+        regenerated,retry_usage=_in_phase(
+            "revisione SQL",ask,model,CATEGORY_RETRY_RULES,retry_payload)
+        revised=_in_phase("validazione SQL",validate_sql,regenerated)
+        attempts=2
+        first=_accumulate(first,retry_usage)
+        sql=revised
+        rows,truncated=_execute_generated_select(db,sql)
+
     citations=_sql_sources(db,rows)
+    metadata={"sql_tentativi":attempts,
+              "sql_iniziale":first_sql if attempts>1 else None,
+              "categoria_implicita":bool(category_context)}
     if not rows:
-        return {"risposta":"Informazione non documentata nello snapshot consultato.",
-                "fonti":[],"sql":sql,"righe_sql":0,
-                "stato":"NESSUNA_EVIDENZA","risultato_parziale":False,
-                **first,"costo_completo":first.get("costo_usd") is not None}
+        # Zero righe NON equivale ad assenza documentale: può essere un
+        # falso negativo della query, soprattutto per categorie astratte.
+        return {
+            "risposta":("Nessuna riga restituita dalle query Text-to-SQL "
+                       "per questa categoria. Non è una prova che "
+                       "l'informazione sia assente nello snapshot."
+                       if category_context else
+                       "Informazione non documentata nello snapshot consultato."),
+            "fonti":[],"sql":sql,"righe_sql":0,
+            "stato":"NESSUNA_RIGA_SQL" if category_context else "NESSUNA_EVIDENZA",
+            "risultato_parziale":bool(category_context),
+            **first,"costo_completo":first.get("costo_usd") is not None,
+            **metadata
+        }
+
     answer,second=_in_phase("sintesi SQL",ask,model,
         "Rispondi in italiano SOLO in base alle righe SELECT e alle fonti. "
         "Non interpretare un dato AIFA/EMA come autorizzazione regionale. "
         "Se la classe_a_h_snapshot è NULL, indica C solo come deduzione per esclusione dagli elenchi A/H, mai come classe ufficialmente attestata. Distingui data della lista A/H e data della determina. "
+        "Per categorie implicite non confondere il termine clinico generale "
+        "con il nome letterale della patologia e, se la query restituisce "
+        "pagine diverse della stessa nota, distingui la sezione con "
+        "l'indicazione dalla tabella del centro. La co-occorrenza "
+        "non certifica l'autorizzazione. "
         "Se mancano dati o evidenze, scrivi 'non documentato nello snapshot'. "
         "Non inventare citazioni; se i risultati sono parziali "
         "non dichiarare una lista completa.",
@@ -825,16 +870,16 @@ def sql_method(db,question,model):
                  "righe, limite della query o di contesto. L'elenco non "
                  "può essere considerato completo.")
     sql_evidence=[{"tipo":"SQL","fonte":"Riga "+str(ix+1),
-                  "testo":str(record.get("testo") or record.get("indicazione_ema")
-                              or record.get("descrizione") or "")}
-                 for ix,record in enumerate(rows) if
-                 (record.get("testo") or record.get("indicazione_ema")
-                  or record.get("descrizione"))]
+                   "testo":str(record.get("testo") or record.get("indicazione_ema")
+                               or record.get("descrizione") or "")}
+                  for ix,record in enumerate(rows) if
+                  (record.get("testo") or record.get("indicazione_ema")
+                   or record.get("descrizione"))]
     return {"risposta":answer,"fonti":citations,"sql":sql,
             "evidenze_fonti":_source_previews(sql_evidence),
             "righe_sql":len(rows),"stato":"RISULTATI_PARZIALI" if truncated else "OK",
             "risultato_parziale":truncated,**total,
-            "costo_completo":total["costo_usd"] is not None}
+            "costo_completo":total["costo_usd"] is not None,**metadata}
 
 
 def main():
