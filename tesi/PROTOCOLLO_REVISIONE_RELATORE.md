@@ -26,6 +26,19 @@ Il motore TAG usa il recupero FTS5 dei segmenti GU come candidati per la selezio
 
 Le differenze di fine riga CRLF/LF sono accettate soltanto quando la normalizzazione del contenuto riproduce esattamente l'hash registrato; ogni altra difformità blocca la costruzione dello snapshot. Per le citazioni del gold sono previsti `GU:CODICE` e `GU:CODICE:atto#sN` / `GU:CODICE:allegato:HASH#sN`. Entrambi i metodi lavorano sulla fotografia congelata e non consultano il web durante il test.
 
+## TAG: categorie implicite e rimandi (implementazione sperimentale)
+
+Nel file `tesi/recupero_regionale.py` è stato aggiunto il recupero di pagine di note regionali su due percorsi:
+
+- **Domanda per nome di medicinale:** identifica note nominative, include le pagine leggibili entro un limite dichiarato e cerca rimandi con corrispondenza univoca del protocollo estratto. Una corrispondenza automatica è solo un *candidato*, non la verifica della relazione giuridica. Cita sia documento che richiama sia documento recuperato.
+- **Domanda per categoria implicita:** piccole espansioni lessicali trasparenti (per es. *neuromuscolare → miastenia, spinale, Duchenne*) cercano documenti candidati, ma non assegnano automaticamente categorie, centri o farmaci. Il TAG raggruppa estratti di più pagine della stessa nota per permettere a LOTUS di giudicare insieme la patologia e la struttura.
+
+Il TAG continua a usare `lotus` e `DataFrame.sem_filter()`. Le fonti e le righe rimangono quelle del database congelato; Text-to-SQL conserva il suo funzionamento autonomo.
+
+**Limiti non risolti automaticamente:** la ricerca per categorie può essere non esaustiva; l'estrazione documentale può contenere OCR incompleti; l'identità del protocollo non prova di per sé la relazione normativa; un archivio ZIP non fornisce un collegamento diretto al PDF interno aperto alla pagina. Per ottenere una risposta gold completa occorre controllare integralmente i PDF originali e le ambiguità. Nelle risposte per categoria TAG deve dichiarare esplicitamente la copertura parziale.
+
+Il file `tesi/pilota_4_tipi_relatori_da_validare.csv` contiene due domande per ciascuno dei quattro tipi illustrati dal relatore: semplice, categoria implicita, rimando, nessuna risposta. Le risposte gold sono intenzionalmente vuote: non confondere i test senza LLM del recupero con una misura di accuratezza.
+
 ## Fotografia temporale unica: cosa significa
 Lo snapshot del benchmark deve essere **un solo file SQLite immutabile** condiviso da TAG e Text-to-SQL; un manifesto SHA-256 deve attestarlo.
 Questo NON implica che le fonti abbiano tutte la stessa data: i metadati mantengono la data di pubblicazione o di riferimento.
