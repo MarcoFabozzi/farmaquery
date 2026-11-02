@@ -93,6 +93,29 @@ class FullDocumentContextTests(unittest.TestCase):
         self.assertIn("TESTO TAGLIATO",rows[0]["testo"])
         self.assertFalse(rows[0]["integrale"])
 
+
+    def test_domande_relatore_recuperano_testo_integrale(self):
+        self.assertTrue(richiede_sezione_completa(
+            "Quale nota del 2024 richiama CASGEVY nel 2025 per SINFONIA, "
+            "e questo rimando annulla o sostituisce la nota precedente?"))
+        self.assertTrue(richiede_sezione_completa(
+            "Quali sono esattamente i sei centri per ATTR-CM e i tre "
+            "per polineuropatia ereditaria indicati nella nota AMVUTTRA 2026?"))
+        self.assertTrue(richiede_sezione_completa(
+            "Secondo la nota regionale PLUVICTO del 18/04/2025, "
+            "quali sono tutte le cinque strutture e i requisiti aggiuntivi?"))
+
+    def test_pagina_pertinente_prima_della_introduzione(self):
+        rows,complete=contesto_integrale(
+            self.db,
+            "Quali sono esattamente i sei centri della nota "
+            "MEDICINALE CAMPIONE per ATTR-CM?",
+            "MEDICINALE CAMPIONE",max_chars=5300)
+        self.assertTrue(complete)
+        self.assertEqual(len(rows),2)
+        self.assertEqual(rows[0]["fonte"].split("#p")[1][0],"2")
+        self.assertIn("AORN CARDARELLI",rows[0]["testo"])
+
     def test_non_modifica_domande_analitiche_senza_richiesta_integrale(self):
         self.assertFalse(richiede_sezione_completa(
             "Qual è la classe di PLUVICTO?"))
