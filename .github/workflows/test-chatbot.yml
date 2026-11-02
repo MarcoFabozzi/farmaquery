@@ -70,5 +70,18 @@ jobs:
             assert para and not any(
                 'ANTIREUMINA' in r['testo'] or 'SARIDON' in r['testo']
                 for r in para),para
-          print('Recupero mirato Tachipirina/Paracetamolo verificato su AIFA reale.')
+            question=('PLUVICTO: per quale tumore è indicato, quale classe '
+                      'ha in Italia e dove è prevista la somministrazione in Campania?')
+            plu=m.evidence_candidates(db,question,max_rows=10)
+            types={r['tipo'] for r in plu}
+            print('PLUVICTO: fonti presenti nel vero DB:',sorted(types),
+                  'righe per tipo:',{t:sum(x['tipo']==t for x in plu)
+                                   for t in sorted(types)})
+            assert 'EMA' in types and 'AIFA' in types,plu
+            verified=m._multisource_evidence(plu,[],question)
+            assert {'EMA','AIFA'}.issubset({x['tipo'] for x in verified})
+            if 'REGIONE' not in types:
+                print('Avviso: nessuna nota regionale nominativa recuperata; '
+                      'il chatbot dovrà dichiarare la parte non documentata.')
+          print('Recupero mirato e copertura multifonte verificati su AIFA/EMA reali.')
           PY
