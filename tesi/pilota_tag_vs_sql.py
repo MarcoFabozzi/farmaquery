@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Pilota TAG LOTUS contro Text-to-SQL sullo stesso SQLite congelato.
+Lo snapshot si crea dalle ultime fonti ONLINE verificate via prepara_snapshot_online.py.
+Il file A/H del 31/05/2026 non viene utilizzato come vincolo.
 
 Dipendenze separate dalla dashboard: lotus-ai, litellm, pandas, sqlglot.
 Richiede una chiave API e un modello LiteLLM forniti dall'utente.
@@ -12,6 +14,9 @@ pagine(nota_id,numero_pagina,testo,metodo)
 strutture_registri(medicinale,patologia,indicazione,struttura,regione)
 centri_candidati(nota_id,numero_pagina,menzione,stato)
 rimandi_candidati(nota_id,numero_pagina,riferimento,stato)
+aifa_confezioni(aic,nome,principio_attivo,descrizione,classe_a_h_snapshot,classe_a_h_data)
+ema_medicinali(ema_id,nome,principio_attivo,stato_ema,data_decisione_ue,indicazione_ema,url_ema)
+fonti_snapshot(fonte,url,sha256,data_riferimento)
 pagine_fts(nota_id,numero_pagina,testo) -- FTS5"""
 
 def read_only(path):
@@ -72,7 +77,8 @@ def validate_sql(sql):
     for cls in (exp.Insert,exp.Update,exp.Delete,exp.Drop,exp.Create,exp.Alter,exp.Command):
         if tree.find(cls):raise ValueError("SQL non in sola lettura")
     allowed={"note","pagine","strutture_registri","centri_candidati",
-             "rimandi_candidati","pagine_fts"}
+             "rimandi_candidati","pagine_fts","aifa_confezioni",
+             "ema_medicinali","fonti_snapshot"}
     ctes={cte.alias for cte in tree.find_all(exp.CTE)}
     for tab in tree.find_all(exp.Table):
         if tab.name not in allowed|ctes or tab.db or tab.catalog:
