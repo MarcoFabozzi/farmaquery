@@ -57,7 +57,9 @@ def load_benchmark(path):
         ):
             raise ValueError(row["id"] + ": gold compilato senza validazione")
         if row["categoria"] == "NEGATIVA" and row["stato_validazione"] == "VALIDATO":
-            raise ValueError("Quesito negativo: richiede prima audit umano esaustivo")
+            if (not row["origine_validazione"].startswith("RICERCA_ESAUSTIVA:")
+                    or len(row["note_revisore"].strip()) < 80):
+                raise ValueError(row["id"] + ": documentare ricerca esaustiva, alias e varianti nei negativi")
     return rows
 
 
