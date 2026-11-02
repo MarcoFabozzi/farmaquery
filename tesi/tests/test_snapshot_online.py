@@ -165,6 +165,35 @@ class SnapshotOnlineTests(unittest.TestCase):
                 # Non si trasforma la presenza dei codici in una
                 # sostituzione: la relazione va verificata nel testo.
 
+                # Verifica end-to-end del percorso integrale, con la stessa
+                # domanda usata nella chat (nessun LLM e nessun gold nel motore).
+                from tesi.contesto_integrale import contesto_integrale
+                from tesi.pilota_tag_vs_sql import _target_db
+                q_am=("Quali sono tutti i centri elencati nella Tabella 1, "
+                      "pagina 2, della nota AMVUTTRA 0634617/2026 per ATTR-CM? "
+                      "Riporta esclusivamente questa indicazione.")
+                target=_target_db(db,q_am)
+                self.assertIn("amvuttra",target.casefold())
+                source,complete=contesto_integrale(db,q_am,target)
+                self.assertTrue(source,"AMVUTTRA: nessuna pagina integrale")
+                self.assertTrue(any("pagina 2" in x["testo"] and
+                                    "FEDERICO" in x["testo"].upper()
+                                    for x in source))
+                print("AMVUTTRA: pagina integrale",complete,
+                      "caratteri",sum(len(x["testo"]) for x in source))
+                q_gu=("Quante confezioni di WEGOVY sono presenti nell'articolo 1 "
+                      "della determina 23A02767? Riporta tutti gli AIC, "
+                      "distinguendo le diverse confezioni da 2,4 mg.")
+                doc_gu,complete_gu=contesto_integrale(
+                    db,q_gu,_target_db(db,q_gu))
+                self.assertTrue(doc_gu,"GU: atto non trovato")
+                self.assertTrue(complete_gu,"GU: articolo troncato")
+                codes=set(code for x in doc_gu
+                          for code in x.get("aic_trovati_nel_testo",[]))
+                self.assertIn("049883111/E",codes)
+                self.assertEqual(len(codes),6)
+                print("WEGOVY: AIC nell'articolo",len(codes))
+
                 # Lo snapshot scientifico NON attribuisce C per esclusione.
                 self.assertGreater(
                     db.execute("SELECT COUNT(*) FROM aifa_confezioni "

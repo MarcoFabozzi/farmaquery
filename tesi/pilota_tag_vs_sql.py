@@ -246,7 +246,16 @@ def _target_db(db, question):
 
     if matches:
         return min(matches, key=lambda name: (-phrases[name][1], phrases[name][0]))
-    # Preserva il recupero via FTS per farmaci presenti solo nelle note.
+    # Le fixture minime possono non avere questa colonna.
+    note_columns={r[1] for r in db.execute("PRAGMA table_info(note)")}
+    if "farmaco_candidato" in note_columns:
+        for row in db.execute(
+            "SELECT DISTINCT farmaco_candidato FROM note "
+            "WHERE farmaco_candidato IS NOT NULL"):
+            name=str(row[0]).strip()
+            if name and re.search(r"(?<!\w)"+re.escape(name)+r"(?!\w)",
+                                  question,re.I):
+                return name
     return _target(question)
 
 
@@ -675,9 +684,12 @@ def tag(db,question,model):
         # Un controllo deterministico sulla stringa sorgente non produce
         # risposte: rende però impossibile pubblicare "tutti gli AIC"
         # quando il testo effettivamente contiene altri identificativi.
-        answer+=("\n\nControllo di completezza: la risposta non riporta "
-                 "tutti gli identificativi AIC presenti nell'atto "
-                 "consultato; l'elenco deve essere verificato.")
+        answer+=("\n\nControllo documentale automatico: la sintesi LLM "
+                 "ha omesso "+str(len(missing_aic))+" identificativi AIC "
+                 "presenti nel testo dell'atto. Identificativi omessi: "
+                 +", ".join(missing_aic)+". L'elenco prodotto dal modello "
+                 "NON è completo; verificare le confezioni associate "
+                 "all'articolo originale.")
     if integral and not integral_complete:
         answer+=("\n\nAvvertenza: la sezione richiesta supera il "
                  "limite di contesto, pertanto la lista non può essere "
