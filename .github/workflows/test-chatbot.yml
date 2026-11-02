@@ -5,6 +5,9 @@ on:
     paths:
       - 'chatbot_farmaquery.py'
       - 'chatbot_widget.py'
+      - 'errori_chatbot.py'
+      - 'tesi/pilota_tag_vs_sql.py'
+      - 'tests/test_errori_chatbot.py'
       - 'tests/test_assistente_flottante.py'
       - 'pages/**'
       - 'requirements.txt'
@@ -30,9 +33,10 @@ jobs:
           python -m pip check
       - name: Compila app e verifica i moduli reali
         run: |
-          python -m py_compile dashboard_regolatorio.py chatbot_widget.py chatbot_farmaquery.py tesi/pilota_tag_vs_sql.py
+          python -m py_compile dashboard_regolatorio.py chatbot_widget.py chatbot_farmaquery.py errori_chatbot.py tesi/pilota_tag_vs_sql.py
           python -m unittest discover -s tests -p 'test_assistente_flottante.py' -v
           python -m unittest discover -s tests -p 'test_chatbot_farmaquery.py' -v
+          python -m unittest discover -s tests -p 'test_errori_chatbot.py' -v
           python - <<'PY'
           import streamlit
           import lotus
