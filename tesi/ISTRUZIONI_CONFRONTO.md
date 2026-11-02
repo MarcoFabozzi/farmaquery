@@ -56,7 +56,7 @@ l'accesso API relativo (non condividere la chiave nel codice né su GitHub):
 $env:GEMINI_API_KEY="INSERISCI_LA_TUA_CHIAVE"
 python -m tesi.esegui_benchmark --db dist_tesi/esperimento_online.sqlite `
   --manifest dist_tesi/manifest_fonti_online.json `
-  --domande dist_tesi/domande.csv --model gemini/gemini-2.5-flash `
+  --domande dist_tesi/domande.csv --model gemini/gemini-3.5-flash-lite `
   --max-domande 2 --conferma-chiamate `
   --out dist_tesi/risposte_confronto.csv
 ```
