@@ -18,7 +18,8 @@ import time
 from errori_chatbot import EnginePhaseError
 from tesi.recupero_gu import domanda_gu, candidati_gu
 from tesi.recupero_regionale import regional_candidates, categoria
-from tesi.tag_budget import selection_mode,semantic_plan,expand_selected
+from tesi.tag_budget import (selection_mode,semantic_plan,expand_selected,
+                             sem_filter_controlled)
 from tesi.sintesi_tag import (CATEGORY_SYSTEM, compact_category_evidence,
                               CATEGORY_RESPONSE_TIMEOUT_SECONDS)
 
@@ -513,10 +514,13 @@ def tag(db,question,model):
     # raggruppata valuta più evidenze in un solo elemento semantico.
     planned,members=semantic_plan(
         rows,mode=mode,max_groups=4 if category_question else 3)
-    lm=_in_phase("inizializzazione TAG",LM,model,max_batch_size=4)
+    # Le categorie implicite attivano più valutazioni semantiche;
+    # ridurre le richieste contemporanee evita burst inutili verso Gemini.
+    lm=_in_phase("inizializzazione TAG",LM,model,
+                 max_batch_size=2 if category_question else 4)
     _in_phase("inizializzazione TAG",lotus.settings.configure,lm=lm,enable_cache=False)
     frame=pd.DataFrame(planned)
-    selected=_in_phase("selezione TAG",lambda: frame.sem_filter(
+    selected=_in_phase("selezione TAG",lambda: sem_filter_controlled(frame,
         "La riga {testo} è pertinente ad ALMENO UNA parte della domanda "
         +json.dumps(question,ensure_ascii=False)
         +". NON richiedere che la singola riga soddisfi tutte le parti: "

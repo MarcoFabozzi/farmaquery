@@ -2,7 +2,8 @@
 import unittest
 
 from errori_chatbot import EnginePhaseError,diagnose_error,label_error
-from tesi.tag_budget import semantic_plan,expand_selected,selection_mode
+from tesi.tag_budget import (semantic_plan,expand_selected,selection_mode,
+                             sem_filter_controlled,LOTUS_SELECTION_TIMEOUT_SECONDS)
 
 
 class TagBudgetTests(unittest.TestCase):
@@ -40,6 +41,36 @@ class TagBudgetTests(unittest.TestCase):
         self.assertEqual(selection_mode({"FARMAQUERY_TAG_SELECTION_MODE":"righe"}),"righe")
         with self.assertRaises(ValueError):
             selection_mode({"FARMAQUERY_TAG_SELECTION_MODE":"invalida"})
+
+    def test_timeout_esplicito_in_sem_filter_senza_retry(self):
+        class FakeFrame:
+            def __init__(self):
+                self.kwargs=None
+            def sem_filter(self, instruction, **kwargs):
+                self.kwargs=kwargs
+                self.instruction=instruction
+                return "selezione test"
+        frame=FakeFrame()
+        self.assertEqual(LOTUS_SELECTION_TIMEOUT_SECONDS,90)
+        self.assertEqual(sem_filter_controlled(frame,"{testo} è rilevante"),
+                         "selezione test")
+        self.assertEqual(frame.kwargs,{"timeout":90,"num_retries":0})
+        self.assertIn("testo",frame.instruction)
+
+    def test_503_distinto_da_timeout_e_quota(self):
+        class ServiceUnavailableError(Exception):
+            status_code=503
+        err=EnginePhaseError("selezione TAG",ServiceUnavailableError("CHIAVE_PRIVATA"))
+        self.assertEqual(diagnose_error(err)["codice"],"SERVIZIO")
+        result=label_error(err)
+        self.assertEqual(result["codice_errore"],"SERVIZIO")
+        self.assertIn("503",result["risposta"])
+        self.assertNotIn("CHIAVE_PRIVATA",str(result))
+
+    def test_timeout_locale_resta_connessone(self):
+        err=EnginePhaseError("selezione TAG",TimeoutError("TOKEN_PRIVATO"))
+        self.assertEqual(diagnose_error(err)["codice"],"CONNESSIONE")
+        self.assertEqual(label_error(err)["codice_errore"],"CONNESSIONE")
 
     def test_quote_non_sono_risposte_errate(self):
         class RateLimitError(Exception):
