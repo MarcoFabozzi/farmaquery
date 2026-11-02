@@ -168,6 +168,14 @@ def assistant_dialog():
                             st.code(item["sql"],language="sql")
                     if item.get("secondi") is not None:
                         st.caption(f'{item["secondi"]:.1f} s · {method}')
+                    if method=="TAG" and item.get("modalita_selezione"):
+                        st.caption(
+                            "Selezione TAG: "+str(item["modalita_selezione"])+
+                            " · evidenze: "+str(item.get("righe_recuperate","?"))+
+                            " · elementi LOTUS: "+str(item.get("righe_sem_filter","?"))+
+                            " · chiamate LLM stimate (non misurate): "+
+                            str(item.get("chiamate_llm_stimate","?"))
+                        )
 
     # Non usare st.popover o st.chat_input: un normale text_area in st.dialog
     # è interattivo e non dipende dalle dimensioni/coordinate della bolla.
@@ -187,7 +195,11 @@ def assistant_dialog():
                         "fonti":result.get("fonti",[]),
                         "evidenze_fonti":result.get("evidenze_fonti",[]),
                         "sql":result.get("sql",""),
-                        "secondi":round(time.monotonic()-start,2)})
+                        "secondi":round(time.monotonic()-start,2),
+                        "modalita_selezione":result.get("modalita_selezione"),
+                        "righe_recuperate":result.get("righe_recuperate"),
+                        "righe_sem_filter":result.get("righe_sem_filter"),
+                        "chiamate_llm_stimate":result.get("chiamate_llm_stimate")})
         # Solo la finestra viene aggiornata: rimane aperta e scrivibile.
         st.rerun(scope="fragment")
 
