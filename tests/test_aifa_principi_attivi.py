@@ -26,7 +26,7 @@ class PrincipiAifaTest(unittest.TestCase):
             righe.extend(['051960019;Lecanemab',
                           '001234567;Sostanza B',
                           '001234567;Sostanza A'])
-            path.write_text('\\n'.join(righe)+'\\n',encoding='utf-8')
+            path.write_text('\n'.join(righe)+'\n',encoding='utf-8')
             audit={}
             principi,righe_valide=principi_per_aic(path,audit=audit)
             self.assertEqual(righe_valide,28)
@@ -44,8 +44,8 @@ class PrincipiAifaTest(unittest.TestCase):
     def test_numerose_righe_duplicate_non_sono_un_anomalia(self):
         with tempfile.TemporaryDirectory() as d:
             path=Path(d)/'PA_confezioni.csv'
-            path.write_text('CODICE_AIC;PRINCIPIO_ATTIVO\\n'+
-                            '051960019;Lecanemab\\n'*35,encoding='utf-8')
+            path.write_text('CODICE_AIC;PRINCIPIO_ATTIVO\n'+
+                            '051960019;Lecanemab\n'*35,encoding='utf-8')
             audit={}
             principi,righe_valide=principi_per_aic(path,audit=audit)
             self.assertEqual(righe_valide,35)
