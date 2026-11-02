@@ -116,6 +116,29 @@ class ExperimentsTests(unittest.TestCase):
                     "other-model",max_questions=2,confirm=True,resume=True,
                     tag_fn=tag,sql_fn=sql)
 
+    def test_quota_interrompe_la_serie_senza_chiamare_sql(self):
+        from errori_chatbot import EnginePhaseError
+        class RateLimitError(Exception):
+            status_code=429
+        invoked={"tag":0,"sql":0}
+        def tag(db,question,model):
+            invoked["tag"]+=1
+            raise EnginePhaseError("selezione TAG",RateLimitError("CHIAVE_MOCK"))
+        def sql(db,question,model):
+            invoked["sql"]+=1
+            return {"risposta":"non dovrebbe accadere"}
+        result=execute(self.db,self.manifest,self.questions,self.out,
+                       "mock-model",max_questions=2,confirm=True,
+                       tag_fn=tag,sql_fn=sql)
+        self.assertEqual(result["esito"],"INTERROTTO_PER_QUOTA")
+        self.assertEqual(result["righe_aggiunte"],1)
+        self.assertEqual(invoked,{"tag":1,"sql":0})
+        with self.out.open(encoding="utf-8-sig",newline="") as f:
+            rows=list(csv.DictReader(f,delimiter=";"))
+        self.assertEqual(rows[0]["stato"],"QUOTA")
+        self.assertEqual(rows[0]["fase_errore"],"selezione TAG")
+        self.assertNotIn("CHIAVE_MOCK",str(rows))
+
     def test_csv_comma_e_sql_sicuro(self):
         comma=self.path/"comma.csv"
         comma.write_text('id,domanda\nQ1,"Cos’è JIVI, in Italia?"\n',encoding="utf-8")
