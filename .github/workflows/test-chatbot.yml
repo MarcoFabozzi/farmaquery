@@ -1,0 +1,55 @@
+name: Verifica chatbot Text-to-SQL e LOTUS
+
+on:
+  pull_request:
+    paths:
+      - 'chatbot_farmaquery.py'
+      - 'pages/**'
+      - 'requirements.txt'
+      - 'dashboard_regolatorio.py'
+      - 'tests/test_chatbot_farmaquery.py'
+      - '.github/workflows/test-chatbot.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Installazione delle stesse dipendenze del sito
+        run: |
+          python -m pip install --disable-pip-version-check -r requirements.txt
+          python -m pip check
+      - name: Compila app e verifica i moduli reali
+        run: |
+          python -m py_compile dashboard_regolatorio.py pages/1_Chatbot.py chatbot_farmaquery.py tesi/pilota_tag_vs_sql.py
+          python -m unittest discover -s tests -p 'test_chatbot_farmaquery.py' -v
+          python - <<'PY'
+          import streamlit
+          import lotus
+          import litellm
+          import sqlglot
+          print('I quattro componenti del chatbot sono disponibili.')
+          PY
+      - name: Simula la creazione del DB condiviso senza LLM
+        run: |
+          python - <<'PY'
+          import chatbot_farmaquery as c
+          from tesi import pilota_tag_vs_sql as m
+          version=c.snapshot_version()
+          path,meta=c.prepare_snapshot()
+          assert path.exists()
+          assert meta['conteggi']['note']>100
+          assert meta['conteggi']['aifa_confezioni']>100000
+          assert meta['conteggi']['ema_medicinali']>1000
+          with m.read_only(path) as db:
+            candidate=m.evidence_candidates(db,'Qual è la classe di JIVI?')
+            assert any(r['tipo']=='AIFA' for r in candidate),candidate
+          print('Snapshot comune pronto, senza chiamate LLM.',version[0])
+          PY
