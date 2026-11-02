@@ -56,10 +56,18 @@ class CompactTagSynthesisTests(unittest.TestCase):
         class Response:
             usage=Usage()
             choices=[Choice()]
-        with patch("litellm.completion",return_value=Response()) as mocked:
-            with patch("litellm.completion_cost",return_value=0.0):
-                answer,usage=ask("mock-model","Sistema",{"domanda":"test"},
-                                 timeout=48,max_tokens=1100)
+        # Il workflow sperimentale non installa litellm: una finta libreria
+        # controlla la chiamata senza richiedere provider né dipendenze extra.
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        from unittest.mock import patch as patch_module
+        import sys
+        mocked=Mock(return_value=Response())
+        fake=SimpleNamespace(completion=mocked,
+                             completion_cost=Mock(return_value=0.0))
+        with patch_module.dict(sys.modules,{"litellm":fake}):
+            answer,usage=ask("mock-model","Sistema",{"domanda":"test"},
+                             timeout=48,max_tokens=1100)
         self.assertEqual(answer,"Risposta breve.")
         self.assertEqual(usage["token_input"],30)
         kwargs=mocked.call_args.kwargs
