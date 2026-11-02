@@ -451,7 +451,7 @@ def tag(db,question,model):
     from lotus.models import LM
     category_question=bool(categoria(question)[0])
     complete_request=bool(re.search(
-        r"\b(?:tutti|tutte|elenco completo|lista completa|quali farmaci)\b",
+        r"\b(?:tutti|tutte|elenco completo|lista completa|quali farmaci|quali centri|quali strutture)\b",
         question.casefold()))
     region_request=category_question or complete_request or _question_kind(question)=="CENTRI"
     rows=evidence_candidates(db,question,max_rows=22 if region_request else 12)
@@ -544,8 +544,8 @@ def tag(db,question,model):
                    if completion_tokens is not None and usage["token_output"] is not None else None)
     full_cost=(selection_cost+usage["costo_usd"]
                if selection_cost is not None and usage["costo_usd"] is not None else None)
-    if complete_request and any("ESTRATTO PARZIALE" in r["testo"]
-                                for r in evidence):
+    if complete_request and (len(rows)>=22 or any("ESTRATTO PARZIALE" in r["testo"]
+                                for r in evidence)):
         answer+=("\n\nAvvertenza: almeno una pagina della fonte è stata "
                  "troncata per limiti di contesto; l'elenco va verificato "
                  "sul PDF integrale e non può essere considerato completo.")
