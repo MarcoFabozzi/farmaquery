@@ -20,6 +20,7 @@ DATA=BASE/'risultati'
 DB=DATA/'farmaci_automatico.sqlite'
 AIFA=DATA/'aifa_confezioni_complete.sqlite.gz'
 AIFA_AH=DATA/'aifa_classi_ah.json'
+AIFA_CNN=DATA/'aifa_riferimenti_cnn.json'
 
 st.set_page_config(page_title='FarmaQuery',page_icon='💊',layout='centered')
 st.markdown("""
@@ -157,6 +158,62 @@ def etichetta_ah(record):
     return cls+' (lista '+date.fromisoformat(ref).strftime('%d/%m/%Y')+')'
 
 
+@st.cache_data(show_spinner=False,max_entries=4)
+def indice_cnn(path,version):
+    from classi_complementari import leggi_indice_cnn
+    return leggi_indice_cnn(path)
+
+
+def riferimenti_cnn_per_confezioni(packages):
+    from classi_complementari import riferimenti_cnn
+    if not AIFA_CNN.is_file():
+        return {}
+    try:
+        indice=indice_cnn(str(AIFA_CNN), AIFA_CNN.stat().st_mtime_ns)
+        return {str(p['aic']):match for p in packages
+                if (match:=riferimenti_cnn(indice,p['aic'],p['nome']))}
+    except (OSError,ValueError,KeyError,TypeError):
+        return {}
+
+
+def atti_classificazione_per_aic(aics):
+    """Atti gia' verificati, collegati a EMA tramite coppie EU/AIC documentate.
+
+    Sono riferiti al medicinale nel campione, non certificazioni della
+    classificazione vigente di tutte le sue confezioni.
+    """
+    ids=list(dict.fromkeys(str(x) for x in aics if x))
+    if not ids:
+        return {}
+    placeholders=','.join('?' for _ in ids)
+    rows=query('SELECT l.aic,ev.classe_nuova,ev.data_pubblicazione,ev.fonte '
+               'FROM link_verificati l JOIN eventi_verificati ev '
+               'ON ev.ema_id=l.ema_id '
+               'WHERE l.aic IN ('+placeholders+') '
+               "AND ev.classe_nuova IN ('C','C(nn)') "
+               'ORDER BY ev.data_pubblicazione DESC,ev.id DESC',ids)
+    found={}
+    for row in rows:
+        found.setdefault(str(row['aic']),row)
+    return found
+
+
+def classificazioni_presentazione(packages):
+    from classi_complementari import classe_con_fonti
+    ids=[str(p['aic']) for p in packages]
+    ah=classi_ah_per_aic(ids)
+    acts=atti_classificazione_per_aic(ids)
+    cnn=riferimenti_cnn_per_confezioni(packages)
+    result={}
+    for p in packages:
+        aic=str(p['aic'])
+        result[aic]=classe_con_fonti(
+            p.get('classe_da_anagrafica'),ah.get(aic),acts.get(aic),
+            cnn.get(aic,[])
+        )
+    return result,acts,cnn
+
+
 def scheda_confezione(aic):
     """Scheda AIFA consultabile mediante ?aic=XXXXXXXXX; solo query in lettura."""
     st.markdown('### 📋 Scheda della confezione')
@@ -214,7 +271,10 @@ def scheda_confezione(aic):
     ):
         classes.insert(0,{'classe':nazionale[0],'data_riferimento':nazionale[1]})
     registry_class=str(package['classe_da_anagrafica'] or '').strip()
+    classi_display,atti_c,cnn_info=classificazioni_presentazione([package])
     st.markdown('#### Classe e riferimenti temporali')
+    st.write('**Classificazione o evidenza storica disponibile:**',
+             classi_display.get(aic,'N/D'))
     st.write('**Classe riportata nell’anagrafica AIFA:**',registry_class or 'Non disponibile')
     if classes:
         st.write('**Classificazioni A/H conservate (storiche):**')
@@ -222,8 +282,26 @@ def scheda_confezione(aic):
             st.write(f"{c['classe']} — riferimento {c['data_riferimento']}")
     else:
         st.write('**Elenchi A/H:** nessuna classificazione storica presente per questa AIC.')
-    st.caption('I dati mostrati non certificano la classe o la rimborsabilità attualmente vigente. '
-               'L’assenza di una classe non implica automaticamente la classe C.')
+    if aic in atti_c:
+        evento=atti_c[aic]
+        st.write('**Atto verificato riferito al medicinale:**',
+                 evento['classe_nuova'],'—',evento['data_pubblicazione'])
+        source=str(evento.get('fonte') or '')
+        parsed=urlsplit(source)
+        if parsed.scheme=='https' and parsed.hostname in {
+            'www.gazzettaufficiale.it','www.aifa.gov.it'
+        }:
+            st.link_button('Consulta il provvedimento di classificazione',source)
+    if aic in cnn_info:
+        st.write('**Presenza in elenco storico AIFA C(nn):**',
+                 ', '.join(sorted({r['numero_procedura'] for r in cnn_info[aic]})))
+        st.caption('Collegamento al medicinale tramite codice AIC di base e nome: '
+                   'non attribuisce la classe vigente alla singola confezione.')
+        st.link_button('Apri elenco storico C(nn) AIFA',
+                       'https://www.aifa.gov.it/legge-189-2012')
+    st.caption('Le classi A/H provengono da elenchi datati. Gli atti C e le voci '
+               'C(nn) sono evidenze storiche e non certificano la rimborsabilità '
+               'attualmente vigente. N/D non significa classe C.')
 
     documented=query('SELECT l.ema_id,e.nome,l.codice_presentazione_ue,'
                      'l.metodo,l.fonte_provvedimento FROM link_verificati l '
@@ -370,7 +448,7 @@ if term.strip():
             st.markdown('#### Confezioni AIFA - archivio nazionale')
             st.caption('Risultati disponibili anche per medicinali senza scheda nel catalogo EMA.')
             if packages:
-                ah=classi_ah_per_aic([item['aic'] for item in packages])
+                classi_visibili,_,_=classificazioni_presentazione(packages)
                 ordinati=[]
                 for item in packages:
                     if not str(item.get('principio_attivo') or '').strip():
@@ -380,14 +458,14 @@ if term.strip():
                         'aic':item['aic'],
                         'nome':item['nome'],
                         'principio_attivo':item['principio_attivo'],
-                        'Classe (elenco A/H)':etichetta_ah(ah.get(str(item['aic']))),
+                        'Classe / evidenza':classi_visibili.get(str(item['aic']),'N/D'),
                         **{k:v for k,v in item.items()
                            if k not in ('aic','nome','principio_attivo')}
                     })
                 st.dataframe(ordinati,hide_index=True,use_container_width=True)
-                st.caption('Le classi A/H hanno la data dell’elenco ufficiale; '
-                           'N/D significa non presente nei dati disponibili, non classe C. '
-                           'La classificazione vigente non è certificata.')
+                st.caption('A/H: elenchi ufficiali datati. C: eventuali atti già '
+                           'verificati sul medicinale. C(nn): presenza in elenco storico '
+                           'AIFA, non classe corrente della confezione. N/D = non documentata.')
             else:
                 st.info('Nessuna confezione trovata nell’ultimo archivio AIFA disponibile.')
         except (OSError,ValueError,sqlite3.DatabaseError) as exc:
@@ -458,18 +536,14 @@ try:
                     " WHERE nome=? ORDER BY aic LIMIT 101",(name,))]
             st.markdown('#### Confezioni di '+name)
             st.caption('Le descrizioni lunghe continuano su più righe, nella stessa colonna.')
-            # Tutte le AIC negli elenchi ufficiali A/H, non solo nel campione EMA.
-            ids=[str(r['aic']) for r in rows[:100]]
-            storico_ah=classi_ah_per_aic(ids)
+            # Visualizza solamente classificazioni/evidenze supportate dalle fonti.
+            classi_visibili,_,_=classificazioni_presentazione(rows[:100])
             table_rows=[]
             for package in rows[:100]:
                 aic=escape(str(package['aic'] or ''))
                 active=escape(str(package['principio_attivo'] or 'Non disponibile'))
                 description=escape(str(package['descrizione'] or 'Non disponibile'))
-                registered_class=str(package['classe_da_anagrafica'] or '').strip()
-                # Priorità al valore esplicito dell'anagrafica; altrimenti lista A/H datata.
-                classe_elenco=etichetta_ah(storico_ah.get(str(package['aic'])))
-                cls=escape(registered_class or classe_elenco)
+                cls=escape(classi_visibili.get(str(package['aic']),'N/D'))
                 # Il tag HTML details e' espandibile senza altri clic o ricaricamenti.
                 extra=(
                     '<a class="regula-detail-link" href="?aic='+aic+'" target="_self">'
@@ -487,9 +561,10 @@ try:
                 '<tbody>'+''.join(table_rows)+'</tbody></table></div>',
                 unsafe_allow_html=True
             )
-            st.caption('La classe è quella dell’anagrafica AIFA, se presente, oppure della '
-                       'lista ufficiale A/H alla data indicata. N/D = dato non disponibile, '
-                       'non significa classe C. Lo stato attuale e la rimborsabilità non sono certificati.')
+            st.caption('A/H: elenchi ufficiali datati. C: atto verificato a livello '
+                       'del medicinale. C(nn): segnalazione storica per codice medicinale '
+                       'e nome, non una classe vigente della confezione. '
+                       'N/D = non documentata, non significa C.')
             if len(rows)>100:
                 st.caption('Visualizzate le prime 100 confezioni.')
         else:
