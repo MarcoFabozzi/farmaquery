@@ -3,7 +3,8 @@ import unittest
 
 from errori_chatbot import EnginePhaseError,diagnose_error,label_error
 from tesi.tag_budget import (semantic_plan,expand_selected,selection_mode,
-                             sem_filter_controlled,LOTUS_SELECTION_TIMEOUT_SECONDS)
+                             sem_filter_controlled,LOTUS_SELECTION_TIMEOUT_SECONDS,
+                             preserve_category_recall)
 
 
 class TagBudgetTests(unittest.TestCase):
@@ -71,6 +72,15 @@ class TagBudgetTests(unittest.TestCase):
         err=EnginePhaseError("selezione TAG",TimeoutError("TOKEN_PRIVATO"))
         self.assertEqual(diagnose_error(err)["codice"],"CONNESSIONE")
         self.assertEqual(label_error(err)["codice_errore"],"CONNESSIONE")
+
+    def test_richiamo_categoria_conserva_documenti_non_selezionati_lotus(self):
+        selected=[self.rows[0],self.rows[1]]
+        full=preserve_category_recall(self.rows,selected)
+        self.assertEqual(len(full),len(self.rows))
+        self.assertEqual({row["chiave"] for row in full},
+                         {row["chiave"] for row in self.rows})
+        self.assertEqual(full[:2],selected)
+        self.assertEqual(preserve_category_recall(self.rows,[]),self.rows)
 
     def test_quote_non_sono_risposte_errate(self):
         class RateLimitError(Exception):
