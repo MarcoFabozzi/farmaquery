@@ -246,7 +246,11 @@ def _target_db(db, question):
 
     if matches:
         return min(matches, key=lambda name: (-phrases[name][1], phrases[name][0]))
-    # Preserva il recupero via FTS per farmaci presenti solo nelle note.
+    # Recupera anche nomi presenti esclusivamente nelle note regionali.
+    for row in db.execute("SELECT DISTINCT farmaco_candidato FROM note WHERE farmaco_candidato IS NOT NULL"):
+        name=str(row[0]).strip()
+        if name and re.search(r"(?<!\\w)"+re.escape(name)+r"(?!\\w)",question,re.I):
+            return name
     return _target(question)
 
 
