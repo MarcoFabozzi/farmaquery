@@ -81,8 +81,8 @@ def inspect(rows,connection):
             result["validati"]+=1
             c["validati"]+=1
     result["esito"]="OK" if not result["errori"] else "ERRORE"
-    result["nota"]="OK significa solo che la struttura delle citazioni esiste; "+
-                   "la verifica semantica e temporale resta a carico del revisore."
+    result["nota"]=("OK significa solo che la struttura delle citazioni esiste; "
+                    "la verifica semantica e temporale resta a carico del revisore.")
     return result
 
 
