@@ -86,6 +86,8 @@ def _doc_pages(db, note_id):
 def _evidence(page, annotation="", role="REGIONE"):
     source=(str(page["percorso_zip"])+"#p"+str(page["numero_pagina"])
             +" | archivio: "+str(page["archivio_url"]))
+    page_text=str(page["testo"])
+    partial=" [ESTRATTO PARZIALE: verificare il resto della pagina]" if len(page_text)>2150 else ""
     return {
         "tipo":role,
         "chiave":role+":"+str(page["nota_id"])+"#p"+str(page["numero_pagina"]),
@@ -93,7 +95,7 @@ def _evidence(page, annotation="", role="REGIONE"):
                  "; farmaco (candidato): "+str(page.get("farmaco_candidato") or "")+
                  "; pagina "+str(page["numero_pagina"])+
                  ("; "+annotation if annotation else "")+
-                 "; testo: "+str(page["testo"])[:2700]),
+                 "; testo: "+page_text[:2150]+partial),
         "fonte":source,
     }
 
@@ -194,7 +196,9 @@ def regional_candidates(db,question,target="",limit=22):
             # I rimandi non risolti non vengono trasformati in fatti.
             for w in warnings:
                 if pages:
-                    add(_evidence(pages[0],w))
+                    warning=_evidence(pages[0],w)
+                    warning["chiave"]+=":avviso:"+str(len(found))
+                    add(warning)
         return found[:limit]
 
     # Nessun medicinale individuato: ricerca trasversale alle note.
