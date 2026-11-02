@@ -8,7 +8,7 @@ Cliccandolo si apre una finestra Streamlit indipendente con un campo di scrittur
 esclusivamente nei *Secrets* privati di Streamlit Community Cloud:
 ```toml
 GEMINI_API_KEY = "la_tua_chiave"
-FARMAQUERY_LLM_MODEL = "gemini/gemini-2.5-flash"
+FARMAQUERY_LLM_MODEL = "gemini/gemini-3.5-flash-lite"
 ```
 Il Secret `FARMAQUERY_CHAT_PASSWORD` non viene più utilizzato e può essere
 rimosso dal pannello Secrets.
