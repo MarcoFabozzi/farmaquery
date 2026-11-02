@@ -180,6 +180,15 @@ def assistant_dialog():
                             )
                     if item.get("secondi") is not None:
                         st.caption(f'{item["secondi"]:.1f} s · {method}')
+                    if method=="TAG" and item.get("versione_tag"):
+                        st.caption(
+                            "Motore TAG: "+str(item["versione_tag"])+
+                            " · contesto fonte: "+
+                            str(item.get("verifica_contesto","?"))+
+                            " · AIC rilevati nel testo: "+
+                            str(item.get("aic_nel_testo_integrale",0))+
+                            " · revisione richiesta: "+
+                            ("sì" if item.get("revisione_completezza_llm") else "no"))
                     if method=="TAG" and item.get("modalita_selezione"):
                         st.caption(
                             "Selezione TAG: "+str(item["modalita_selezione"])+
@@ -213,7 +222,11 @@ def assistant_dialog():
                         "modalita_selezione":result.get("modalita_selezione"),
                         "righe_recuperate":result.get("righe_recuperate"),
                         "righe_sem_filter":result.get("righe_sem_filter"),
-                        "chiamate_llm_stimate":result.get("chiamate_llm_stimate")})
+                        "chiamate_llm_stimate":result.get("chiamate_llm_stimate"),
+                        "versione_tag":result.get("versione_tag"),
+                        "verifica_contesto":result.get("verifica_contesto"),
+                        "aic_nel_testo_integrale":result.get("aic_nel_testo_integrale"),
+                        "revisione_completezza_llm":result.get("revisione_completezza_llm")})
         # Solo la finestra viene aggiornata: rimane aperta e scrivibile.
         st.rerun(scope="fragment")
 
