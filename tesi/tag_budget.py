@@ -11,7 +11,7 @@ import os
 
 DEFAULT_GROUPS = 3
 MAX_GROUPS = 5
-EXCERPT_CHARS = 1150
+EXCERPT_CHARS = 1750
 
 
 def selection_mode(environ=None):
@@ -67,7 +67,7 @@ def semantic_plan(rows, mode="raggruppata", max_groups=DEFAULT_GROUPS):
         for row in bucket:
             src=str(row.get("tipo") or "ALTRO")
             key=str(row["chiave"])
-            piece=" ".join(str(row.get("testo") or "").split())
+            piece=" ".join(str(row.get("testo_selezione") or row.get("testo") or "").split())
             if len(piece)>EXCERPT_CHARS:
                 piece=piece[:EXCERPT_CHARS].rstrip()+" [ESTRATTO TRONCATO]"
             textparts.append("["+src+" | "+key+"] "+piece)
