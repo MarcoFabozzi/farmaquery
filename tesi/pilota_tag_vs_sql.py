@@ -184,9 +184,10 @@ def tag(db,question,model):
     rows=evidence_candidates(db,question)
     if not rows:
         return {"risposta":"Informazione non documentata nello snapshot consultato.",
-                "fonti":[],"stato":"NESSUNA_EVIDENZA","token_input":None,
-                "token_output":None,"costo_usd":None}
-    lotus.settings.configure(lm=LM(model=model),enable_cache=False)
+                "fonti":[],"stato":"NESSUNA_EVIDENZA","token_input":0,
+                "token_output":0,"costo_usd":0.0,"costo_completo":True}
+    lm=LM(model=model,max_batch_size=4)
+    lotus.settings.configure(lm=lm,enable_cache=False)
     frame=pd.DataFrame(rows)
     selected=frame.sem_filter(
         "Il contenuto di {testo} fornisce informazioni pertinenti alla domanda "
@@ -194,10 +195,14 @@ def tag(db,question,model):
         +". I riferimenti a strutture nei registri AIFA non equivalgono "
          "automaticamente a centri prescrittori autorizzati nella regione."
     ).head(8)
+    # LOTUS registra token e costo delle chiamate sem_filter; non ignorarli.
+    selection_usage=lm.stats.physical_usage
     if selected.empty:
         return {"risposta":"Informazione non documentata nello snapshot consultato.",
-                "fonti":[],"stato":"NESSUNA_EVIDENZA","token_input":None,
-                "token_output":None,"costo_usd":None}
+                "fonti":[],"stato":"NESSUNA_EVIDENZA",
+                "token_input":selection_usage.prompt_tokens,
+                "token_output":selection_usage.completion_tokens,
+                "costo_usd":selection_usage.total_cost,"costo_completo":True}
     evidence=selected[["tipo","testo","fonte"]].to_dict("records")
     answer,usage=ask(model,"Rispondi in italiano esclusivamente dalle evidenze. "
         "Distingui autorizzazione europea EMA, classe A/H di una confezione AIFA "
@@ -206,11 +211,17 @@ def tag(db,question,model):
         "Non dichiarare un centro autorizzato soltanto dal registro AIFA. "
         "Indica le fonti; se mancano, scrivi 'non documentato nello snapshot'.",
         {"domanda":question,"evidenze":evidence})
+    input_tokens=(selection_usage.prompt_tokens+usage["token_input"]
+                  if usage["token_input"] is not None else None)
+    output_tokens=(selection_usage.completion_tokens+usage["token_output"]
+                   if usage["token_output"] is not None else None)
+    full_cost=(selection_usage.total_cost+usage["costo_usd"]
+               if usage["costo_usd"] is not None else None)
     return {"risposta":answer,"fonti":list(dict.fromkeys(x["fonte"] for x in evidence)),
-            "stato":"OK","token_input":usage["token_input"],
-            "token_output":usage["token_output"],"costo_usd":usage["costo_usd"],
-            "costo_completo":False,
-            "nota_costi":"Le statistiche della selezione semantica LOTUS non sono incluse nel costo della sintesi."}
+            "stato":"OK","token_input":input_tokens,
+            "token_output":output_tokens,"costo_usd":full_cost,
+            "costo_completo":full_cost is not None,
+            "righe_sem_filter":len(rows)}
 
 
 def validate_sql(text):
@@ -222,8 +233,9 @@ def validate_sql(text):
     if len(instructions)!=1 or not isinstance(instructions[0],(exp.Select,exp.Union)):
         raise ValueError("Sono consentite solo SELECT")
     root=instructions[0]
-    blocked=(exp.Insert,exp.Update,exp.Delete,exp.Drop,exp.Create,exp.Alter,
-             exp.Command,exp.Pragma,exp.Attach,exp.Detach)
+    blocked=tuple(getattr(exp,name) for name in
+                  ("Insert","Update","Delete","Drop","Create","Alter","Command",
+                   "Pragma","Attach","Detach") if hasattr(exp,name))
     for banned in blocked:
         if root.find(banned):
             raise ValueError("SQL non consentito")
