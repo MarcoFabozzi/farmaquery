@@ -8,7 +8,7 @@ import unittest
 
 from tesi.pilota_tag_vs_sql import (
     _question_kind,_search_aifa,_target,_facets,_multisource_evidence,
-    evidence_candidates,terms,
+    evidence_candidates,terms,_target_db,
 )
 
 
@@ -42,6 +42,8 @@ class TagRetrievalTests(unittest.TestCase):
           ('005','TACHIPIRINA','PARACETAMOLO','1000 mg','C','2026-06-30'),
           ('006','TACHIPIRINA FLASHTAB','PARACETAMOLO','500 mg',NULL,NULL),
           ('007','BRUFEN','IBUPROFENE','600 mg compresse','A','2026-06-30');
+        INSERT INTO ema_medicinali VALUES('EMA-PLU','PLUVICTO','LUTETIUM','Autorizzato','2022-12-01','Carcinoma prostatico metastatico resistente alla castrazione','https://ema.test/pluvicto');
+        INSERT INTO aifa_confezioni VALUES('050419011','PLUVICTO','LUTETIUM','Soluzione','H','2026-06-30');
         INSERT INTO note VALUES('n1','note/DUVYZAT.pdf','https://campania.test/2026.zip');
         INSERT INTO pagine VALUES('n1',1,'I centri per DUVYZAT comprendono i presidi indicati','TESTO');
         INSERT INTO pagine_fts VALUES('n1',1,'I centri per DUVYZAT comprendono i presidi indicati');
@@ -63,6 +65,29 @@ class TagRetrievalTests(unittest.TestCase):
                          "duvyzat")
         self.assertEqual(_target("Qualsiasi reparto di Neurologia in Campania "
                                  "può prescrivere ULTOMIRIS?"),"ultomiris")
+
+    def test_pluvicto_riconosciuto_in_qualsiasi_posizione(self):
+        questions = (
+            "Per quale tumore è indicato PLUVICTO?",
+            "Qual è la classe di rimborsabilità di PLUVICTO in Italia?",
+            "Quali sono i centri autorizzati alla somministrazione di PLUVICTO in Campania?",
+            "PLUVICTO: per quale tumore è indicato, quale classe ha in Italia?",
+        )
+        for question in questions:
+            with self.subTest(question=question):
+                self.assertEqual(_target_db(self.db, question), "pluvicto")
+                found = evidence_candidates(self.db, question)
+                self.assertTrue(found)
+                self.assertIn("EMA", {r["tipo"] for r in found})
+                self.assertIn("AIFA", {r["tipo"] for r in found})
+        self.assertEqual(_question_kind(questions[0]), "EMA")
+
+    def test_denominazione_composta(self):
+        self.db.execute("INSERT INTO ema_medicinali VALUES "
+                        "('EM-2','FARMACO PROVA','X','Autorizzato',NULL,"
+                        "'Indicazione di test','https://example.test')")
+        self.assertEqual(
+            _target_db(self.db, "A cosa serve FARMACO PROVA?"), "farmaco prova")
 
     def test_esclude_specialita_composte_se_esiste_nome_esatto(self):
         rows=_search_aifa(self.db,"paracetamolo")
