@@ -315,7 +315,8 @@ def evidence_candidates(db,question,max_rows=18):
     rows=[]
     seen=set()
 
-    def put(tipo,uid,description,source,sources=None,selection_text=None):
+    def put(tipo,uid,description,source,sources=None,selection_text=None,
+            passages=None,document_count=None,documents_truncated=False):
         if uid not in seen and len(rows)<max_rows:
             seen.add(uid)
             row={"tipo":tipo,"chiave":uid,
@@ -324,6 +325,11 @@ def evidence_candidates(db,question,max_rows=18):
                 row["fonti"]=list(dict.fromkeys(sources))
             if selection_text:
                 row["testo_selezione"]=selection_text
+            if passages:
+                row["passaggi_sintesi"]=passages
+            if document_count is not None:
+                row["copertura_documenti"]=document_count
+                row["documenti_troncati"]=documents_truncated
             rows.append(row)
 
     aifa_limit=7 if kind=="AIFA" else 4
@@ -364,7 +370,10 @@ def evidence_candidates(db,question,max_rows=18):
             for item in expanded:
                 put(item["tipo"],item["chiave"],item["testo"],item["fonte"],
                     sources=item.get("fonti"),
-                    selection_text=item.get("testo_selezione"))
+                    selection_text=item.get("testo_selezione"),
+                    passages=item.get("passaggi_sintesi"),
+                    document_count=item.get("copertura_documenti"),
+                    documents_truncated=item.get("documenti_troncati",False))
             return
         # Compatibilità con fixture minime e con vecchie sorgenti.
         for item in candidates(db,target,limit=5 if kind=="CENTRI" else 3):
