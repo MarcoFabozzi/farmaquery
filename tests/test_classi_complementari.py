@@ -29,7 +29,7 @@ class ClassiComplementariTests(unittest.TestCase):
             self.assertEqual(etichetta_cnn_storica(evid),
                              "C(nn) (storica 14/10/2026)")
             self.assertEqual(riferimenti_cnn(indice, "001000019", "Farmaco Diverso"), [])
-            self.assertEqual(riferimenti_cnn(indice, "001000"), [])
+            self.assertEqual(riferimenti_cnn(indice, "001000", "Farmaco Prova"), [])
             self.assertEqual(riferimenti_cnn(indice, "001000999", "Farmaco Prova"), evid)
 
     def test_codici_cinque_cifre_e_priorita_a_h(self):
