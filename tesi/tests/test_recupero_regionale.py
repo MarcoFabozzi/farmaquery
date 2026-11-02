@@ -89,7 +89,7 @@ class RegionalSemanticRetrievalTests(unittest.TestCase):
         self.db.execute("UPDATE pagine SET testo=? "
                         "WHERE nota_id='nm' AND numero_pagina=2",
                         ("Intestazione ripetuta " * 110 +
-                         "Centro prescrittore: AOU Federico II di Napoli."))
+                         "Centro prescrittore: AOU Federico II di Napoli.",))
         self.db.execute(
             "DELETE FROM pagine_fts WHERE nota_id='nm' AND numero_pagina=2")
         self.db.execute(
