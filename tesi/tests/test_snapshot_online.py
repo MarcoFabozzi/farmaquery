@@ -42,6 +42,13 @@ class SnapshotOnlineTests(unittest.TestCase):
                                "WHERE tipo_documento='ALLEGATO'").fetchone()[0],0
                 )
                 self.assertGreater(info["conteggi"]["gu_documenti"],10)
+                from tesi.recupero_gu import candidati_gu
+                gu = candidati_gu(
+                    db,"Secondo la determina GU 23A02767, quali AIC di WEGOVY "
+                       "sono elencati e quale classe è attribuita?")
+                self.assertTrue(gu, "WEGOVY non recuperato nel corpus GU reale")
+                self.assertTrue(all(r["codice"]=="23A02767" for r in gu))
+                self.assertTrue(any("WEGOVY" in r["testo"].upper() for r in gu))
                 self.assertIn("gazzetta",info["fonti_ufficiali"])
                 # Lo snapshot scientifico NON attribuisce C per esclusione.
                 self.assertGreater(
