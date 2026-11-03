@@ -160,7 +160,11 @@ def revise_category_if_needed(model,question,answer,compact,ask_fn):
                        _candidate_listed(answer,_candidate_short_name(doc))}
     context={
         "domanda":question,
-        "documenti_candidati_non_elencati":missing,
+        "documenti_candidati_non_elencati":[
+            {"medicinale_candidato":_candidate_short_name(doc),
+             "passaggi":doc.get("passaggi",[]),
+             "fonti":doc.get("fonti",[])}
+            for doc in missing],
         "avviso":"Documenti candidati NON equivalgono a prescrizioni provate. "
                  "Si devono verificare indicazione, centro e pagina insieme.",
     }
