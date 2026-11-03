@@ -161,7 +161,7 @@ def missing_category_candidates(answer,compact):
     return misses
 
 
-def expand_review_pages(db,question,answer,compact,max_docs=6,max_pages=2,max_chars=10500):
+def expand_review_pages(db,question,answer,compact,max_docs=24,max_pages=2,max_chars=10500):
     """Arricchisce SOLO i candidati omessi con le pagine originali SQLite.
 
     La prima sintesi continua a usare estratti compatti. Per verificare
