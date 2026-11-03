@@ -62,6 +62,10 @@ def retrieve_category_sql_first(db,question,max_rows=180):
     if not required <= _tables(db):
         return [],{"applicabile":False}
     available=_tables(db)
+    columns={x[1] for x in db.execute("PRAGMA table_info(note)")}
+    if not {"id","farmaco_candidato","nome_file","percorso_zip",
+            "archivio_url","indicazione_candidata"} <= columns:
+        return [],{"applicabile":False}
     metadata=("LEFT JOIN nota_metadati_revisionati m ON m.nota_id=n.id "
               if "nota_metadati_revisionati" in available else "")
     indication=("COALESCE(NULLIF(m.indicazione,''),"
