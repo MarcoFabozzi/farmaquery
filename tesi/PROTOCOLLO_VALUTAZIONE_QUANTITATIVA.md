@@ -33,6 +33,24 @@
 
 Le callback globali LiteLLM non vengono cambiate, per evitare interferenze tra sessioni Streamlit. La misura per LOTUS conta i messaggi inviati al suo batch nel processo (non eventuali ritentativi invisibili dentro librerie/proxy/provider). Se la versione LOTUS non consente l'osservazione, il risultato segnala `conteggio_llm_completo=false`.
 
+## Esecuzione delle 20 domande dopo la validazione
+
+Solo dopo avere verificato le risposte gold sullo snapshot congelato, usare il runner che **non passa la ground truth all'LLM**:
+
+```bash
+python -m tesi.esegui_holdout \
+  --benchmark tesi/holdout_20_validato.csv \
+  --db risultati/fotografia_statica.sqlite \
+  --manifest risultati/tesi_statico_20261102.json \
+  --model gemini/gemini-3.5-flash-lite \
+  --commit <SHA_GIT_CONGELATO> \
+  --out risultati/risultati_holdout_grezzi.csv
+```
+
+`fotografia_statica.sqlite` è un percorso **di esempio**: va sostituito con il percorso del file SQLite decompresso, il cui hash deve coincidere con il manifesto. Il runner registra una risposta o un errore per ogni domanda e per ogni metodo, alternando l'ordine di esecuzione; non ripete le interrogazioni e impedisce di sovrascrivere un file di risultati già esistente.
+
+Dopo l'esecuzione, il revisore aggiunge nel CSV i giudizi 0/1, le entità effettivamente predette, le citazioni verificate e le note di valutazione. Prima della revisione, i relativi campi rimangono vuoti e non contribuiscono alle percentuali. Occorre includere le risposte errate e gli errori tecnici nel report, senza selezionare soltanto i casi riusciti.
+
 ## Produzione della tabella richiesta dal relatore
 
 Il file `tesi/risultati_holdout_template.csv` contiene le colonne da compilare dopo l'esecuzione e dopo la revisione. `elementi_predetti` contiene le entità dichiarate nella risposta (se l'elenco è vuoto **scrivi `[]`**, mentre il campo vuoto indica non valutato).
