@@ -121,7 +121,8 @@ def revise_if_needed(model,question,answer,rows,complete,ask_fn):
     if not rows or not complete:
         return answer,None,False,metrics
     need_retry=(metrics["aic_omessi_nella_risposta"]>0 or
-                metrics["risposta_di_astensione"] or bool(missing_conditions))
+                metrics["risposta_di_astensione"] or bool(missing_conditions)
+                or bool(missing_therapies))
     if not need_retry:
         return answer,None,False,metrics
     context={
