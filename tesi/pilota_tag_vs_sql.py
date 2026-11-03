@@ -23,7 +23,9 @@ from tesi.verifica_completezza_tag import revise_if_needed,enumeration_warning
 from tesi.sql_category_support import (category_sql_context,
                                       select_generation_guidance,CATEGORY_RETRY_RULES,
                                       SQL_SYNTAX_REPAIR_RULES,
-                                      CATEGORY_DIVERSITY_RETRY_RULES)
+                                      CATEGORY_DIVERSITY_RETRY_RULES,
+                                      DOCUMENT_SQL_RETRY_RULES,
+                                      SQL_EXECUTION_REPAIR_RULES)
 from tesi.tag_budget import (selection_mode,semantic_plan,expand_selected,
                              sem_filter_controlled,preserve_category_recall)
 from tesi.sintesi_tag import (CATEGORY_SYSTEM, compact_category_evidence,
@@ -1024,6 +1026,41 @@ def _absolute_negative_on_partial_sql(answer,rows,truncated,category):
         statement,flags=re.I))
 
 
+def _sql_note_hints(db,question,limit=6):
+    """Metadati candidati dallo stesso SQLite, senza usare risposte gold.
+
+    Privilegia la coincidenza con PIÙ parole del nome commerciale, anziché
+    ritornare prematuramente la prima nota che contiene una parola generica.
+    """
+    available={r[0] for r in db.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'")}
+    if "note" not in available:
+        return []
+    upper_tokens=list(dict.fromkeys(
+        re.findall(r"(?<!\w)[A-Z][A-Z0-9-]{3,}(?!\w)",str(question))))
+    tokens=[token for token in upper_tokens if token not in {
+        "SINFONIA","CAMPANIA","EGFR","ATTR-CM","FIGO",
+        "RNRL","FILE","MEDICINA","LOTUS"}]
+    found={}
+    for token in tokens[:8]:
+        pattern=_like(token)
+        for row in db.execute(
+            "SELECT id,nome_file,anno,farmaco_candidato,"
+            "protocollo_candidato,percorso_zip FROM note "
+            "WHERE farmaco_candidato LIKE ? ESCAPE '\\' COLLATE NOCASE "
+            "OR nome_file LIKE ? ESCAPE '\\' COLLATE NOCASE "
+            "ORDER BY anno DESC LIMIT ?",
+            (pattern,pattern,limit*3)):
+            found[row["id"]]=dict(row)
+    def rank(row):
+        name=(str(row.get("farmaco_candidato") or "")+" "+
+              str(row.get("nome_file") or "")).upper()
+        overlap=sum(1 for token in tokens if token in name)
+        return (-overlap,-int(row.get("anno") or 0),str(row["id"]))
+    return sorted(found.values(),key=rank)[:limit]
+
+
+
 def sql_method(db,question,model):
     category_context=category_sql_context(question)
     request={"schema":SCHEMA,"domanda":question}
@@ -1055,9 +1092,58 @@ def sql_method(db,question,model):
         syntax_repair=True
 
     first_sql=sql
-    rows,truncated=_execute_generated_select(db,sql,category=bool(category_context),
-                                             question=question)
+    runtime_repair=False
+    try:
+        rows,truncated=_execute_generated_select(
+            db,sql,category=bool(category_context),question=question)
+    except EnginePhaseError as exc:
+        cause=exc.__cause__ or exc.original
+        if (exc.phase!="esecuzione SQL"
+            or not isinstance(cause,sqlite3.OperationalError)
+            or any(word in str(cause).lower()
+                   for word in ("interrupted","locked","readonly",
+                                "disk i/o","unable to open"))):
+            raise
+        # Una sola seconda SELECT; mai riutilizzare SQL non validato.
+        message=str(cause).lower()
+        kind=("COLONNA_NON_PRESENTE" if "no such column" in message else
+              "TABELLA_NON_PRESENTE" if "no such table" in message else
+              "AMBIGUITA_COLONNA" if "ambiguous column" in message else
+              "ERRORE_SQL_OPERATIVO")
+        regenerated,repair_usage=_in_phase(
+            "correzione SQL eseguibile",ask,model,SQL_EXECUTION_REPAIR_RULES,
+            {"schema":SCHEMA,"domanda":question,
+             "sql_precedente_non_eseguibile":first_sql,
+             "tipo_errore_sql":kind,
+             "metadati_note_candidate":_sql_note_hints(db,question)})
+        sql=_in_phase("validazione SQL",validate_sql,regenerated)
+        first=_accumulate(first,repair_usage)
+        attempts+=1
+        runtime_repair=True
+        rows,truncated=_execute_generated_select(
+            db,sql,category=bool(category_context),question=question)
     zero_row_retry=False
+    note_hints=[]
+    if not category_context and not rows and "nota" in question.casefold():
+        note_hints=_sql_note_hints(db,question)
+        if note_hints:
+            retry_payload={
+                "schema":SCHEMA,
+                "domanda":question,
+                "query_precedente_senza_righe":sql,
+                "righe_primo_tentativo":0,
+                "metadati_note_candidate":note_hints,
+                "avviso":("Queste note sono candidate, non prove: leggere "
+                         "il testo delle pagine prima di rispondere.")
+            }
+            regenerated,retry_usage=_in_phase(
+                "revisione SQL",ask,model,DOCUMENT_SQL_RETRY_RULES,retry_payload)
+            sql=_in_phase("validazione SQL",validate_sql,regenerated)
+            first=_accumulate(first,retry_usage)
+            attempts+=1
+            zero_row_retry=True
+            rows,truncated=_execute_generated_select(
+                db,sql,category=False,question=question)
 
     if category_context and not rows:
         # Un'altra SELECT è ammessa solo per lo ZERO-righe, mai per
@@ -1130,7 +1216,10 @@ def sql_method(db,question,model):
 
     citations=_sql_sources(db,rows)
     metadata={"sql_tentativi":attempts,
-              "sql_iniziale":first_sql if zero_row_retry or coverage_retry else None,
+              "sql_iniziale":first_sql if zero_row_retry or coverage_retry or runtime_repair else None,
+              "sql_correzione_operativa":runtime_repair,
+              "sql_riprova_documentale":bool(zero_row_retry and not category_context),
+              "note_candidate_riprova":len(note_hints),
               "sql_correzione_sintassi":syntax_repair,
               "sql_riprova_copertura":coverage_retry,
               "sql_esito_riprova_copertura":coverage_retry_status,
@@ -1145,10 +1234,14 @@ def sql_method(db,question,model):
                        "per questa categoria. Non è una prova che "
                        "l'informazione sia assente nello snapshot."
                        if category_context else
+                       "Le SELECT Text-to-SQL non hanno restituito "
+                       "prove per la nota cercata. Questo NON dimostra "
+                       "che il documento sia assente nello snapshot."
+                       if note_hints else
                        "Informazione non documentata nello snapshot consultato."),
             "fonti":[],"sql":sql,"righe_sql":0,
-            "stato":"NESSUNA_RIGA_SQL" if category_context else "NESSUNA_EVIDENZA",
-            "risultato_parziale":bool(category_context),
+            "stato":"NESSUNA_RIGA_SQL" if (category_context or note_hints) else "NESSUNA_EVIDENZA",
+            "risultato_parziale":bool(category_context or note_hints),
             **first,"costo_completo":first.get("costo_usd") is not None,
             **metadata
         }

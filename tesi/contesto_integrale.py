@@ -16,7 +16,17 @@ CODE_RE=re.compile(r"\b\d{2}[A-Za-z]\d{5}\b")
 
 def richiede_sezione_completa(question):
     q=question.casefold()
-    return bool(re.search(
+    # Una domanda su una nota identificata da anno/protocollo o che
+    # richiede indicazioni e combinazioni usa l'intero documento, non
+    # soltanto l'estratto scelto da LOTUS. Non usa risposte gold.
+    nota_nominata=bool(
+        re.search(r"\bnota\b",q) and
+        re.search(r"\b(?:20\d{2}|prot\.?|indicazion\w*|"
+                  r"associazion\w*|combinazion\w*|richiam\w*|"
+                  r"rimand\w*|sostitui\w*|condizion\w*|"
+                  r"requisit\w*)\b",q)
+    )
+    return nota_nominata or bool(re.search(
         r"\b(tutti|tutte|complet[oaie]|"
         r"quante\s+(?:confezioni|penne)|"
         r"quanti\s+(?:centri|aic|farmaci|medicinali)|"

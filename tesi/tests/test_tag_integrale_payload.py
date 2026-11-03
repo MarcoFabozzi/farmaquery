@@ -213,6 +213,34 @@ class TagIntegralPayloadTests(unittest.TestCase):
         self.assertTrue(result["revisione_completezza_llm"])
         self.assertIn("registro AIFA",result["risposta"])
 
+    def test_note_interpretative_relatore_non_restano_non_recuperate(self):
+        cases=(
+            ("Quali tre indicazioni e rispettive combinazioni terapeutiche "
+             "distingue la nota regionale KEYTRUDA 0116205/2026?",
+             "KEYTRUDA"),
+            ("Quali condizioni EGFR e quali associazioni terapeutiche "
+             "distingue la nota regionale RYBREVANT 0403588/2026 "
+             "per le nuove indicazioni?","RYBREVANT"),
+            ("Quale nota del 2023 è richiamata dalla nota AMVUTTRA "
+             "0634617/2026 e come cambiano i canali di rendicontazione "
+             "ambulatoriale e domiciliare?","AMVUTTRA"),
+            ("In relazione all'EGPA, quale nota precedente è richiamata "
+             "da FASENRA 0520736/2026 e in che senso vengono sostituiti "
+             "e aggiornati i centri per mepolizumab?","FASENRA"),
+        )
+        with sqlite3.connect(self.path) as db:
+            db.row_factory=sqlite3.Row
+            for question,medicinale in cases:
+                with self.subTest(medicinale=medicinale):
+                    result,requests=run_without_provider(
+                        db,question,"Risposta sintetica di prova.")
+                    self.assertTrue(result["contesto_integrale"])
+                    self.assertNotEqual(
+                        result["verifica_contesto"],"non_recuperato")
+                    raw=" ".join(str(item.get("testo") or "")
+                                 for item in requests[0][1]["evidenze"])
+                    self.assertIn(medicinale,raw.upper())
+
     def test_wegovy_sei_aic_raggiungono_sintesi(self):
         question=("Quante confezioni di WEGOVY sono presenti "
                   "nell'articolo 1 della determina 23A02767? "
