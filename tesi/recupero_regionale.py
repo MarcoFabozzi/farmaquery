@@ -18,7 +18,9 @@ ESPANSIONI = {
     # Servono al RECUPERO, non attestano un'autorizzazione.
     "neuromuscolar": ("miastenia", "mgg", "rfg101", "muscolare", "spinale",
                       "duchenne", "atrofia", "distrofia", "motoneurone",
-                      "neuropatia", "polineuropatia"),
+                      "neuropatia", "polineuropatia", "poliradicoloneuropatia",
+                      "cidp", "demielinizzante", "dermatomiosite",
+                      "transtiretina", "amiloidosi", "attrv", "hattr"),
     "oncol": ("carcinoma", "tumore", "neoplasia", "linfoma"),
     "autoimmun": ("miastenia", "artrite", "sclerosi", "lupus"),
     "cardiomiopat": ("cardiomiopatia", "amiloidosi", "attr"),
@@ -254,7 +256,9 @@ def regional_candidates(db,question,target="",limit=22):
     stem, expanded=categoria(question)
     queries=list(expanded) if stem else _tokens(question)
     terms_by_note={}
-    for term in queries[:10]:
+    # Le abbreviazioni e le denominazioni delle malattie non condividono
+    # necessariamente una radice lessicale: non troncare le espansioni.
+    for term in queries[:24]:
         # Non troncare ai primi 35 risultati PER TERMINE: l'unità di
         # recupero è la nota, non la singola occorrenza sulla pagina.
         for hit in _sql_fts(db,term,limit=1000):
