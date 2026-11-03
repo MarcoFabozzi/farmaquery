@@ -4,6 +4,7 @@ from pathlib import Path
 import tempfile
 import json
 import hashlib
+import gzip
 import sqlite3
 import unittest
 from unittest.mock import patch
@@ -96,6 +97,53 @@ class ChatbotTests(unittest.TestCase):
                 "FARMAQUERY_STATIC_DB_PATH":str(db),
                 "FARMAQUERY_STATIC_MANIFEST_PATH":str(manifest)}):
                 with self.assertRaisesRegex(ValueError,"diverso"):
+                    chat.prepare_snapshot()
+
+    def test_snapshot_compresso_v2_caricato_senza_fonti_online(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            sqlite_file=root/"origine.sqlite"
+            packed=root/"copia.sqlite.gz"
+            manifest=root/"copia.json"
+            with sqlite3.connect(sqlite_file) as con:
+                for table in ("note","pagine","aifa_confezioni",
+                              "ema_medicinali","strutture_registri",
+                              "nota_centro_documentato"):
+                    con.execute(f"CREATE TABLE {table}(id INTEGER)")
+            original=hashlib.sha256(sqlite_file.read_bytes()).hexdigest()
+            with sqlite_file.open("rb") as source,gzip.open(packed,"wb") as dest:
+                dest.write(source.read())
+            compressed=hashlib.sha256(packed.read_bytes()).hexdigest()
+            manifest.write_text(json.dumps({
+                "sha256_sqlite":original,"sha256_gzip":compressed,
+                "data_fonte":"2026-11-02"}),encoding="utf-8")
+            config={"FARMAQUERY_STATIC_DB_PATH":str(packed),
+                    "FARMAQUERY_STATIC_MANIFEST_PATH":str(manifest)}
+            with patch.dict(os.environ,config):
+                selected,meta=chat.prepare_snapshot()
+                self.assertTrue(selected.is_file())
+                self.assertEqual(hashlib.sha256(selected.read_bytes()).hexdigest(),
+                                 original)
+                self.assertEqual(meta["data_fonte"],"2026-11-02")
+                self.assertEqual(chat.snapshot_version()[0][0],str(packed))
+                # Nessun file sorgente o script ETL è necessario qui.
+                with patch("tesi.prepara_snapshot_online.build_snapshot") as build:
+                    chat.prepare_snapshot()
+                    build.assert_not_called()
+
+    def test_snapshot_compresso_errato_blocca_entrambe_le_tecniche(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            packed=root/"copia.sqlite.gz"
+            manifest=root/"copia.json"
+            packed.write_bytes(b"compresso alterato")
+            manifest.write_text(json.dumps({
+                "sha256_sqlite":"a"*64,"sha256_gzip":"b"*64}),
+                encoding="utf-8")
+            config={"FARMAQUERY_STATIC_DB_PATH":str(packed),
+                    "FARMAQUERY_STATIC_MANIFEST_PATH":str(manifest)}
+            with patch.dict(os.environ,config):
+                with self.assertRaisesRegex(ValueError,"compresso"):
                     chat.prepare_snapshot()
 
     def test_modalita_statica_richiede_entrambi_i_percorsi(self):

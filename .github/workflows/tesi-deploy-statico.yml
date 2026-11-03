@@ -6,6 +6,8 @@ on:
       - 'tesi/build_frozen_demo.py'
       - 'chatbot_farmaquery.py'
       - 'tests/test_chatbot_farmaquery.py'
+      - 'tesi/collaudo_statico.py'
+      - 'tesi/demo_finale_quattro_domande.csv'
       - '.github/workflows/tesi-deploy-statico.yml'
   push:
     branches: [main]
@@ -70,6 +72,17 @@ jobs:
                   assert db.execute("SELECT COUNT(*) FROM gu_segmenti").fetchone()[0]>0
                   print('Snapshot statico con GU verificato:',manifest['sha256_sqlite'])
           PY
+      - name: Precollaudo documentale con le quattro tipologie del relatore
+        run: |
+          python - <<'PY'
+          import gzip,shutil
+          with gzip.open('risultati/tesi_statico_20261102.sqlite.gz','rb') as src,open('frozen_source/tesi_demo.sqlite','wb') as dst:
+              shutil.copyfileobj(src,dst)
+          PY
+          python tesi/collaudo_statico.py \
+            --db frozen_source/tesi_demo.sqlite \
+            --manifest risultati/tesi_statico_20261102.json \
+            --out frozen_source/collaudo_quattro_casi.json
       - name: Archivia il database per il confronto locale
         uses: actions/upload-artifact@v4
         with:
@@ -77,6 +90,7 @@ jobs:
           path: |
             risultati/tesi_statico_20261102.sqlite.gz
             risultati/tesi_statico_20261102.json
+            frozen_source/collaudo_quattro_casi.json
           retention-days: 90
           if-no-files-found: error
       - name: Distribuisci i due file statici nel repository
@@ -91,3 +105,34 @@ jobs:
             git commit -m "tesi: distribuisce SQLite statico del 02-11-2026 [skip ci]"
             git push origin HEAD:main
           fi
+      - name: Interroga TAG e Text-to-SQL sullo stesso SQLite congelato
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        continue-on-error: true
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          FARMAQUERY_LLM_MODEL: ${{ vars.FARMAQUERY_LLM_MODEL }}
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "Gemini non disponibile tra i Secrets delle GitHub Actions."
+            echo "LLM_NON_CONFIGURATO" > frozen_source/esito_interrogazioni.txt
+          else
+            python -m pip install --disable-pip-version-check -r requirements.txt
+            python tesi/esegui_benchmark.py \
+              --db frozen_source/tesi_demo.sqlite \
+              --manifest risultati/tesi_statico_20261102.json \
+              --domande tesi/demo_finale_quattro_domande.csv \
+              --out frozen_source/risposte_chatbot.csv \
+              --model "${FARMAQUERY_LLM_MODEL:-gemini/gemini-2.5-flash}" \
+              --max-domande 4 --conferma-chiamate
+          fi
+      - name: Conserva risposte effettive, senza attribuire punteggi gold
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tesi-demo-risposte-dei-due-motori
+          path: |
+            frozen_source/risposte_chatbot.csv
+            frozen_source/esito_interrogazioni.txt
+            frozen_source/collaudo_quattro_casi.json
+          if-no-files-found: warn
+          retention-days: 90
