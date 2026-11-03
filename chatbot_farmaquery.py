@@ -28,6 +28,12 @@ REQUIRED=(
 )
 
 
+BUNDLED_STATIC = (
+    "risultati/tesi_statico_20261102.sqlite.gz",
+    "risultati/tesi_statico_20261102.json",
+)
+
+
 CACHE_CODE_SOURCES=(
     "tesi/pilota_tag_vs_sql.py",
     "tesi/contesto_integrale.py",
@@ -78,24 +84,60 @@ def _verified_static_snapshot(db,manifest):
     return meta
 
 
+def _bundled_static(root):
+    """Se il manifesto è presente, vieta ogni fallback su fonti aggiornate."""
+    archive,manifest=(Path(root)/name for name in BUNDLED_STATIC)
+    if not archive.exists() and not manifest.exists():
+        return None
+    if not archive.is_file() or not manifest.is_file():
+        raise FileNotFoundError("Bundle statico della tesi incompleto")
+    return archive,manifest
+
+
 def snapshot_version(root=ROOT):
-    """La cache usa SOLO i file statici se la modalità fissa è configurata."""
+    """La cache usa la fotografia fissa; non mescola versioni dei dati."""
     paths=_static_paths()
     if paths is not None:
         return tuple((str(path),path.stat().st_mtime_ns,path.stat().st_size)
                      for path in paths)
+    frozen=_bundled_static(root)
+    if frozen is not None:
+        return tuple((str(path),path.stat().st_mtime_ns,path.stat().st_size)
+                     for path in frozen+CACHE_CODE_SOURCES_PATHS(root))
     base=Path(root)
     relevant=REQUIRED+CACHE_CODE_SOURCES
     return tuple((name,(base/name).stat().st_mtime_ns,
                   (base/name).stat().st_size) for name in relevant)
 
 
+def CACHE_CODE_SOURCES_PATHS(root):
+    return tuple(Path(root)/name for name in CACHE_CODE_SOURCES)
+
+
 def prepare_snapshot(root=ROOT):
-    """Snapshot statico quando configurato; altrimenti modalità legacy."""
+    """Preferisce SQLite statico incluso nella demo, verificando SHA-256."""
     paths=_static_paths()
     if paths is not None:
         database,manifest=paths
         return database,_verified_static_snapshot(database,manifest)
+    frozen=_bundled_static(root)
+    if frozen is not None:
+        import gzip
+        archive,manifest=frozen
+        folder=Path(tempfile.mkdtemp(prefix="farmaquery_tesi_fissa_"))
+        db=folder/"tesi_statico_20261102.sqlite"
+        try:
+            total=0
+            with gzip.open(archive,"rb") as source,db.open("wb") as dest:
+                while block:=source.read(1024*1024):
+                    total+=len(block)
+                    if total>100_000_000:
+                        raise ValueError("Snapshot tesi oltre limite")
+                    dest.write(block)
+            return db,_verified_static_snapshot(db,manifest)
+        except Exception:
+            db.unlink(missing_ok=True)
+            raise
     from tesi.prepara_snapshot_online import build_snapshot
     folder=Path(tempfile.mkdtemp(prefix="farmaquery_chat_"))
     db=folder/"esperimento_online.sqlite"
