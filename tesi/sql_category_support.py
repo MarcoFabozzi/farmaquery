@@ -29,6 +29,23 @@ CATEGORY_SQL_RULES = (
     "e preferisci una query che recuperi prove piuttosto che conclusioni."
 )
 
+SQL_SYNTAX_REPAIR_RULES = (
+    "La query SELECT generata in precedenza NON è stata eseguita: "
+    "il parser SQLite/sqlglot non ne riconosce la sintassi. "
+    "Genera una NUOVA singola SELECT SQLite valida e più semplice, "
+    "senza Markdown, spiegazioni, commenti, query multiple o "
+    "dialetti non SQLite. Non ripetere l'errore sintattico precedente. "
+    "Consulta solo le tabelle e colonne dello schema fornito, "
+    "usa esclusivamente operazioni di lettura e LIMIT massimo 80. "
+    "Per domande sulle categorie cliniche considera la patologia "
+    "e il centro anche su pagine distinte della stessa nota, "
+    "ma non dedurre autorizzazioni dalla loro semplice presenza. "
+    "Conserva nota_id, numero_pagina, testo e nome_file "
+    "per verificare e citare le evidenze. "
+    "Non inventare dati, medicinali o nomi di colonne."
+)
+
+
 CATEGORY_RETRY_RULES = (
     "LA PRIMA QUERY È STATA ESEGUITA CORRETTAMENTE MA HA RESTITUITO ZERO "
     "RIGHE. Non concludere che il fatto manchi dal database: potrebbe "
