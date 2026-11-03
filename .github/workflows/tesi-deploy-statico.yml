@@ -1,0 +1,84 @@
+name: Tesi - costruisci e distribuisci base statica 02-11-2026
+
+on:
+  pull_request:
+    paths:
+      - 'tesi/build_frozen_demo.py'
+      - 'chatbot_farmaquery.py'
+      - 'tests/test_chatbot_farmaquery.py'
+      - '.github/workflows/tesi-deploy-statico.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tesi/build_frozen_demo.py'
+      - '.github/workflows/tesi-deploy-statico.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build_static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Scarica lo stesso snapshot originale congelato
+        uses: actions/download-artifact@v4
+        with:
+          name: tesi-snapshot-fonti-online
+          run-id: 41436480339
+          github-token: ${{ github.token }}
+          path: frozen_source
+      - name: Prepara SQLite statico e manifesta SHA-256
+        run: |
+          python -m tesi.build_frozen_demo \
+            --db frozen_source/esperimento_online.sqlite \
+            --manifest frozen_source/manifest_fonti_online.json \
+            --output risultati/tesi_statico_20261102.sqlite.gz \
+            --output-manifest risultati/tesi_statico_20261102.json
+      - name: Verifica archivio, hash e tabelle statiche
+        run: |
+          python - <<'PY'
+          from hashlib import sha256
+          import gzip,json,sqlite3,tempfile
+          from pathlib import Path
+          archive=Path('risultati/tesi_statico_20261102.sqlite.gz')
+          manifest=json.loads(Path('risultati/tesi_statico_20261102.json').read_text())
+          with tempfile.TemporaryDirectory() as folder:
+              dbfile=Path(folder)/'tesi.sqlite'
+              with gzip.open(archive,'rb') as source,dbfile.open('wb') as target:
+                  while part:=source.read(1<<20): target.write(part)
+              assert sha256(dbfile.read_bytes()).hexdigest()==manifest['sha256_sqlite']
+              with sqlite3.connect(dbfile) as db:
+                  assert db.execute('PRAGMA integrity_check').fetchone()[0]=='ok'
+                  for tab,num in (('note',380),('pagine',942),('nota_centro_documentato',28)):
+                      assert db.execute('SELECT COUNT(*) FROM '+tab).fetchone()[0]==num
+                  print('Snapshot statico verificato:',manifest['sha256_sqlite'])
+          PY
+      - name: Archivia il database per il confronto locale
+        uses: actions/upload-artifact@v4
+        with:
+          name: tesi-database-statico-revisionato
+          path: |
+            risultati/tesi_statico_20261102.sqlite.gz
+            risultati/tesi_statico_20261102.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Distribuisci i due file statici nel repository
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add risultati/tesi_statico_20261102.sqlite.gz risultati/tesi_statico_20261102.json
+          if git diff --cached --quiet; then
+            echo "La fotografia statica è già distribuita."
+          else
+            git commit -m "tesi: distribuisce SQLite statico del 02-11-2026 [skip ci]"
+            git push origin HEAD:main
+          fi
