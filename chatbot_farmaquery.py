@@ -43,6 +43,8 @@ CACHE_CODE_SOURCES=(
     "tesi/recupero_regionale.py",
     "tesi/sintesi_tag.py",
     "tesi/revisione_categoria.py",
+    "tesi/recupero_sql_first.py",
+    "tesi/contatore_llm.py",
 )
 
 
