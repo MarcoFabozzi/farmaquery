@@ -111,18 +111,39 @@ def _citation_details(ref):
            "Apri l'archivio ufficiale della Regione" if is_archive else
            "Apri la fonte ufficiale")
     return {"titolo":title,"url":url,"etichetta":label,
-            "archivio":is_archive,"pagina":page}
+            "archivio":is_archive,"pagina":page,
+            "documento":name if is_regional else ""}
 
 
-def _show_citation(ref):
-    """Esibisce fonte e pagina senza confondere archivio ZIP e PDF."""
+@st.cache_data(ttl=3600,max_entries=2,show_spinner=False)
+def _cached_pdf_from_archive(url,document):
+    from demo_fonti_pdf import pdf_from_official_archive
+    return pdf_from_official_archive(url,document)
+
+
+def _show_citation(ref,instance_key=""):
+    """Fonte e pagina con anteprima opzionale del vero PDF nello ZIP."""
     details=_citation_details(ref)
     st.caption(details["titolo"])
     if details["url"]:
         st.markdown("["+details["etichetta"]+"]("+details["url"]+")")
     if details["archivio"]:
-        st.caption("Il PDF è contenuto nell'archivio originale: il "
-                   "collegamento non apre direttamente la pagina nel PDF.")
+        st.caption("Il PDF è contenuto nello ZIP: il link apre "
+                   "l'archivio, non direttamente il documento interno.")
+        if st.button("Visualizza la pagina del PDF originale",
+                     key="pdf_demo_"+instance_key):
+            try:
+                with st.spinner("Apro la pagina dal PDF ufficiale..."):
+                    data=_cached_pdf_from_archive(
+                        details["url"],details["documento"])
+                    from streamlit_pdf_viewer import pdf_viewer
+                    pdf_viewer(input=data,
+                               pages_to_render=[details["pagina"]],
+                               height=540,key="viewer_"+instance_key)
+            except Exception:
+                st.warning("Anteprima PDF non disponibile: consulta "
+                           "il nome, il numero di pagina e l'estratto "
+                           "testuale della fonte riportati nella demo.")
 
 
 def _show_excerpt(source):
@@ -191,14 +212,16 @@ def assistant_dialog():
     with st.container(height=290,border=True):
         if not history:
             st.caption("Scrivi una domanda per iniziare.")
-        for item in history:
+        for msg_index,item in enumerate(history):
             with st.chat_message(item["role"]):
                 st.markdown(item["text"])
                 if item["role"]=="assistant":
                     if item.get("fonti"):
                         with st.expander("Fonti consultate"):
-                            for ref in item["fonti"]:
-                                _show_citation(ref)
+                            for ref_index,ref in enumerate(item["fonti"]):
+                                _show_citation(
+                                    ref,instance_key=method+"_"+str(msg_index)+
+                                    "_"+str(ref_index))
                     if item.get("evidenze_fonti"):
                         with st.expander("Passaggi del testo consultato"):
                             st.caption("Testo originale estratto dalle fonti, "
