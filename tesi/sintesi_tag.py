@@ -123,9 +123,9 @@ def _candidate_short_name(doc):
 
 def _candidate_listed(answer,name):
     """Il nome nelle note a margine NON è una voce positiva dell'elenco."""
-    pattern=(r"(?im)^\\s*(?:[-*]\\s*)?(?:\\d+[.)]\\s*)?"
-             r"(?:\\*\\*)?(?:medicinale\\s*:\\s*)?(?:\\*\\*)?"
-             +re.escape(name)+r"\\b")
+    pattern=(r"(?im)^\s*(?:[-*]\s*)?(?:\d+[.)]\s*)?"
+             r"(?:\*\*)?(?:medicinale\s*:\s*)?(?:\*\*)?"
+             +re.escape(name)+r"\b")
     return bool(re.search(pattern,str(answer)))
 
 
