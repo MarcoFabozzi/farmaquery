@@ -10,6 +10,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import subprocess
 import shutil
 import sqlite3
 
@@ -96,7 +97,7 @@ def digest(p):
         for b in iter(lambda:f.read(1<<20),b""):h.update(b)
     return h.hexdigest()
 
-def build(origin,manifest,packed,out_manifest):
+def build(origin,manifest,packed,out_manifest,gu_root=None):
     origin,manifest,packed,out_manifest=map(Path,(origin,manifest,packed,out_manifest))
     if digest(origin)!=SOURCE_SHA or json.loads(manifest.read_text())["sha256_sqlite"]!=SOURCE_SHA:
         raise ValueError("Fotografia originale non corrispondente, bloccato")
@@ -108,6 +109,20 @@ def build(origin,manifest,packed,out_manifest):
             db.row_factory=sqlite3.Row
             db.execute("PRAGMA foreign_keys=ON")
             db.executescript(SQL)
+            gu_counts={}
+            if gu_root is not None:
+                from tesi.gazzetta_snapshot import importa_gu
+                frozen=Path(gu_root).resolve()
+                commit=subprocess.check_output(
+                    ["git","-C",str(frozen),"rev-parse","HEAD"],text=True
+                ).strip()
+                if commit!="630613a1b3e5353fe33e207e843fb8dad5591b2a":
+                    raise ValueError("Commit Gazzetta differente dalla fotografia del 02/11")
+                with sqlite3.connect(
+                    (frozen/"risultati"/"farmaci_automatico.sqlite").as_uri()+
+                    "?mode=ro",uri=True
+                ) as source_gu:
+                    gu_counts=importa_gu(db,source_gu,frozen)
             notes=list(db.execute("SELECT * FROM note"))
             names={}
             for aic,name,principio in db.execute(
@@ -190,7 +205,10 @@ def build(origin,manifest,packed,out_manifest):
                    for t in ("note","pagine","aifa_confezioni","ema_medicinali",
                              "nota_centro_documentato","nota_aifa_corrispondenze",
                              "nota_rimando_revisionato","revisione_relazioni_manuale_v2")}
-            if count["note"]!=380 or count["pagine"]!=942 or count["nota_centro_documentato"]!=28:
+            count.update(gu_counts)
+            if (count["note"]!=380 or count["pagine"]!=942 or
+                count["nota_centro_documentato"]!=28 or
+                (gu_root is not None and count.get("gu_atti",0)<1)):
                 raise ValueError("Conteggi inesperati "+str(count))
         h=digest(work)
         with work.open("rb") as input,packed.open("wb") as output:
@@ -201,7 +219,9 @@ def build(origin,manifest,packed,out_manifest):
                 "conteggi":count,
                 "limiti":["28 relazioni revisionate, non tutte le 380 note",
                          "23 relazioni non verificate visivamente sul PDF",
-                         "corrispondenze AIFA nominali, non autorizzazioni vigenti"]}
+                         "corrispondenze AIFA nominali, non autorizzazioni vigenti"],
+                "gazzetta_commit":"630613a1b3e5353fe33e207e843fb8dad5591b2a"
+                                   if gu_root is not None else None}
         out_manifest.write_text(json.dumps(result,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
         return result
     finally:
@@ -213,5 +233,6 @@ if __name__=="__main__":
     p.add_argument("--manifest",type=Path,required=True)
     p.add_argument("--output",type=Path,required=True)
     p.add_argument("--output-manifest",type=Path,required=True)
+    p.add_argument("--gu-root",type=Path)
     a=p.parse_args()
-    print(json.dumps(build(a.db,a.manifest,a.output,a.output_manifest),ensure_ascii=False))
+    print(json.dumps(build(a.db,a.manifest,a.output,a.output_manifest,a.gu_root),ensure_ascii=False))
