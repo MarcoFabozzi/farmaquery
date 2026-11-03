@@ -308,9 +308,9 @@ def _comparison_medicines(db,question,max_names=3):
     """
     q=str(question)
     low=q.casefold()
-    if (len(re.findall(r"\\bsia\\b",low))<2 and
-        not re.search(r"\\b(?:entramb\\w*|comun\\w*|confront\\w*|"
-                      r"intersezion\\w*)\\b",low)):
+    if (len(re.findall(r"\bsia\b",low))<2 and
+        not re.search(r"\b(?:entramb\w*|comun\w*|confront\w*|"
+                      r"intersezion\w*)\b",low)):
         return []
     words=re.findall(r"[A-Za-zÀ-ÿ0-9]+(?:[-'][A-Za-zÀ-ÿ0-9]+)*",q)
     phrases={}
@@ -346,7 +346,7 @@ def _comparison_medicines(db,question,max_names=3):
     result=[]
     for name in ordered:
         # Preferire i nomi composti rispetto a sottostringhe del medesimo.
-        if any(re.search(r"(?<!\\w)"+re.escape(name)+r"(?!\\w)",full)
+        if any(re.search(r"(?<!\w)"+re.escape(name)+r"(?!\w)",full)
                for full in result):
             continue
         result.append(name)
