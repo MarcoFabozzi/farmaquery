@@ -204,6 +204,25 @@ def assistant_dialog():
                             str(item.get("chiamate_llm_stimate","?"))
                         )
 
+                    if method=="TAG" and item.get("statistiche_revisione_categoria"):
+                        stats=item["statistiche_revisione_categoria"]
+                        if stats.get("chiamate",0)>0:
+                            st.caption(
+                                "Revisione categoria · candidati: "+
+                                str(stats.get("candidati",0))+
+                                " · verifiche individuali: "+
+                                str(stats.get("chiamate",0))+
+                                " · voci integrate: "+
+                                str(stats.get("accettati",0)))
+                            with st.expander("Diagnostica della revisione TAG"):
+                                st.caption(
+                                    "Esiti del controllo sulle citazioni "
+                                    "dello snapshot; non costituiscono "
+                                    "una valutazione clinica indipendente.")
+                                for check in item.get("diagnostica_revisione_categoria",[]):
+                                    st.write(str(check.get("medicinale","?"))+
+                                             ": "+str(check.get("esito","n.d.")))
+
     # Non usare st.popover o st.chat_input: un normale text_area in st.dialog
     # è interattivo e non dipende dalle dimensioni/coordinate della bolla.
     with st.form("farmaquery_message_form_"+method,clear_on_submit=True):
@@ -234,6 +253,10 @@ def assistant_dialog():
                         "righe_recuperate":result.get("righe_recuperate"),
                         "righe_sem_filter":result.get("righe_sem_filter"),
                         "chiamate_llm_stimate":result.get("chiamate_llm_stimate"),
+                        "diagnostica_revisione_categoria":result.get(
+                            "diagnostica_revisione_categoria",[]),
+                        "statistiche_revisione_categoria":result.get(
+                            "statistiche_revisione_categoria",{}),
                         "versione_tag":result.get("versione_tag"),
                         "verifica_contesto":result.get("verifica_contesto"),
                         "aic_nel_testo_integrale":result.get("aic_nel_testo_integrale")})

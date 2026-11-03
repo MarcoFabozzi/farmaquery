@@ -35,7 +35,7 @@ class ChatbotTests(unittest.TestCase):
     def test_local_sources_invalidate_cache(self):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td)
-            for fname in chat.REQUIRED:
+            for fname in chat.REQUIRED+chat.CACHE_CODE_SOURCES:
                 p=root/fname
                 p.parent.mkdir(parents=True,exist_ok=True)
                 p.write_text("test",encoding="utf-8")
@@ -43,6 +43,9 @@ class ChatbotTests(unittest.TestCase):
             (root/chat.REQUIRED[0]).write_text("modified",encoding="utf-8")
             version2=chat.snapshot_version(root)
             self.assertNotEqual(version1,version2)
+            (root/"tesi/sintesi_tag.py").write_text(
+                "new version",encoding="utf-8")
+            self.assertNotEqual(version2,chat.snapshot_version(root))
 
     def test_model_and_secret_from_server_only(self):
         model=chat.model_from_settings(

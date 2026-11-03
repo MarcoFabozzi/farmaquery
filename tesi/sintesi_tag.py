@@ -226,61 +226,87 @@ def expand_review_pages(db,question,answer,compact,max_docs=6,max_pages=2,max_ch
     return enriched
 
 
-def revise_category_if_needed(model,question,answer,compact,ask_fn):
-    """Riesamina i documenti omessi senza promuovere candidati a risultati.
+def revise_category_if_needed(model,question,answer,compact,ask_fn,
+                              audit=None,stats=None,max_checks=4):
+    """Riesamina un candidato per chiamata, senza riscrivere il primo elenco.
 
-    Esegue al massimo UNA chiamata supplementare; nessun nome, patologia o
-    autorizzazione è precodificato come fatto. Una seconda risposta non deve
-    perdere i medicinali già elencati nella prima.
+    Una nota può contenere più indicazioni: separare i candidati evita che
+    il modello privilegi il primo caso positivo e ignori gli altri.
+    Conserva le evidenze originali, non promuove i candidati automaticamente.
     """
     missing=missing_category_candidates(answer,compact)
     if not missing:
+        if stats is not None:
+            stats.update({"chiamate":0,"candidati":0,"accettati":0})
         return answer,None,False,[]
-    originally_listed={_candidate_short_name(doc).casefold()
-                       for doc in compact
-                       if _candidate_short_name(doc) and
-                       _candidate_listed(answer,_candidate_short_name(doc))}
-    context={
-        "domanda":question,
-        "documenti_candidati_non_elencati":[
-            {"medicinale_candidato":_candidate_short_name(doc),
-             "passaggi":doc.get("passaggi",[]),
-             "fonti":doc.get("fonti",[])}
-            for doc in missing],
-        "avviso":"Documenti candidati NON equivalgono a prescrizioni provate. "
-                 "Si devono verificare indicazione, centro e pagina insieme.",
-    }
-    revised,usage=ask_fn(
-        model,
-        "Esamina in autonomia SOLO i documenti candidati non elencati. "
-        "Valuta ciascun medicinale separatamente. Controlla se il centro "
-        "richiesto appartiene alla sezione della stessa indicazione, "
-        "senza confondere tabelle di malattie diverse. "
-        "Non dedurre un'autorizzazione dalla mera menzione del centro. "
-        "Rispondi SOLO con JSON: un oggetto con 'nuove_voci' (array). "
-        "Includi un candidato soltanto quando la relazione è dimostrata. "
-        "Per ogni caso positivo usa le chiavi: 'confermato' (true), "
-        "'medicinale', 'patologia', 'indicazione', "
-        "'pagina_indicazione' e 'pagina_centro' (numeri), "
-        "'citazione_indicazione' e 'citazione_centro'. "
-        "Le citazioni devono essere stringhe letterali contigue dei "
-        "passaggi forniti, di almeno 16 caratteri: la seconda deve "
-        "contenere il nome del centro richiesto. Non riscrivere "
-        "i medicinali della risposta precedente. Quando non emerge "
-        "una prova sufficiente, restituisci un array vuoto. "
-        "Non usare fonti esterne o risposte gold.",
-        context,timeout=CATEGORY_RESPONSE_TIMEOUT_SECONDS,max_tokens=1750
-    )
-    additions=verified_additions(revised,missing,question,_candidate_short_name)
-    if additions:
-        # Mantieni tutte le voci precedenti, inserendo le integrazioni
-        # PRIMA delle note di copertura e delle osservazioni finali.
-        anchor=re.search(r"(?im)^\s*(?:copertura\s*:|nota\s*:|"
-                         r"per quanto riguarda\b)",answer)
+
+    accepted=[]
+    usage_total=None
+    calls=0
+    for doc in missing[:max_checks]:
+        name=_candidate_short_name(doc)
+        context={
+            "domanda":question,
+            "documenti_candidati_non_elencati":[{
+                "medicinale_candidato":name,
+                "passaggi":doc.get("passaggi",[]),
+                "fonti":doc.get("fonti",[])}],
+            "avviso":("Il documento è solo un candidato. Verifica "
+                      "l'indicazione specifica e il centro della stessa "
+                      "sezione, non trasferire centri da altre tabelle.")
+        }
+        reviewed,usage=ask_fn(
+            model,
+            "Esamina SOLTANTO il medicinale candidato fornito. Verifica "
+            "la categoria richiesta e la CORRISPONDENZA fra indicazione "
+            "e centro nella stessa sezione del documento; la mera "
+            "menzione della struttura non basta. Restituisci soltanto "
+            "JSON con 'nuove_voci' (array). Se è effettivamente provato "
+            "riporta una voce con: 'confermato':true, 'medicinale', "
+            "'patologia', 'indicazione', 'pagina_indicazione', "
+            "'pagina_centro', 'citazione_indicazione', 'citazione_centro'. "
+            "Le citazioni DEVONO essere frasi LETTERALI CONTIGUE presenti "
+            "nelle pagine fornite, non parafrasi o frasi concatenate. "
+            "La citazione del centro deve contenere il nome del centro "
+            "richiesto. Se l'appartenenza all'indicazione non è "
+            "dimostrabile, restituisci JSON con 'nuove_voci':[]. "
+            "Non usare fonti esterne, risposte gold né altri medicinali.",
+            context,timeout=CATEGORY_RESPONSE_TIMEOUT_SECONDS,
+            max_tokens=1000
+        )
+        calls+=1
+        if usage_total is None:
+            usage_total=usage
+        elif usage is not None:
+            usage_total={
+                key:(usage_total.get(key)+usage.get(key)
+                     if (usage_total.get(key) is not None and
+                         usage.get(key) is not None) else None)
+                for key in ("token_input","token_output","costo_usd")}
+        accepted.extend(verified_additions(
+            reviewed,[doc],question,_candidate_short_name,
+            diagnostics=audit))
+
+    if audit is not None:
+        for doc in missing[max_checks:]:
+            audit.append({"medicinale":_candidate_short_name(doc),
+                          "esito":"non_esaminato_limite_verifiche"})
+    if stats is not None:
+        stats.update({"chiamate":calls,"candidati":len(missing),
+                      "accettati":len(accepted),
+                      "non_esaminati":max(0,len(missing)-max_checks)})
+
+    if accepted:
+        # I farmaci integrati vengono prima di note finali, incluse
+        # varianti Markdown come '*Nota:'.
+        anchor=re.search(r"(?im)^\s*(?:\*{1,2}\s*)?"
+                         r"(?:copertura\s*:|nota\s*:|per quanto riguarda\b)",
+                         answer)
         if anchor:
             before=answer[:anchor.start()].rstrip()
             after=answer[anchor.start():].lstrip()
-            answer=before+"\n\n"+"\n\n".join(additions)+"\n\n"+after
+            answer=before+"\n\n"+"\n\n".join(accepted)+"\n\n"+after
         else:
-            answer=answer.rstrip()+"\n\n"+"\n\n".join(additions)
-    return answer,usage,True,[_candidate_short_name(d) for d in missing ]
+            answer=answer.rstrip()+"\n\n"+"\n\n".join(accepted)
+    return answer,usage_total,bool(calls),[
+        _candidate_short_name(doc) for doc in missing]

@@ -126,6 +126,59 @@ class CompactTagSynthesisTests(unittest.TestCase):
         self.assertEqual(verified_additions(
             json.dumps(invalid),docs,question,_candidate_short_name),[])
 
+    def test_verifica_individuale_distingue_riscontri_e_rifiuti(self):
+        def candidate(name,body):
+            return {
+                "documento_e_medicinale_candidato":
+                    "Documento: "+name+".pdf; farmaco candidato: "+name+"; ",
+                "passaggi":[{"pagina":2,"estratto":body}],
+                "fonti":["2025/"+name+".pdf#p2 | archivio: prova"]
+            }
+        docs=[
+            candidate("ALPHA",
+                      "Indicazione miastenia gravis generalizzata. "
+                      "Presidio AOU Federico II, Napoli."),
+            candidate("BETA",
+                      "Indicazione sclerosi multipla. "
+                      "Presidio AOU Federico II, Napoli.")
+        ]
+        calls=[]
+        def review(model,system,payload,**kwargs):
+            name=payload["documenti_candidati_non_elencati"][0][
+                "medicinale_candidato"]
+            calls.append(name)
+            if name=="ALPHA":
+                content=json.dumps({"nuove_voci":[{
+                    "confermato":True,"medicinale":name,
+                    "patologia":"Miastenia gravis",
+                    "indicazione":"Trattamento miastenia gravis",
+                    "pagina_indicazione":2,"pagina_centro":2,
+                    "citazione_indicazione":
+                        "Indicazione miastenia gravis generalizzata",
+                    "citazione_centro":"Presidio AOU Federico II, Napoli"
+                }]})
+            else:
+                content=json.dumps({"nuove_voci":[]})
+            return content,{"token_input":5,"token_output":4,
+                            "costo_usd":0.002}
+        audit=[]
+        stats={}
+        answer="Medicinale: GAMMA — già documentato.\n*Nota: verifica parziale."
+        result,usage,revised,missing=revise_category_if_needed(
+            "mock","Quali malattie neuromuscolari presso AOU Federico II?",
+            answer,docs,review,audit=audit,stats=stats)
+        self.assertEqual(calls,["ALPHA","BETA"])
+        self.assertTrue(revised)
+        self.assertIn("Medicinale: GAMMA",result)
+        self.assertIn("Medicinale: ALPHA",result)
+        self.assertNotIn("Medicinale: BETA",result)
+        self.assertLess(result.index("Medicinale: ALPHA"),result.index("*Nota:"))
+        self.assertEqual(stats["chiamate"],2)
+        self.assertEqual(stats["accettati"],1)
+        self.assertEqual(usage["token_input"],10)
+        self.assertEqual([r["esito"] for r in audit],
+                         ["accettato","non_proposto_dal_modello"])
+
     def test_ask_timeout_e_limite_risposta_separati(self):
         class Usage:
             prompt_tokens=30
