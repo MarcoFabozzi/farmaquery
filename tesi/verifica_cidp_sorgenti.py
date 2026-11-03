@@ -130,7 +130,7 @@ def main():
             "pagine_centro":[],"pagine_categoria":[]})
         page=int(src["pagina"])
         text=src["testo"].casefold()
-        if re.search(r"federico\\s*(?:ii|2)",text):
+        if re.search(r"federico\s*(?:ii|2)",text):
             item["pagine_centro"].append(page)
         if any(t in text for t in terms):
             item["pagine_categoria"].append(page)
