@@ -152,6 +152,98 @@ class SqlCategoryTests(unittest.TestCase):
         self.assertEqual(fake.call_count,1)
         self.assertEqual(caught.exception.error_type,"ValueError")
 
+
+    def test_join_aifa_satura_limit_e_richiede_seconda_select(self):
+        # Fixture: una JOIN 1:N sulle confezioni oscura un'altra nota.
+        # La correzione NON contiene medicinali predefiniti di produzione.
+        self.db.executescript("""
+        CREATE TABLE aifa_confezioni (
+          aic TEXT,nome TEXT,principio_attivo TEXT,descrizione TEXT,
+          classe_a_h_snapshot TEXT,classe_a_h_data TEXT);
+        INSERT INTO note VALUES (
+          'regional-2','ALTRO MEDICINALE.pdf',
+          '2026/ALTRO MEDICINALE.pdf',2026,'TERAPIA ALTRA',NULL,
+          NULL,NULL,'https://regione.test/note.zip');
+        INSERT INTO pagine VALUES
+          ('regional-2',1,'Distrofia muscolare, terapia candidata.','TESTO'),
+          ('regional-2',2,'AOU Federico II, Napoli, centri DMD.','TESTO');
+        """)
+        for idx in range(9):
+            self.db.execute(
+                "INSERT INTO aifa_confezioni VALUES (?,?,?,?,?,?)",
+                (str(idx),"TERAPIA ESEMPIO",None,None,None,None))
+        self.db.commit()
+        first_sql=(
+            "SELECT n.id AS nota_id,p.numero_pagina,p.testo,n.nome_file "
+            "FROM note n JOIN pagine p ON n.id=p.nota_id "
+            "LEFT JOIN aifa_confezioni a ON "
+            "a.nome LIKE '%' || n.farmaco_candidato || '%' "
+            "WHERE n.id='regional-1' LIMIT 5"
+        )
+        second_sql=(
+            "SELECT n.id AS nota_id,p.numero_pagina,p.testo,n.nome_file "
+            "FROM note n JOIN pagine p ON n.id=p.nota_id "
+            "ORDER BY n.id,p.numero_pagina LIMIT 80"
+        )
+        usage={"token_input":10,"token_output":6,"costo_usd":0.002}
+        with patch("tesi.pilota_tag_vs_sql.ask",
+                   side_effect=[
+                       (first_sql,usage),
+                       (second_sql,usage),
+                       ("Sono presenti due note candidate, da verificare.",usage)
+                   ]) as fake:
+            result=sql_method(self.db,self.question,"mock-model")
+        self.assertEqual(fake.call_count,3)
+        self.assertTrue(result["sql_riprova_copertura"])
+        self.assertEqual(result["sql_esito_riprova_copertura"],"nuove_note")
+        self.assertEqual(result["sql_tentativi"],2)
+        self.assertEqual(result["note_distinte_sql"],2)
+        self.assertEqual(result["righe_sql"],4)
+        self.assertEqual(result["sql_iniziale"],first_sql)
+        self.assertEqual(len(result["sql_query_fonti"]),2)
+        self.assertTrue(result["risultato_parziale"])
+        self.assertEqual(result["token_input"],30)
+        self.assertEqual(len(result["fonti"]),4)
+        self.assertIn("query_precedente_con_copertura_limitata",
+                      fake.call_args_list[1].args[2])
+        evidence=fake.call_args_list[2].args[2]["righe_sql"]
+        self.assertEqual(len({x["nota_id"] for x in evidence}),2)
+
+    def test_revisione_copertura_sql_vietata_non_viene_eseguita(self):
+        from tesi.pilota_tag_vs_sql import _balanced_category_rows
+        # La rigenerazione NON può aggirare il validatore SELECT.
+        self.db.executescript("""
+        CREATE TABLE aifa_confezioni (
+          aic TEXT,nome TEXT,principio_attivo TEXT,descrizione TEXT,
+          classe_a_h_snapshot TEXT,classe_a_h_data TEXT);
+        INSERT INTO aifa_confezioni VALUES (
+            '123','TERAPIA ESEMPIO',NULL,NULL,NULL,NULL);
+        """)
+        rows=[
+            {"nota_id":"same","numero_pagina":2,"testo":"prova", "classe":"A"},
+            {"nota_id":"same","numero_pagina":2,"testo":"prova", "classe":"H"},
+            {"nota_id":"another","numero_pagina":1,"testo":"altra"}
+        ]
+        balanced,duplicates=_balanced_category_rows(rows)
+        self.assertEqual(duplicates,1)
+        self.assertEqual(len(balanced),2)
+        first_sql=(
+            "SELECT n.id AS nota_id,p.numero_pagina,p.testo,n.nome_file "
+            "FROM note n JOIN pagine p ON n.id=p.nota_id "
+            "LEFT JOIN aifa_confezioni a ON a.nome=n.farmaco_candidato"
+        )
+        usage={"token_input":5,"token_output":5,"costo_usd":0.001}
+        with patch("tesi.pilota_tag_vs_sql.ask",
+                   side_effect=[(first_sql,usage),
+                                ("DELETE FROM note",usage),
+                                ("La relazione è solo candidata.",usage)]) as fake:
+            result=sql_method(self.db,self.question,"mock-model")
+        self.assertEqual(fake.call_count,3)
+        self.assertEqual(result["sql_esito_riprova_copertura"],
+                         "rifiutata_o_non_eseguibile")
+        self.assertEqual(result["sql_tentativi"],2)
+        self.assertEqual(result["righe_sql"],2)
+
     def test_fallimento_due_select_non_diventa_assenza_documentale(self):
         sql=("SELECT medicinale FROM strutture_registri "
              "WHERE patologia LIKE '%categoria-inesistente%'")
