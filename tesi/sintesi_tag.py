@@ -275,8 +275,8 @@ def revise_category_if_needed(model,question,answer,compact,ask_fn):
     if additions:
         # Mantieni tutte le voci precedenti, inserendo le integrazioni
         # PRIMA delle note di copertura e delle osservazioni finali.
-        anchor=re.search(r"(?im)^\\s*(?:copertura\\s*:|nota\\s*:|"
-                         r"per quanto riguarda\\b)",answer)
+        anchor=re.search(r"(?im)^\s*(?:copertura\s*:|nota\s*:|"
+                         r"per quanto riguarda\b)",answer)
         if anchor:
             before=answer[:anchor.start()].rstrip()
             after=answer[anchor.start():].lstrip()
