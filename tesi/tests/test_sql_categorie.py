@@ -92,7 +92,8 @@ class StandardSqlTests(unittest.TestCase):
         self.db.execute("CREATE TABLE nota_centro_documentato(id TEXT)")
         self.db.execute("CREATE TABLE revisione_relazioni_manuale_v2(relazione_id TEXT)")
         schema=_sql_schema(self.db)
-        self.assertIn("farmaco_candidato appartiene ESCLUSIVAMENTE a note",schema)
+        self.assertIn("note contiene farmaco_candidato, protocollo_candidato",schema)
+        self.assertIn("nota_metadati_revisionati contiene protocollo",schema)
         self.assertIn("note.id = nota_metadati_revisionati.nota_id",schema)
 
     def test_errore_union_colonna_sbagliata_non_si_corregge(self):
