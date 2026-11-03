@@ -1004,6 +1004,26 @@ def _execute_generated_select(db,sql,category=False,question=""):
     return rows,truncated
 
 
+def _absolute_negative_on_partial_sql(answer,rows,truncated,category):
+    """Blocca conclusioni di assenza globale da un sottoinsieme SQL.
+
+    Non trasforma candidati in fatti: distingue un risultato incompleto
+    dall'affermazione ingiustificata che non esistano medicinali.
+    """
+    if not (category and truncated and rows):
+        return False
+    statement=str(answer or "")
+    if re.search(r"(?im)^\s*(?:[-*]\s*)?medicinale\s*:",statement):
+        return False
+    return bool(re.search(
+        r"(?:non\s+(?:sono|risultano)\s+presenti\s+(?:medicinali|farmaci)"
+        r"|nessun\s+(?:medicinale|farmaco)"
+        r"|non\s+(?:esistono|vi\s+sono)\s+(?:medicinali|farmaci)"
+        r"|(?:l['’]?)?informazione\s+richiesta\s+non\s+[eè]\s+documentata"
+        r"|non\s+[eè]\s+documentata\s+nello\s+snapshot)",
+        statement,flags=re.I))
+
+
 def sql_method(db,question,model):
     category_context=category_sql_context(question)
     request={"schema":SCHEMA,"domanda":question}
@@ -1144,7 +1164,11 @@ def sql_method(db,question,model):
         "non certifica l'autorizzazione. "
         "Se mancano dati o evidenze, scrivi 'non documentato nello snapshot'. "
         "Non inventare citazioni; se i risultati sono parziali "
-        "non dichiarare una lista completa. Se più SELECT concorrono "
+        "non dichiarare una lista completa E NON dire che non esistono "
+        "medicinali: il contesto è un campione di pagine candidate. "
+        "Se non puoi verificare l'associazione centro-indicazione, "
+        "scrivi che la prova è insufficiente, senza dedurre assenza. "
+        "Se più SELECT concorrono "
         "alle evidenze, esamina tutte le note senza considerare i "
         "candidati automaticamente autorizzati.",
         {"domanda":question,"righe_sql":rows,"fonti_recuperate":citations,
@@ -1152,6 +1176,20 @@ def sql_method(db,question,model):
          "note_distinte":metadata["note_distinte_sql"],
          "query_eseguite":sql_evidence_queries})
     total=_accumulate(first,second)
+    incorrect_absence=_absolute_negative_on_partial_sql(
+        answer,rows,truncated,bool(category_context))
+    original_answer=answer if incorrect_absence else None
+    if incorrect_absence:
+        answer=(
+            "Le query Text-to-SQL hanno restituito "+str(len(rows))+
+            " righe di evidenza da "+str(_category_note_count(rows))+
+            " note candidate, ma i risultati sono parziali. "
+            "Dalle righe disponibili non è stata verificata una "
+            "corrispondenza sufficiente tra indicazione e centro "
+            "prescrittore per produrre un elenco attendibile. "
+            "Non è corretto concludere che non esistano medicinali "
+            "pertinenti nello snapshot: occorre verificare le "
+            "sezioni originali delle note.")
     if truncated:
         answer+=("\n\nAvvertenza: risultati SQL parziali per limite di "
                  "righe, limite della query o di contesto. L'elenco non "
@@ -1164,7 +1202,11 @@ def sql_method(db,question,model):
                    or record.get("descrizione"))]
     return {"risposta":answer,"fonti":citations,"sql":sql,
             "evidenze_fonti":_source_previews(sql_evidence),
-            "righe_sql":len(rows),"stato":"RISULTATI_PARZIALI" if truncated else "OK",
+            "righe_sql":len(rows),
+            "stato":("RISPOSTA_NON_VERIFICATA" if incorrect_absence else
+                     "RISULTATI_PARZIALI" if truncated else "OK"),
+            "negazione_non_supportata_sql":incorrect_absence,
+            "risposta_modello_originale_sql":original_answer,
             "risultato_parziale":truncated,**total,
             "costo_completo":total["costo_usd"] is not None,**metadata}
 
