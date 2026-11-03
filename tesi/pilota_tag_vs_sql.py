@@ -23,7 +23,9 @@ from tesi.verifica_completezza_tag import revise_if_needed,enumeration_warning
 from tesi.sql_category_support import (category_sql_context,
                                       select_generation_guidance,CATEGORY_RETRY_RULES,
                                       SQL_SYNTAX_REPAIR_RULES,
-                                      CATEGORY_DIVERSITY_RETRY_RULES)
+                                      CATEGORY_DIVERSITY_RETRY_RULES,
+                                      DOCUMENT_SQL_RETRY_RULES,
+                                      SQL_EXECUTION_REPAIR_RULES)
 from tesi.tag_budget import (selection_mode,semantic_plan,expand_selected,
                              sem_filter_controlled,preserve_category_recall)
 from tesi.sintesi_tag import (CATEGORY_SYSTEM, compact_category_evidence,
@@ -1024,6 +1026,38 @@ def _absolute_negative_on_partial_sql(answer,rows,truncated,category):
         statement,flags=re.I))
 
 
+def _sql_note_hints(db,question,limit=6):
+    """Metadati candidati da leggere nello stesso SQLite per un retry.
+
+    Non incorpora risposte gold e non prova alcuna autorizzazione clinica.
+    """
+    available={r[0] for r in db.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'")}
+    if "note" not in available:
+        return []
+    upper_tokens=list(dict.fromkeys(
+        re.findall(r"(?<!\w)[A-Z][A-Z0-9-]{4,}(?!\w)",str(question))))
+    seen=set()
+    candidates=[]
+    for token in upper_tokens[:8]:
+        if token in {"SINFONIA","CAMPANIA","EGFR","ATTR-CM","FIGO",
+                     "RNRL","FILE","MEDICINA","LOTUS"}:
+            continue
+        pattern=_like(token)
+        for row in db.execute(
+            "SELECT id,nome_file,anno,protocollo_candidato,percorso_zip "
+            "FROM note WHERE farmaco_candidato LIKE ? ESCAPE '\\' "
+            "COLLATE NOCASE OR nome_file LIKE ? ESCAPE '\\' "
+            "COLLATE NOCASE ORDER BY anno DESC LIMIT ?",
+            (pattern,pattern,limit)):
+            if row["id"] not in seen:
+                seen.add(row["id"])
+                candidates.append(dict(row))
+            if len(candidates)>=limit:
+                return candidates
+    return candidates
+
+
 def sql_method(db,question,model):
     category_context=category_sql_context(question)
     request={"schema":SCHEMA,"domanda":question}
@@ -1055,9 +1089,58 @@ def sql_method(db,question,model):
         syntax_repair=True
 
     first_sql=sql
-    rows,truncated=_execute_generated_select(db,sql,category=bool(category_context),
-                                             question=question)
+    runtime_repair=False
+    try:
+        rows,truncated=_execute_generated_select(
+            db,sql,category=bool(category_context),question=question)
+    except EnginePhaseError as exc:
+        cause=exc.__cause__ or exc.original
+        if (exc.phase!="esecuzione SQL"
+            or not isinstance(cause,sqlite3.OperationalError)
+            or any(word in str(cause).lower()
+                   for word in ("interrupted","locked","readonly",
+                                "disk i/o","unable to open"))):
+            raise
+        # Una sola seconda SELECT; mai riutilizzare SQL non validato.
+        message=str(cause).lower()
+        kind=("COLONNA_NON_PRESENTE" if "no such column" in message else
+              "TABELLA_NON_PRESENTE" if "no such table" in message else
+              "AMBIGUITA_COLONNA" if "ambiguous column" in message else
+              "ERRORE_SQL_OPERATIVO")
+        regenerated,repair_usage=_in_phase(
+            "correzione SQL eseguibile",ask,model,SQL_EXECUTION_REPAIR_RULES,
+            {"schema":SCHEMA,"domanda":question,
+             "sql_precedente_non_eseguibile":first_sql,
+             "tipo_errore_sql":kind,
+             "metadati_note_candidate":_sql_note_hints(db,question)})
+        sql=_in_phase("validazione SQL",validate_sql,regenerated)
+        first=_accumulate(first,repair_usage)
+        attempts+=1
+        runtime_repair=True
+        rows,truncated=_execute_generated_select(
+            db,sql,category=bool(category_context),question=question)
     zero_row_retry=False
+    note_hints=[]
+    if not category_context and not rows and "nota" in question.casefold():
+        note_hints=_sql_note_hints(db,question)
+        if note_hints:
+            retry_payload={
+                "schema":SCHEMA,
+                "domanda":question,
+                "query_precedente_senza_righe":sql,
+                "righe_primo_tentativo":0,
+                "metadati_note_candidate":note_hints,
+                "avviso":("Queste note sono candidate, non prove: leggere "
+                         "il testo delle pagine prima di rispondere.")
+            }
+            regenerated,retry_usage=_in_phase(
+                "revisione SQL",ask,model,DOCUMENT_SQL_RETRY_RULES,retry_payload)
+            sql=_in_phase("validazione SQL",validate_sql,regenerated)
+            first=_accumulate(first,retry_usage)
+            attempts+=1
+            zero_row_retry=True
+            rows,truncated=_execute_generated_select(
+                db,sql,category=False,question=question)
 
     if category_context and not rows:
         # Un'altra SELECT è ammessa solo per lo ZERO-righe, mai per
