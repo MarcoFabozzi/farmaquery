@@ -26,12 +26,20 @@ REQUIRED=(
 )
 
 
+CACHE_CODE_SOURCES=(
+    "tesi/pilota_tag_vs_sql.py",
+    "tesi/contesto_integrale.py",
+    "tesi/verifica_completezza_tag.py",
+    "tesi/recupero_regionale.py",
+    "tesi/sintesi_tag.py",
+    "tesi/revisione_categoria.py",
+)
+
+
 def snapshot_version(root=ROOT):
-    """La cache Streamlit si invalida quando cambia una fonte ufficiale."""
+    """La cache Streamlit si invalida con dati O codice del motore aggiornati."""
     base=Path(root)
-    relevant=REQUIRED+("tesi/pilota_tag_vs_sql.py",
-                       "tesi/contesto_integrale.py",
-                       "tesi/verifica_completezza_tag.py")
+    relevant=REQUIRED+CACHE_CODE_SOURCES
     return tuple((name, (base/name).stat().st_mtime_ns,
                   (base/name).stat().st_size) for name in relevant)
 
