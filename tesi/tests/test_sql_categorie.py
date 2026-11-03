@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 
 from errori_chatbot import EnginePhaseError
-from tesi.pilota_tag_vs_sql import sql_method, SQL_GENERATION_PROMPT
+from tesi.pilota_tag_vs_sql import sql_method, SQL_GENERATION_PROMPT, _sql_schema
 
 
 class StandardSqlTests(unittest.TestCase):
@@ -81,6 +81,37 @@ class StandardSqlTests(unittest.TestCase):
         self.assertEqual(answer["stato"],"OK")
         self.assertIn("lutetium",answer["risposta"])
         self.assertTrue(any("005483" in x for x in answer["fonti"]))
+
+    def test_prompt_sceglie_fonte_minima_e_rispetta_colonne(self):
+        self.assertIn("SELECT più semplice",SQL_GENERATION_PROMPT)
+        self.assertIn("Usa UNION solo quando",SQL_GENERATION_PROMPT)
+        self.assertIn("colonne della tabella corrispondente",SQL_GENERATION_PROMPT)
+        # Lo schema delle tabelle revisionate mostra la JOIN effettiva.
+        self.db.execute("CREATE TABLE nota_centro_documentato(id TEXT)")
+        self.db.execute("CREATE TABLE revisione_relazioni_manuale_v2(relazione_id TEXT)")
+        schema=_sql_schema(self.db)
+        self.assertIn("farmaco_candidato appartiene ESCLUSIVAMENTE a note",schema)
+        self.assertIn("note.id = nota_metadati_revisionati.nota_id",schema)
+
+    def test_errore_union_colonna_sbagliata_non_si_corregge(self):
+        self.db.execute(
+            "CREATE TABLE aifa_confezioni(nome TEXT, principio_attivo TEXT)")
+        self.db.execute(
+            "CREATE TABLE nota_metadati_revisionati("
+            "nota_id TEXT, principio_attivo TEXT)")
+        sql=("SELECT principio_attivo FROM aifa_confezioni "
+             "WHERE nome='PLUVICTO' COLLATE NOCASE "
+             "UNION SELECT principio_attivo FROM ema_medicinali "
+             "WHERE nome='PLUVICTO' COLLATE NOCASE "
+             "UNION SELECT principio_attivo FROM nota_metadati_revisionati "
+             "WHERE farmaco_candidato='PLUVICTO' COLLATE NOCASE")
+        with patch("tesi.pilota_tag_vs_sql.ask",
+                   return_value=(sql,self.usage)) as llm:
+            with self.assertRaises(EnginePhaseError) as error:
+                sql_method(self.db,"Qual è il principio attivo di PLUVICTO?","mock")
+        self.assertEqual(llm.call_count,1)
+        self.assertEqual(error.exception.phase,"esecuzione SQL")
+        self.assertEqual(error.exception.sql,sql)
 
     def test_zero_righe_non_riprova_ne_sintetizza(self):
         query="SELECT nome FROM ema_medicinali WHERE nome='INESISTENTE'"
