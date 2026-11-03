@@ -165,6 +165,11 @@ def assistant_dialog():
                                 st.text(source.get("estratto",""))
                     if method=="Text-to-SQL" and item.get("sql"):
                         with st.expander("Query SQL"):
+                            if item.get("sql_correzione_sintassi"):
+                                st.caption("La prima query generata non era "
+                                           "sintatticamente valida. Il modello "
+                                           "ha prodotto una nuova SELECT, "
+                                           "validata prima dell'esecuzione.")
                             if item.get("sql_iniziale"):
                                 st.caption("Prima SELECT: zero righe. "
                                            "Il modello ha generato una seconda "
@@ -250,6 +255,8 @@ def assistant_dialog():
                         "sql":result.get("sql",""),
                         "sql_iniziale":result.get("sql_iniziale"),
                         "sql_tentativi":result.get("sql_tentativi"),
+                        "sql_correzione_sintassi":result.get(
+                            "sql_correzione_sintassi",False),
                         "secondi":round(time.monotonic()-start,2),
                         "versione_tag":result.get("versione_tag"),
                         "verifica_contesto":result.get("verifica_contesto"),

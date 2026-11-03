@@ -21,7 +21,8 @@ from tesi.recupero_regionale import regional_candidates, categoria
 from tesi.contesto_integrale import contesto_integrale,richiede_sezione_completa,AIC_RE
 from tesi.verifica_completezza_tag import revise_if_needed,enumeration_warning
 from tesi.sql_category_support import (category_sql_context,
-                                      select_generation_guidance,CATEGORY_RETRY_RULES)
+                                      select_generation_guidance,CATEGORY_RETRY_RULES,
+                                      SQL_SYNTAX_REPAIR_RULES)
 from tesi.tag_budget import (selection_mode,semantic_plan,expand_selected,
                              sem_filter_controlled,preserve_category_recall)
 from tesi.sintesi_tag import (CATEGORY_SYSTEM, compact_category_evidence,
@@ -896,15 +897,36 @@ def sql_method(db,question,model):
         request["contesto_categoria"]=category_context
     generated,first=_in_phase("generazione SQL",ask,model,
                               select_generation_guidance(question),request)
-    sql=_in_phase("validazione SQL",validate_sql,generated)
+    attempts=1
+    syntax_repair=False
+    try:
+        sql=_in_phase("validazione SQL",validate_sql,generated)
+    except EnginePhaseError as exc:
+        # Recupero soltanto da SQL sintatticamente non parsabile: le
+        # query non autorizzate continuano a essere respinte senza retry.
+        if exc.error_type!="ParseError":
+            raise
+        retry_request={
+            "schema":SCHEMA,
+            "domanda":question,
+            "query_sql_rifiutata_dal_parser":generated[:12000],
+            "contesto_categoria":category_context,
+        }
+        regenerated,retry_usage=_in_phase(
+            "correzione sintassi SQL",ask,model,
+            SQL_SYNTAX_REPAIR_RULES,retry_request)
+        sql=_in_phase("validazione SQL",validate_sql,regenerated)
+        first=_accumulate(first,retry_usage)
+        attempts+=1
+        syntax_repair=True
+
     first_sql=sql
     rows,truncated=_execute_generated_select(db,sql)
-    attempts=1
+    zero_row_retry=False
 
     if category_context and not rows:
-        # Solo con un risultato ZERO per categoria implicita: una seconda
-        # traduzione SQL, sempre prodotta dal medesimo LLM e validata.
-        # Non è una query sostitutiva nascosta né una lista gold manuale.
+        # Un'altra SELECT è ammessa solo per lo ZERO-righe, mai per
+        # aggirare i controlli di sola lettura su una query rifiutata.
         retry_payload={
             "schema":SCHEMA,
             "domanda":question,
@@ -915,14 +937,16 @@ def sql_method(db,question,model):
         regenerated,retry_usage=_in_phase(
             "revisione SQL",ask,model,CATEGORY_RETRY_RULES,retry_payload)
         revised=_in_phase("validazione SQL",validate_sql,regenerated)
-        attempts=2
+        attempts+=1
+        zero_row_retry=True
         first=_accumulate(first,retry_usage)
         sql=revised
         rows,truncated=_execute_generated_select(db,sql)
 
     citations=_sql_sources(db,rows)
     metadata={"sql_tentativi":attempts,
-              "sql_iniziale":first_sql if attempts>1 else None,
+              "sql_iniziale":first_sql if zero_row_retry else None,
+              "sql_correzione_sintassi":syntax_repair,
               "categoria_implicita":bool(category_context)}
     if not rows:
         # Zero righe NON equivale ad assenza documentale: può essere un
