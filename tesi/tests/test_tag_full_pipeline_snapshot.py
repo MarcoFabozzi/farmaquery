@@ -91,8 +91,13 @@ class TagFullPipelineSnapshotTests(unittest.TestCase):
                             p["estratto"].casefold() and "federico" in
                             p["estratto"].casefold()
                             for p in source[0]["passaggi"]))
-        first=("Medicinale: SOLIRIS — miastenia gravis, "
-               "Federico II, p.4.\nNota: ULTOMIRIS va verificato.")
+        first=("Medicinale: EVRYSDI — SMA, Federico II, p.2.\n"
+               "Medicinale: AGAMREE — Duchenne, Federico II, p.2.\n"
+               "Medicinale: DUVYZAT — Duchenne, Federico II, p.2.\n"
+               "Medicinale: ZILBRYSQ — miastenia, Federico II, p.2.\n"
+               "Medicinale: VYVGART — miastenia, Federico II, p.3.\n"
+               "Medicinale: SOLIRIS — miastenia gravis, "
+               "Federico II, p.4.\n*Nota: ULTOMIRIS va verificato.")
         missing=missing_category_candidates(first,compact)
         self.assertTrue(any("ULTOMIRIS" in
                             c["documento_e_medicinale_candidato"]
@@ -133,6 +138,12 @@ class TagFullPipelineSnapshotTests(unittest.TestCase):
         self.assertEqual(result["chiamate_llm_stimate"],6)
         self.assertIn("Medicinale: ULTOMIRIS",result["risposta"])
         self.assertIn("Medicinale: SOLIRIS",result["risposta"])
+        self.assertLess(result["risposta"].index("Medicinale: ULTOMIRIS"),
+                        result["risposta"].index("*Nota:"))
+        self.assertEqual(result["statistiche_revisione_categoria"]["chiamate"],1)
+        self.assertTrue(any(x["medicinale"]=="ULTOMIRIS"
+                            and x["esito"]=="accettato"
+                            for x in result["diagnostica_revisione_categoria"]))
         self.assertTrue(any("ULTOMIRIS" in c for c in
                             result["candidati_categoria_da_ricontrollare"]))
 
