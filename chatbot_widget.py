@@ -68,7 +68,16 @@ def _reply(question,method,model,has_key,remaining):
         except Exception as exc:
             # NON visualizzare il messaggio grezzo: può contenere chiavi API
             # o dettagli privati della richiesta. Mostra fase e classe sicure.
-            return label_error(exc)
+            outcome=label_error(exc)
+            # Misure tecniche sicure anche se la chiamata ha fallito.
+            diagnostics=getattr(exc,"metriche_llm",None)
+            if isinstance(diagnostics,dict):
+                outcome.update({
+                    key:diagnostics.get(key)
+                    for key in ("chiamate_llm_effettive","chiamate_llm_dirette",
+                                "chiamate_llm_lotus","tempo_backend_s")
+                })
+            return outcome
 
 
 def _citation_details(ref):
