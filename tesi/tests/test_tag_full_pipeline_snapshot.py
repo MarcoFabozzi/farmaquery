@@ -90,7 +90,7 @@ class TagFullPipelineSnapshotTests(unittest.TestCase):
                             p["estratto"].casefold()
                             for p in source[0]["passaggi"]))
         first=("Medicinale: SOLIRIS — miastenia gravis, "
-               "Federico II, p.4.\\nNota: ULTOMIRIS va verificato.")
+               "Federico II, p.4.\nNota: ULTOMIRIS va verificato.")
         missing=missing_category_candidates(first,compact)
         self.assertTrue(any("ULTOMIRIS" in
                             c["documento_e_medicinale_candidato"]
@@ -98,7 +98,7 @@ class TagFullPipelineSnapshotTests(unittest.TestCase):
         result,calls=self._run(question,[
             lambda payload:first,
             lambda payload:("Medicinale: SOLIRIS — miastenia gravis, "
-                            "Federico II, p.4.\\n"
+                            "Federico II, p.4.\n"
                             "Medicinale: ULTOMIRIS — miastenia gravis "
                             "generalizzata refrattaria, Federico II, "
                             "pagina 3, nota PG/2024/0427490.")
