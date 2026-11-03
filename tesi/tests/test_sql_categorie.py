@@ -1,333 +1,121 @@
-"""Regressioni Text-to-SQL su categorie implicite, senza chiamate API.
-
-Non esiste una query SQL prestabilita in produzione: qui mock del modello.
-Gli indizi di recupero sono condivisi con TAG; la risposta resta una
-valutazione del modello su pagine e note originali.
-"""
+"""Text-to-SQL standard: una sola SELECT, senza recupero semantico o retry."""
 import sqlite3
 import unittest
 from unittest.mock import patch
 
-from tesi.pilota_tag_vs_sql import sql_method
-from tesi.sql_category_support import (
-    category_sql_context,select_generation_guidance
-)
+from errori_chatbot import EnginePhaseError
+from tesi.pilota_tag_vs_sql import sql_method, SQL_GENERATION_PROMPT
 
 
-class SqlCategoryTests(unittest.TestCase):
+class StandardSqlTests(unittest.TestCase):
     def setUp(self):
         self.db=sqlite3.connect(":memory:")
         self.db.row_factory=sqlite3.Row
         self.db.executescript("""
-        CREATE TABLE note (
-            id TEXT PRIMARY KEY, nome_file TEXT, percorso_zip TEXT,
-            anno INT, farmaco_candidato TEXT, protocollo_candidato TEXT,
-            data_candidata TEXT, indicazione_candidata TEXT,
-            archivio_url TEXT
-        );
-        CREATE TABLE pagine (
-            nota_id TEXT,numero_pagina INT,testo TEXT,metodo TEXT
-        );
-        CREATE TABLE strutture_registri (
-            id TEXT,medicinale TEXT,patologia TEXT,indicazione TEXT,
-            struttura TEXT,regione TEXT,data_riferimento TEXT,fonte_url TEXT
-        );
-        INSERT INTO note VALUES (
-            'regional-1','NUOVO MEDICINALE.pdf',
-            '2026/NUOVO MEDICINALE.pdf',2026,'TERAPIA ESEMPIO',NULL,
-            NULL,NULL,'https://regione.test/note.zip'
-        );
-        INSERT INTO pagine VALUES
-            ('regional-1',1,
-             'TERAPIA ESEMPIO per miastenia gravis generalizzata','TESTO'),
-            ('regional-1',2,
-             'Presidi per miastenia gravis: AOU Federico II, Napoli','TESTO');
+          CREATE TABLE ema_medicinali (
+            ema_id TEXT,nome TEXT,principio_attivo TEXT,stato_ema TEXT,
+            data_decisione_ue TEXT,indicazione_ema TEXT,url_ema TEXT
+          );
+          CREATE TABLE note(
+            id TEXT,nome_file TEXT,percorso_zip TEXT,archivio_url TEXT
+          );
+          CREATE TABLE pagine(
+            nota_id TEXT,numero_pagina INTEGER,testo TEXT,metodo TEXT
+          );
+          INSERT INTO ema_medicinali VALUES (
+            'EMA-001','FARMACO X','sostanza a','Authorised','2026-06-01',
+            'Indicazione documentata', 'https://www.ema.europa.eu/example');
+          INSERT INTO note VALUES(
+            'r1','FARMACO X.pdf','2026/FARMACO X.pdf',
+            'https://www.regione.campania.it/note.zip');
+          INSERT INTO pagine VALUES(
+            'r1',1,'Indicazione documentata per la terapia A','TESTO');
         """)
-        self.question=(
-            "Quali farmaci per malattie neuromuscolari "
-            "si prescrivono al Federico II?"
-        )
+        self.usage={"token_input":10,"token_output":5,"costo_usd":0.001}
 
     def tearDown(self):
         self.db.close()
 
-    def test_indizi_non_sono_nomi_di_farmaci_gold(self):
-        category=category_sql_context(self.question)
-        self.assertEqual(category["categoria_riconosciuta"],"neuromuscolar")
-        self.assertIn("miastenia",category["indizi_di_ricerca_non_probatori"])
-        prompt=select_generation_guidance(self.question)
-        self.assertIn("pagine",prompt)
-        self.assertIn("EXISTS",prompt)
-        self.assertIn("categoria",prompt)
-        self.assertIsNone(category_sql_context("Qual è la classe di PLUVICTO?"))
+    def test_ema_strutturato_risponde_con_una_select(self):
+        query=("SELECT ema_id,nome,stato_ema,indicazione_ema "
+               "FROM ema_medicinali WHERE nome='FARMACO X'")
+        with patch("tesi.pilota_tag_vs_sql.ask",side_effect=[
+            (query,self.usage),
+            ("La scheda EMA indica una terapia documentata.",self.usage),
+        ]) as llm:
+            answer=sql_method(self.db,"Quale indicazione di FARMACO X?","mock")
+        self.assertEqual(llm.call_count,2)
+        self.assertEqual(answer["sql_tentativi"],1)
+        self.assertEqual(answer["righe_sql"],1)
+        self.assertEqual(answer["stato"],"OK")
+        self.assertEqual(answer["versione_text_to_sql"],"standard-v1")
+        self.assertEqual(answer["token_input"],20)
+        self.assertTrue(any("EMA-001" in x for x in answer["fonti"]))
+        self.assertEqual(llm.call_args_list[0].args[2],
+                         {"schema":__import__("tesi.pilota_tag_vs_sql",
+                                            fromlist=["SCHEMA"]).SCHEMA,
+                          "domanda":"Quale indicazione di FARMACO X?"})
 
-    def test_recupero_sql_tramite_seconda_select_generata(self):
-        # Riproduce il falso negativo osservato: la prima SELECT cerca la
-        # stringa astratta, la seconda il nome della patologia e il centro.
-        first_sql=(
-            "SELECT medicinale FROM strutture_registri "
-            "WHERE patologia LIKE '%neuromuscolari%' LIMIT 80"
-        )
-        second_sql=(
-            "SELECT n.id AS nota_id,p.numero_pagina,p.testo,"
-            "n.nome_file,n.farmaco_candidato FROM note AS n "
-            "JOIN pagine AS p ON p.nota_id=n.id "
-            "WHERE EXISTS (SELECT 1 FROM pagine AS disease "
-            "WHERE disease.nota_id=n.id "
-            "AND disease.testo LIKE '%miastenia%') "
-            "AND EXISTS (SELECT 1 FROM pagine AS center "
-            "WHERE center.nota_id=n.id "
-            "AND center.testo LIKE '%Federico II%') "
-            "ORDER BY p.numero_pagina LIMIT 80"
-        )
-        usage={"token_input":12,"token_output":8,"costo_usd":0.002}
+    def test_zero_righe_non_riprova_ne_sintetizza(self):
+        query="SELECT nome FROM ema_medicinali WHERE nome='INESISTENTE'"
         with patch("tesi.pilota_tag_vs_sql.ask",
-                   side_effect=[(first_sql,usage),(second_sql,usage),
-                                ("TERAPIA ESEMPIO: miastenia gravis, "
-                                 "AOU Federico II.",usage)]) as fake:
-            result=sql_method(self.db,self.question,"mock-llm")
-        self.assertEqual(fake.call_count,3)
-        self.assertEqual(result["sql_tentativi"],2)
-        self.assertIn("neuromuscolari",result["sql_iniziale"])
-        self.assertIn("miastenia",result["sql"])
-        self.assertEqual(result["righe_sql"],2)
-        self.assertEqual(result["stato"],"OK")
-        self.assertEqual(result["token_input"],36)
-        self.assertTrue(any("2026/NUOVO MEDICINALE.pdf#p1" in x
-                            for x in result["fonti"]))
-        self.assertTrue(any("2026/NUOVO MEDICINALE.pdf#p2" in x
-                            for x in result["fonti"]))
-        self.assertIn("TERAPIA ESEMPIO",result["risposta"])
-        first_payload=fake.call_args_list[0].args[2]
-        retry_payload=fake.call_args_list[1].args[2]
-        self.assertIn("contesto_categoria",first_payload)
-        self.assertIn("query_precedente_senza_righe",retry_payload)
+                   return_value=(query,self.usage)) as llm:
+            answer=sql_method(self.db,"Quale farmaco inesistente?","mock")
+        self.assertEqual(llm.call_count,1)
+        self.assertEqual(answer["righe_sql"],0)
+        self.assertEqual(answer["stato"],"NESSUNA_EVIDENZA")
+        self.assertIn("non ha restituito risultati",answer["risposta"])
 
-    def test_sintassi_sql_errata_recuperata_senza_esecuzione(self):
-        # Un ParseError non deve interrompere il benchmark quando il
-        # modello può rigenerare una SELECT corretta e validata.
-        bad_sql="SELECT FROM note WHERE"
-        valid_sql=(
-            "SELECT n.id AS nota_id,p.numero_pagina,p.testo,"
-            "n.nome_file FROM note AS n JOIN pagine AS p "
-            "ON n.id=p.nota_id LIMIT 80"
-        )
-        usage={"token_input":6,"token_output":4,"costo_usd":0.001}
+    def test_categoria_implicita_non_ha_indizi_ne_seconda_query(self):
+        question="Quali medicinali per malattie neuromuscolari?"
+        query=("SELECT nome_file FROM note "
+               "WHERE nome_file LIKE '%neuromuscolari%'")
         with patch("tesi.pilota_tag_vs_sql.ask",
-                   side_effect=[(bad_sql,usage),(valid_sql,usage),
-                                ("Documento: TERAPIA ESEMPIO.",usage)]) as fake:
-            result=sql_method(self.db,self.question,"mock-llm")
-        self.assertEqual(fake.call_count,3)
-        self.assertTrue(result["sql_correzione_sintassi"])
-        self.assertEqual(result["sql_tentativi"],2)
-        self.assertIsNone(result["sql_iniziale"])
-        self.assertEqual(result["righe_sql"],2)
-        self.assertEqual(result["token_input"],18)
-        retry_prompt=fake.call_args_list[1].args[1]
-        retry_context=fake.call_args_list[1].args[2]
-        self.assertIn("parser",retry_prompt)
-        self.assertEqual(retry_context["query_sql_rifiutata_dal_parser"],
-                         bad_sql)
-        self.assertIn("SELECT",result["sql"])
+                   return_value=(query,self.usage)) as llm:
+            answer=sql_method(self.db,question,"mock")
+        self.assertEqual(llm.call_count,1)
+        self.assertNotIn("contesto_categoria",
+                         llm.call_args_list[0].args[2])
+        self.assertNotIn("miastenia",SQL_GENERATION_PROMPT.casefold())
+        self.assertEqual(answer["sql_tentativi"],1)
+        self.assertEqual(answer["stato"],"NESSUNA_EVIDENZA")
 
-    def test_seconda_query_malformata_resta_errore_sql(self):
-        from errori_chatbot import EnginePhaseError
-        usage={"token_input":4,"token_output":3,"costo_usd":None}
+    def test_nota_legge_testo_solo_se_select_lo_recupera(self):
+        query=("SELECT n.id AS nota_id,p.numero_pagina,p.testo "
+               "FROM note AS n JOIN pagine AS p ON p.nota_id=n.id "
+               "WHERE n.nome_file LIKE '%FARMACO X%'")
+        with patch("tesi.pilota_tag_vs_sql.ask",side_effect=[
+            (query,self.usage),("Documento: pagina 1.",self.usage)
+        ]) as llm:
+            answer=sql_method(self.db,"Che cosa dice la nota X?","mock")
+        self.assertEqual(llm.call_count,2)
+        self.assertTrue(any("2026/FARMACO X.pdf#p1" in x
+                            for x in answer["fonti"]))
+        self.assertEqual(answer["righe_sql"],1)
+
+    def test_sql_non_valido_non_si_rigenera(self):
         with patch("tesi.pilota_tag_vs_sql.ask",
-                   side_effect=[("SELECT FROM note WHERE",usage),
-                                ("SELECT WHERE ORDER BY",usage)]) as fake:
-            with self.assertRaises(EnginePhaseError) as caught:
-                sql_method(self.db,self.question,"mock-llm")
-        self.assertEqual(fake.call_count,2)
-        self.assertEqual(caught.exception.phase,"validazione SQL")
-        self.assertEqual(caught.exception.error_type,"ParseError")
+                   return_value=("DELETE FROM note",self.usage)) as llm:
+            with self.assertRaises(EnginePhaseError) as err:
+                sql_method(self.db,"Cancella le note","mock")
+        self.assertEqual(llm.call_count,1)
+        self.assertEqual(err.exception.phase,"validazione SQL")
 
-    def test_operazione_sql_non_consentita_non_viene_ritentata(self):
-        from errori_chatbot import EnginePhaseError
-        usage={"token_input":4,"token_output":3,"costo_usd":None}
+    def test_errore_sintattico_non_si_rigenera(self):
         with patch("tesi.pilota_tag_vs_sql.ask",
-                   return_value=("DELETE FROM note",usage)) as fake:
-            with self.assertRaises(EnginePhaseError) as caught:
-                sql_method(self.db,self.question,"mock-llm")
-        self.assertEqual(fake.call_count,1)
-        self.assertEqual(caught.exception.error_type,"ValueError")
+                   return_value=("SELECT FROM note WHERE",self.usage)) as llm:
+            with self.assertRaises(EnginePhaseError) as err:
+                sql_method(self.db,"Quali note?","mock")
+        self.assertEqual(llm.call_count,1)
+        self.assertEqual(err.exception.phase,"validazione SQL")
 
-
-    def test_join_aifa_satura_limit_e_richiede_seconda_select(self):
-        # Fixture: una JOIN 1:N sulle confezioni oscura un'altra nota.
-        # La correzione NON contiene medicinali predefiniti di produzione.
-        self.db.executescript("""
-        CREATE TABLE aifa_confezioni (
-          aic TEXT,nome TEXT,principio_attivo TEXT,descrizione TEXT,
-          classe_a_h_snapshot TEXT,classe_a_h_data TEXT);
-        INSERT INTO note VALUES (
-          'regional-2','ALTRO MEDICINALE.pdf',
-          '2026/ALTRO MEDICINALE.pdf',2026,'TERAPIA ALTRA',NULL,
-          NULL,NULL,'https://regione.test/note.zip');
-        INSERT INTO pagine VALUES
-          ('regional-2',1,'Distrofia muscolare, terapia candidata.','TESTO'),
-          ('regional-2',2,'AOU Federico II, Napoli, centri DMD.','TESTO');
-        """)
-        for idx in range(9):
-            self.db.execute(
-                "INSERT INTO aifa_confezioni VALUES (?,?,?,?,?,?)",
-                (str(idx),"TERAPIA ESEMPIO",None,None,None,None))
-        self.db.commit()
-        first_sql=(
-            "SELECT n.id AS nota_id,p.numero_pagina,p.testo,n.nome_file "
-            "FROM note n JOIN pagine p ON n.id=p.nota_id "
-            "LEFT JOIN aifa_confezioni a ON "
-            "a.nome LIKE '%' || n.farmaco_candidato || '%' "
-            "WHERE n.id='regional-1' LIMIT 5"
-        )
-        second_sql=(
-            "SELECT n.id AS nota_id,p.numero_pagina,p.testo,n.nome_file "
-            "FROM note n JOIN pagine p ON n.id=p.nota_id "
-            "ORDER BY n.id,p.numero_pagina LIMIT 80"
-        )
-        usage={"token_input":10,"token_output":6,"costo_usd":0.002}
+    def test_errore_operativo_non_si_rigenera(self):
         with patch("tesi.pilota_tag_vs_sql.ask",
-                   side_effect=[
-                       (first_sql,usage),
-                       (second_sql,usage),
-                       ("Sono presenti due note candidate, da verificare.",usage)
-                   ]) as fake:
-            result=sql_method(self.db,self.question,"mock-model")
-        self.assertEqual(fake.call_count,3)
-        self.assertTrue(result["sql_riprova_copertura"])
-        self.assertEqual(result["sql_esito_riprova_copertura"],"nuove_note")
-        self.assertEqual(result["sql_tentativi"],2)
-        self.assertEqual(result["note_distinte_sql"],2)
-        self.assertEqual(result["righe_sql"],4)
-        from tesi.pilota_tag_vs_sql import validate_sql
-        self.assertEqual(result["sql_iniziale"],validate_sql(first_sql))
-        self.assertEqual(len(result["sql_query_fonti"]),2)
-        self.assertTrue(result["risultato_parziale"])
-        self.assertEqual(result["token_input"],30)
-        self.assertEqual(len(result["fonti"]),4)
-        self.assertIn("query_precedente_con_copertura_limitata",
-                      fake.call_args_list[1].args[2])
-        evidence=fake.call_args_list[2].args[2]["righe_sql"]
-        self.assertEqual(len({x["nota_id"] for x in evidence}),2)
-
-    def test_revisione_copertura_sql_vietata_non_viene_eseguita(self):
-        from tesi.pilota_tag_vs_sql import _balanced_category_rows
-        # La rigenerazione NON può aggirare il validatore SELECT.
-        self.db.executescript("""
-        CREATE TABLE aifa_confezioni (
-          aic TEXT,nome TEXT,principio_attivo TEXT,descrizione TEXT,
-          classe_a_h_snapshot TEXT,classe_a_h_data TEXT);
-        INSERT INTO aifa_confezioni VALUES (
-            '123','TERAPIA ESEMPIO',NULL,NULL,NULL,NULL);
-        """)
-        rows=[
-            {"nota_id":"same","numero_pagina":2,"testo":"prova", "classe":"A"},
-            {"nota_id":"same","numero_pagina":2,"testo":"prova", "classe":"H"},
-            {"nota_id":"another","numero_pagina":1,"testo":"altra"}
-        ]
-        balanced,duplicates=_balanced_category_rows(rows)
-        self.assertEqual(duplicates,1)
-        self.assertEqual(len(balanced),2)
-        first_sql=(
-            "SELECT n.id AS nota_id,p.numero_pagina,p.testo,n.nome_file "
-            "FROM note n JOIN pagine p ON n.id=p.nota_id "
-            "LEFT JOIN aifa_confezioni a ON a.nome=n.farmaco_candidato"
-        )
-        usage={"token_input":5,"token_output":5,"costo_usd":0.001}
-        with patch("tesi.pilota_tag_vs_sql.ask",
-                   side_effect=[(first_sql,usage),
-                                ("DELETE FROM note",usage),
-                                ("La relazione è solo candidata.",usage)]) as fake:
-            result=sql_method(self.db,self.question,"mock-model")
-        self.assertEqual(fake.call_count,3)
-        self.assertEqual(result["sql_esito_riprova_copertura"],
-                         "rifiutata_o_non_eseguibile")
-        self.assertEqual(result["sql_tentativi"],2)
-        self.assertEqual(result["righe_sql"],2)
-
-    def test_contesto_categorie_conserva_centri_e_patologie_lontani(self):
-        from tesi.pilota_tag_vs_sql import _category_excerpt
-        text=("Intestazione della nota. " + "X"*1800 +
-              " AOU Universitaria Federico II, Napoli. "+ "Y"*1550 +
-              "Miastenia gravis generalizzata.")
-        excerpt=_category_excerpt(text,
-            "Quali malattie neuromuscolari per AOU Federico II?",
-            max_chars=1350)
-        self.assertLessEqual(len(excerpt),1350)
-        self.assertIn("Federico II",excerpt)
-        self.assertIn("Miastenia",excerpt)
-        self.assertIn("[...]",excerpt)
-
-    def test_limite_ottanta_attiva_riprova_con_piu_di_due_note(self):
-        # Riproduce il mancato retry della prima versione: piu' di
-        # due note nel campione, ma LIMIT 80 taglia altre pagine.
-        for idx in range(2,5):
-            self.db.execute(
-                "INSERT INTO note VALUES (?,?,?,?,?,?,?,?,?)",
-                (f"regional-{idx}",f"TERAPIA {idx}.pdf",
-                 f"2026/TERAPIA {idx}.pdf",2026,f"TERAPIA {idx}",
-                 None,None,None,"https://regione.test/note.zip"))
-        for idx in range(1,5):
-            for page in range(3,34):
-                self.db.execute(
-                    "INSERT INTO pagine VALUES (?,?,?,?)",
-                    (f"regional-{idx}",page,
-                     "Miastenia gravis e centro AOU Federico II; "
-                     + "riga di evidenza "+str(page),"TESTO"))
-        self.db.commit()
-        base=(
-            "SELECT n.id AS nota_id,p.numero_pagina,p.testo,"
-            "n.nome_file,n.farmaco_candidato AS medicinale "
-            "FROM note n JOIN pagine p ON n.id=p.nota_id "
-        )
-        first_sql=base+"ORDER BY n.id,p.numero_pagina LIMIT 80"
-        next_sql=base+"ORDER BY n.id DESC,p.numero_pagina LIMIT 80"
-        usage={"token_input":9,"token_output":8,"costo_usd":0.001}
-        with patch("tesi.pilota_tag_vs_sql.ask",
-                   side_effect=[(first_sql,usage),(next_sql,usage),
-                                ("Non sono presenti medicinali che soddisfano "
-                                 "i criteri. L'informazione richiesta non "
-                                 "è documentata nello snapshot.",usage)]) as fake:
-            result=sql_method(self.db,self.question,"mock-llm")
-        self.assertEqual(fake.call_count,3)
-        self.assertEqual(result["sql_tentativi"],2)
-        self.assertTrue(result["sql_riprova_copertura"])
-        self.assertGreaterEqual(result["note_distinte_sql"],3)
-        self.assertTrue(result["risultato_parziale"])
-        self.assertTrue(result["negazione_non_supportata_sql"])
-        self.assertEqual(result["stato"],"RISPOSTA_NON_VERIFICATA")
-        self.assertIn("Non è corretto concludere",result["risposta"])
-        self.assertIn("Non sono presenti",result["risposta_modello_originale_sql"])
-        self.assertNotIn("Non sono presenti",result["risposta"])
-        self.assertIn("risultato_troncato",
-                      fake.call_args_list[1].args[2])
-
-    def test_assoluta_negazione_senza_taglio_non_riscritta(self):
-        from tesi.pilota_tag_vs_sql import _absolute_negative_on_partial_sql
-        answer="Non sono presenti medicinali."
-        rows=[{"nota_id":"a","numero_pagina":2,"testo":"Evidenza"}]
-        self.assertFalse(_absolute_negative_on_partial_sql(
-            answer,rows,False,True))
-        self.assertFalse(_absolute_negative_on_partial_sql(
-            answer,[],True,True))
-        self.assertFalse(_absolute_negative_on_partial_sql(
-            "Medicinale: TERAPIA",rows,True,True))
-        self.assertTrue(_absolute_negative_on_partial_sql(
-            answer,rows,True,True))
-
-    def test_fallimento_due_select_non_diventa_assenza_documentale(self):
-        sql=("SELECT medicinale FROM strutture_registri "
-             "WHERE patologia LIKE '%categoria-inesistente%'")
-        usage={"token_input":5,"token_output":4,"costo_usd":None}
-        with patch("tesi.pilota_tag_vs_sql.ask",
-                   side_effect=[(sql,usage),(sql,usage)]) as fake:
-            result=sql_method(self.db,self.question,"mock-llm")
-        self.assertEqual(fake.call_count,2)
-        self.assertEqual(result["sql_tentativi"],2)
-        self.assertEqual(result["righe_sql"],0)
-        self.assertEqual(result["stato"],"NESSUNA_RIGA_SQL")
-        self.assertIn("Non è una prova",result["risposta"])
-        self.assertTrue(result["risultato_parziale"])
+                   return_value=("SELECT colonna_assente FROM note",self.usage)) as llm:
+            with self.assertRaises(EnginePhaseError) as err:
+                sql_method(self.db,"Quali note?","mock")
+        self.assertEqual(llm.call_count,1)
+        self.assertEqual(err.exception.phase,"esecuzione SQL")
 
 
 if __name__=="__main__":

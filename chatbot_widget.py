@@ -232,41 +232,11 @@ def assistant_dialog():
                                 _show_excerpt(source)
                     if method=="Text-to-SQL" and item.get("sql"):
                         with st.expander("Query SQL"):
-                            if item.get("sql_correzione_sintassi"):
-                                st.caption("La prima query generata non era "
-                                           "sintatticamente valida. Il modello "
-                                           "ha prodotto una nuova SELECT, "
-                                           "validata prima dell'esecuzione.")
-                            if item.get("sql_iniziale"):
-                                if item.get("sql_riprova_copertura"):
-                                    st.caption("Prima SELECT: copertura documentale "
-                                               "limitata. È stata generata una "
-                                               "seconda SELECT per cercare "
-                                               "altre note; i risultati "
-                                               "documentali sono stati uniti.")
-                                else:
-                                    st.caption("Prima SELECT: zero righe. "
-                                               "Il modello ha generato una "
-                                               "seconda query (mostrata sotto).")
-                                st.code(item["sql_iniziale"],language="sql")
-                                st.caption("Seconda SELECT eseguita:")
                             st.code(item["sql"],language="sql")
-                        if item.get("sql_tentativi"):
-                            st.caption(
-                                "Text-to-SQL · query generate: "+
-                                str(item["sql_tentativi"])+
-                                " · modello e snapshot invariati"
-                            )
+                            st.caption("Text-to-SQL standard · una sola SELECT "
+                                       "· nessuna correzione o seconda ricerca")
                     if item.get("secondi") is not None:
                         st.caption(f'{item["secondi"]:.1f} s · {method}')
-                    if method=="Text-to-SQL" and item.get("sql_riprova_copertura"):
-                        st.caption(
-                            "Copertura SQL: verifica aggiuntiva eseguita · "
-                            "note distinte nel contesto: "+
-                            str(item.get("note_distinte_sql","?"))+
-                            " · esito: "+
-                            str(item.get("sql_esito_riprova_copertura","?"))
-                        )
                     if method=="TAG" and item.get("versione_tag"):
                         st.caption("TAG "+str(item["versione_tag"])+" · fonte "+str(item.get("verifica_contesto","?"))+" · AIC "+str(item.get("aic_nel_testo_integrale",0)))
                     if method=="TAG" and item.get("versione_tag"):
@@ -335,15 +305,6 @@ def assistant_dialog():
                         "fonti":result.get("fonti",[]),
                         "evidenze_fonti":result.get("evidenze_fonti",[]),
                         "sql":result.get("sql",""),
-                        "sql_iniziale":result.get("sql_iniziale"),
-                        "sql_tentativi":result.get("sql_tentativi"),
-                        "sql_correzione_sintassi":result.get(
-                            "sql_correzione_sintassi",False),
-                        "sql_riprova_copertura":result.get(
-                            "sql_riprova_copertura",False),
-                        "sql_esito_riprova_copertura":result.get(
-                            "sql_esito_riprova_copertura"),
-                        "note_distinte_sql":result.get("note_distinte_sql"),
                         "secondi":round(time.monotonic()-start,2),
                         "versione_tag":result.get("versione_tag"),
                         "verifica_contesto":result.get("verifica_contesto"),
