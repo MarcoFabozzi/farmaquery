@@ -961,6 +961,29 @@ def validate_sql(text):
         ctes={c.alias for c in root.find_all(exp.CTE)}
         if (table.name not in ALLOWED|ctes or table.db or table.catalog):
             raise ValueError("Tabella o schema non consentito: "+table.name)
+    # Una JOIN non correlata a una tabella precedente può espandere
+    # enormemente le righe; la baseline NON la rigenera e NON la esegue.
+    # Sono ammessi USING e le JOIN con riferimenti alle due parti.
+    for select in root.find_all(exp.Select):
+        frm=select.args.get("from_") or select.args.get("from")
+        source=frm.this if frm is not None else None
+        known={str(source.alias_or_name).casefold()} if source is not None else set()
+        for join in select.args.get("joins") or []:
+            current=join.this
+            alias=str(getattr(current,"alias_or_name","") or "").casefold()
+            if join.args.get("using"):
+                if alias:
+                    known.add(alias)
+                continue
+            on=join.args.get("on")
+            if on is None:
+                raise ValueError("JOIN senza condizione di collegamento")
+            refs={str(col.table).casefold() for col in on.find_all(exp.Column)
+                  if col.table}
+            if alias and known and (alias not in refs or not (refs & known)):
+                raise ValueError("JOIN senza collegamento fra le tabelle")
+            if alias:
+                known.add(alias)
     deny_names={"load_extension","readfile","writefile","fts5_tokenize",
                 "sqlite_compileoption_get","sqlite_compileoption_used"}
     for item in root.find_all(exp.Func):
