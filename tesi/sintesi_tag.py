@@ -144,6 +144,88 @@ def missing_category_candidates(answer,compact):
     return misses
 
 
+def expand_review_pages(db,question,answer,compact,max_docs=6,max_pages=2,max_chars=10500):
+    """Arricchisce SOLO i candidati omessi con le pagine originali SQLite.
+
+    La prima sintesi continua a usare estratti compatti. Per verificare
+    omissioni si usano le pagine selezionate per lo stesso documento,
+    senza introdurre fonti o risultati predefiniti.
+    """
+    missing=missing_category_candidates(answer,compact)
+    if not missing:
+        return compact
+    by_key={str(doc.get("chiave")):doc for doc in missing[:max_docs]}
+    enriched=[]
+    for doc in compact:
+        if str(doc.get("chiave")) not in by_key:
+            enriched.append(doc)
+            continue
+        key=str(doc.get("chiave") or "")
+        if not key.startswith("REGIONE:DOC:"):
+            enriched.append(doc)
+            continue
+        note_id=key[len("REGIONE:DOC:"):]
+        try:
+            pages=[dict(p) for p in db.execute(
+                "SELECT numero_pagina,testo FROM pagine "
+                "WHERE nota_id=? AND metodo IN ('TESTO','OCR') "
+                "AND length(trim(testo))>0 ORDER BY numero_pagina",
+                (note_id,))]
+        except Exception:
+            enriched.append(doc)
+            continue
+        if not pages:
+            enriched.append(doc)
+            continue
+        # Recupera dapprima le pagine già citate nella selezione.
+        # Conserva le fonti puntuali; non riordina indicazioni e
+        # strutture di pagine diverse nella stessa citazione.
+        cited={int(p["pagina"]) for p in doc.get("passaggi",[])
+               if p.get("pagina") is not None}
+        center=(re.search(r"\b(?:federico|cardarelli|vanvitelli)\b",question,re.I))
+        term=center.group().casefold() if center else ""
+        from tesi.recupero_regionale import categoria
+        category_terms=categoria(question)[1]
+        def rank(page):
+            body=str(page["testo"] or "").casefold()
+            hit_center=bool(term and term in body)
+            hit_disease=any(word in body for word in category_terms)
+            return (0 if hit_center and hit_disease else
+                    1 if hit_center else 2 if hit_disease else 3,
+                    0 if page["numero_pagina"] in cited else 1,
+                    page["numero_pagina"])
+        pages.sort(key=rank)
+        selected=[]
+        budget=max_chars
+        for p in pages:
+            if len(selected)>=max_pages or budget<=0:
+                break
+            page_no=int(p["numero_pagina"])
+            text=str(p["testo"])
+            if not text or (page_no not in cited and selected):
+                continue
+            portion=text[:min(len(text),budget)]
+            selected.append({"pagina":page_no,"estratto":portion})
+            budget-=len(portion)
+        if not selected:
+            enriched.append(doc)
+            continue
+        new_doc=dict(doc)
+        new_doc["passaggi"]=selected
+        source_by_page={}
+        for source in doc.get("fonti",[]):
+            match=re.search(r"#p(\d+)\b",str(source))
+            if match:
+                source_by_page[int(match.group(1))]=source
+        if any(p["pagina"] not in source_by_page for p in selected):
+            enriched.append(doc)
+            continue
+        new_doc["fonti"]=[source_by_page[p["pagina"]] for p in selected]
+        new_doc["origine_verifica"]="testo delle pagine originali nello SQLite"
+        enriched.append(new_doc)
+    return enriched
+
+
 def revise_category_if_needed(model,question,answer,compact,ask_fn):
     """Riesamina i documenti omessi senza promuovere candidati a risultati.
 
@@ -191,5 +273,14 @@ def revise_category_if_needed(model,question,answer,compact,ask_fn):
     )
     additions=verified_additions(revised,missing,question,_candidate_short_name)
     if additions:
-        answer=answer.rstrip()+"\n\n"+"\n\n".join(additions)
+        # Mantieni tutte le voci precedenti, inserendo le integrazioni
+        # PRIMA delle note di copertura e delle osservazioni finali.
+        anchor=re.search(r"(?im)^\s*(?:copertura\s*:|nota\s*:|"
+                         r"per quanto riguarda\b)",answer)
+        if anchor:
+            before=answer[:anchor.start()].rstrip()
+            after=answer[anchor.start():].lstrip()
+            answer=before+"\n\n"+"\n\n".join(additions)+"\n\n"+after
+        else:
+            answer=answer.rstrip()+"\n\n"+"\n\n".join(additions)
     return answer,usage,True,[_candidate_short_name(d) for d in missing ]
