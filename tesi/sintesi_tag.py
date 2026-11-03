@@ -7,6 +7,7 @@ le fonti e i numeri di pagina dei documenti realmente selezionati.
 from __future__ import annotations
 
 import re
+from tesi.revisione_categoria import verified_additions
 
 PAGE_RE = re.compile(r"\[pagina\s+(\d+)\]", re.I)
 
@@ -159,34 +160,36 @@ def revise_category_if_needed(model,question,answer,compact,ask_fn):
                        _candidate_listed(answer,_candidate_short_name(doc))}
     context={
         "domanda":question,
-        "prima_risposta_da_ricontrollare":answer,
-        "documenti_candidati_non_elencati":missing,
-        "documenti_gia_considerati":compact,
+        "documenti_candidati_non_elencati":[
+            {"medicinale_candidato":_candidate_short_name(doc),
+             "passaggi":doc.get("passaggi",[]),
+             "fonti":doc.get("fonti",[])}
+            for doc in missing],
         "avviso":"Documenti candidati NON equivalgono a prescrizioni provate. "
                  "Si devono verificare indicazione, centro e pagina insieme.",
     }
     revised,usage=ask_fn(
         model,
-        "Rileggi OGNI documento candidato non elencato nella prima "
-        "risposta. La sua presenza è solo un indizio di recupero, non "
-        "dimostra che il medicinale sia pertinente. Per ciascuno verifica "
-        "se una specifica sezione per la patologia richiesta individua "
-        "esplicitamente il centro richiesto, distinguendo altre indicazioni "
-        "e tabelle. Non trasferire centri fra indicazioni e non aggiungere "
-        "voci incerte. Se una nuova associazione è dimostrata, integra "
-        "l'elenco, citando la pagina pertinente. Conserva le voci della "
-        "prima risposta già fondate sulle fonti. Riformula la risposta "
-        "INTERA in italiano: ogni caso positivo deve iniziare su una nuova "
-        "riga con 'Medicinale: NOME'. Se non emergono casi aggiuntivi, "
-        "mantieni la risposta senza presentarli come positivi. "
+        "Esamina in autonomia SOLO i documenti candidati non elencati. "
+        "Valuta ciascun medicinale separatamente. Controlla se il centro "
+        "richiesto appartiene alla sezione della stessa indicazione, "
+        "senza confondere tabelle di malattie diverse. "
+        "Non dedurre un'autorizzazione dalla mera menzione del centro. "
+        "Rispondi SOLO con JSON: un oggetto con 'nuove_voci' (array). "
+        "Includi un candidato soltanto quando la relazione è dimostrata. "
+        "Per ogni caso positivo usa le chiavi: 'confermato' (true), "
+        "'medicinale', 'patologia', 'indicazione', "
+        "'pagina_indicazione' e 'pagina_centro' (numeri), "
+        "'citazione_indicazione' e 'citazione_centro'. "
+        "Le citazioni devono essere stringhe letterali contigue dei "
+        "passaggi forniti, di almeno 16 caratteri: la seconda deve "
+        "contenere il nome del centro richiesto. Non riscrivere "
+        "i medicinali della risposta precedente. Quando non emerge "
+        "una prova sufficiente, restituisci un array vuoto. "
         "Non usare fonti esterne o risposte gold.",
-        context,timeout=CATEGORY_RESPONSE_TIMEOUT_SECONDS,max_tokens=1900
+        context,timeout=CATEGORY_RESPONSE_TIMEOUT_SECONDS,max_tokens=1750
     )
-    names_after={_candidate_short_name(doc).casefold()
-                 for doc in compact
-                 if _candidate_short_name(doc) and
-                 _candidate_listed(revised,_candidate_short_name(doc))}
-    if revised and originally_listed.issubset(names_after) and (
-        names_after-originally_listed):
-        answer=revised
-    return answer,usage,True,[ _candidate_short_name(d) for d in missing ]
+    additions=verified_additions(revised,missing,question,_candidate_short_name)
+    if additions:
+        answer=answer.rstrip()+"\n\n"+"\n\n".join(additions)
+    return answer,usage,True,[_candidate_short_name(d) for d in missing ]
