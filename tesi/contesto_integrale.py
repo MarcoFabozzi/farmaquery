@@ -159,6 +159,22 @@ def contesto_integrale(db,question,target,max_chars=18500):
             if requested_pages - {p["numero_pagina"] for p in pages}:
                 complete=False
         else:
+            # Alcuni PDF uniscono la nota amministrativa a una procedura
+            # operativa autonoma, con intestazione e numero di revisione.
+            # Se si chiede la NOTA (non la procedura), il testo integrale
+            # richiesto termina prima di quella sezione separata. Senza
+            # questo confine il budget si esaurisce sulle appendici e
+            # la prima nota viene falsamente marcata come parziale.
+            if (re.search(r"\bnota\b",question,re.I)
+                and not re.search(r"\bprocedur\w*\b",question,re.I)):
+                for i,page in enumerate(pages):
+                    heading=" ".join(str(page["testo"]).split())[:340]
+                    if (i>0 and re.match(
+                        r"\s*PROCEDURA\s+PER\s+LA\s+GESTIONE\b",
+                        heading,re.I)
+                        and re.search(r"\bRevisione\b",heading,re.I)):
+                        pages=pages[:i]
+                        break
             # Con un budget limitato leggere PRIMA le pagine che rispondono
             # alla domanda, non consumarlo sulla copertina/introduzione.
             # Ogni pagina mantiene testo e citazione originali; i punteggi
