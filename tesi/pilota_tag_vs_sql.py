@@ -25,7 +25,7 @@ from tesi.tag_budget import (selection_mode,semantic_plan,expand_selected,
 from tesi.sintesi_tag import (CATEGORY_SYSTEM, compact_category_evidence,
                               CATEGORY_RESPONSE_TIMEOUT_SECONDS,
                               revise_category_if_needed,
-                              expand_review_pages)
+                              expand_review_pages,secondary_medicine_candidates)
 
 
 SCHEMA = """Tabelle disponibili (SQLite, SOLA LETTURA):
@@ -865,6 +865,11 @@ def tag(db,question,model):
                          max_tokens=2400)
         review_context=expand_review_pages(db,question,answer,compact,
                                            max_docs=8)
+        # Note intestate a un farmaco possono aggiornare esplicitamente
+        # anche i centri di un secondo medicinale. Il nome è un candidato,
+        # non una prova: passa per gli stessi controlli di citazione.
+        review_context.extend(
+            secondary_medicine_candidates(db,question,compact))
         answer,extra_category_usage,category_revised,category_missing=(
             revise_category_if_needed(
                 model,question,answer,review_context,ask,
