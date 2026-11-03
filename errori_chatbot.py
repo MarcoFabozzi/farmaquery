@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import sqlite3
 
 logger=logging.getLogger("farmaquery.chatbot")
 
@@ -37,11 +38,31 @@ def diagnose_error(exc):
         code="CONNESSIONE"
     elif http==400 or "badrequest" in low or "invalidrequest" in low:
         code="RICHIESTA"
+    elif (isinstance(exc,EnginePhaseError) and "sql" in exc.phase.casefold()) or isinstance(cause,sqlite3.DatabaseError):
+        code="SQL"
     else:
         code="ALTRO"
     return {"codice":code,
             "fase":exc.phase if isinstance(exc,EnginePhaseError) else "esecuzione",
             "tipo":kind}
+
+
+def _sqlite_error_diagnostic(cause):
+    """Diagnostica a categorie fisse; NON mostra il messaggio grezzo SQLite."""
+    if not isinstance(cause,sqlite3.DatabaseError):
+        return None
+    detail=str(cause).casefold()
+    for marker,message in (
+        ("no such column","La SELECT fa riferimento a una colonna non esistente."),
+        ("no such table","La SELECT fa riferimento a una tabella non esistente."),
+        ("no such function","La SELECT usa una funzione SQL non disponibile."),
+        ("syntax error","SQLite ha segnalato un errore di sintassi."),
+        ("ambiguous column name","Una colonna è ambigua nella SELECT."),
+        ("interrupted","La query ha superato il limite di esecuzione."),
+    ):
+        if marker in detail:
+            return message
+    return "SQLite non è riuscito a eseguire la SELECT; controlla la query mostrata."
 
 
 def label_error(exc):
@@ -76,8 +97,9 @@ def label_error(exc):
     elif http_code==400 or "badrequest" in low or "invalidrequest" in low:
         message="Il provider ha rifiutato la richiesta del modello."
         code="RICHIESTA"
-    elif "sql" in phase or "sqlite" in low or "parse" in low:
-        message="La query SQL generata non è valida o non è eseguibile."
+    elif "sql" in phase.casefold() or isinstance(cause,sqlite3.DatabaseError) or "parse" in low:
+        message=(_sqlite_error_diagnostic(cause) or
+                 "La query SQL generata non è valida o non è eseguibile.")
         code="SQL"
     elif phase=="selezione TAG":
         message="L'operatore semantico LOTUS ha incontrato un errore."
@@ -90,7 +112,14 @@ def label_error(exc):
         code="ALTRO"
     logger.warning("FarmaQuery failure: fase=%s categoria=%s tipo=%s",
                    phase,code,kind)
-    return {"risposta":f"{message} (fase: {phase}; codice: {code}; "
-                       f"tipo: {kind}).",
+    result={"risposta":f"{message} (fase: {phase}; codice: {code}; "
+                        f"tipo: {kind}).",
             "fonti":[],"stato":"ERRORE","codice_errore":code,
             "fase_errore":phase,"tipo_errore":kind}
+    # Solo SELECT già validata, fallita in esecuzione; non mostrare SQL
+    # rifiutata in validazione o richieste grezze del provider.
+    if (isinstance(exc,EnginePhaseError) and phase=="esecuzione SQL"
+            and isinstance(getattr(exc,"sql",None),str)
+            and len(exc.sql)<=9000):
+        result["sql"]=exc.sql
+    return result
