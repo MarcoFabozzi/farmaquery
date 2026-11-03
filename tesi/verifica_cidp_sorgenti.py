@@ -112,6 +112,36 @@ def main():
                     "nome":doc["nome"],"pagina":p["pagina"],
                     "metodo":p["metodo"],"testo":p["testo"][:14000]
                 })
+    # Verifica di copertura: conta le note del corpus che possono
+    # soddisfare i criteri della domanda. È un pool di CANDIDATI,
+    # non una risposta gold né una prova di autorizzazione.
+    from tesi.recupero_regionale import ESPANSIONI
+    terms=ESPANSIONI["neuromuscolar"]+("cidp","nervoso")
+    source_rows=db.execute(
+        "SELECT d.nome,d.anno,d.path_zip,d.sha256_pdf,"
+        "p.pagina,p.testo FROM documenti AS d "
+        "JOIN pagine AS p ON p.documento_id=d.id ORDER BY d.nome,p.pagina"
+    ).fetchall()
+    by_doc={}
+    for src in source_rows:
+        item=by_doc.setdefault(src["path_zip"],{
+            "nome":src["nome"],"anno":src["anno"],
+            "pdf":src["path_zip"],"sha256":src["sha256_pdf"],
+            "pagine_centro":[],"pagine_categoria":[]})
+        page=int(src["pagina"])
+        text=src["testo"].casefold()
+        if re.search(r"federico\\s*(?:ii|2)",text):
+            item["pagine_centro"].append(page)
+        if any(t in text for t in terms):
+            item["pagine_categoria"].append(page)
+    doc_candidates=[x for x in by_doc.values()
+                    if x["pagine_centro"] and x["pagine_categoria"]]
+    for item in doc_candidates:
+        println("CANDIDATO_NEUROMUSCOLARE",item)
+    println("COPERTURA_CANDIDATI",{
+        "note_con_indizi_di_categoria_e_centro":len(doc_candidates),
+        "note_totali":len(by_doc),"distinzione":"solo candidati, non gold"})
+
     if not selected:
         raise RuntimeError("Nessuna nota originale KIOVIG/HYQVIA nello snapshot")
     println("DOCUMENTI_TROVATI",{"numero":len(selected)})
