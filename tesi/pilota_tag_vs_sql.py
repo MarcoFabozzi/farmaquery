@@ -921,6 +921,8 @@ def _execute_generated_select(db,sql,category=False,question=""):
 SQL_GENERATION_PROMPT=(
     "Traduci la domanda in una sola query SQL SQLite SELECT. "
     "Utilizza esclusivamente le tabelle e colonne elencate nello schema. "
+    "Per il confronto testuale dei nomi dei medicinali usa COLLATE NOCASE: "
+    "SQLite distingue normalmente lettere maiuscole e minuscole. "
     "Non utilizzare PRAGMA, modifiche al database o più istruzioni. "
     "Includi aic, ema_id, oppure nota_id e numero_pagina quando "
     "disponibili, in modo da poter citare i dati trovati. "
