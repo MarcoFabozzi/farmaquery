@@ -195,6 +195,12 @@ class TagIntegralPayloadTests(unittest.TestCase):
                       [(p["numero_pagina"],p["n"],"lutezio" in (p["testo"] or "").casefold(),
                         "registro" in (p["testo"] or "").casefold())
                        for p in pages],flush=True)
+                for p in pages:
+                    raw=" ".join(str(p["testo"] or "").split())
+                    pos=raw.casefold().find("registro")
+                    print("PLUV-PAGE",p["numero_pagina"],"START",raw[:175],
+                          "REGISTRO",raw[max(0,pos-110):pos+200] if pos>=0 else "-",
+                          flush=True)
 
     def test_wegovy_sei_aic_raggiungono_sintesi(self):
         question=("Quante confezioni di WEGOVY sono presenti "
