@@ -677,6 +677,8 @@ def tag(db,question,model):
 
     category_revised=False
     category_missing=[]
+    category_audit=[]
+    category_review_stats={}
     if category_question:
         # LOTUS seleziona; la sintesi riesamina tutti i documenti candidati.
         # La verifica successiva NON promuove automaticamente candidati a fatti.
@@ -697,7 +699,9 @@ def tag(db,question,model):
                          max_tokens=1400)
         review_context=expand_review_pages(db,question,answer,compact)
         answer,extra_category_usage,category_revised,category_missing=(
-            revise_category_if_needed(model,question,answer,review_context,ask))
+            revise_category_if_needed(
+                model,question,answer,review_context,ask,
+                audit=category_audit,stats=category_review_stats))
         if extra_category_usage is not None:
             usage=_accumulate(usage,extra_category_usage)
     else:
@@ -747,6 +751,8 @@ def tag(db,question,model):
             "revisione_completezza_llm":revised or category_revised,
             "revisione_categoria_llm":category_revised,
             "candidati_categoria_da_ricontrollare":category_missing,
+            "diagnostica_revisione_categoria":category_audit,
+            "statistiche_revisione_categoria":category_review_stats,
             "fallback_pagina_integrale":fallback_pagina_integrale,
             "verifica_contesto":(
                 "integrale" if integral and integral_complete else
@@ -761,7 +767,8 @@ def tag(db,question,model):
             "righe_evidenze_da_lotus":len(semantic),
             "modalita_selezione":mode,
             "chiamate_semantiche_stimate":len(planned),
-            "chiamate_llm_stimate":len(planned)+1+int(revised)+int(category_revised),
+            "chiamate_llm_stimate":len(planned)+1+int(revised)+
+                                    category_review_stats.get("chiamate",0),
             "fonti_recuperate":sorted({r["tipo"] for r in rows}),
             "fonti_usate":sorted({r["tipo"] for r in evidence}),
             "fonti_mancanti":sorted(_facets(question)-{r["tipo"] for r in evidence})}
