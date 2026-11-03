@@ -7,9 +7,10 @@ Questa traccia segue **solo** le richieste del relatore. FarmaQuery è un **prot
 La demo visualizza per ogni evidenza disponibile:
 - **Nome del documento e pagina** per le note regionali (es. `PLUVICTO.pdf — pagina 2`);
 - **passaggio del testo realmente recuperato** nel pannello «Passaggi del testo consultato»;
-- **link alla fonte ufficiale** (PDF, se la fonte possiede un URL diretto; archivio ZIP ufficiale nel caso delle note distribuite soltanto come file interni allo ZIP).
+- **link alla fonte ufficiale** (PDF se disponibile direttamente, archivio ZIP se il PDF è interno);
+- **anteprima su richiesta della pagina originale del PDF**: il pulsante «Visualizza la pagina del PDF originale» scarica lo ZIP ufficiale e visualizza **solo la pagina citata**. L'anteprima viene caricata soltanto se il PDF è disponibile e identificabile nello ZIP. In caso contrario restano nome, pagina e testo estratto.
 
-Se la fonte ha un **URL diretto PDF**, il link include l'ancora `#page=N` per aprire la pagina indicata dove il browser PDF lo supporta. Se la fonte punta a uno **ZIP**, non inventiamo un PDF web inesistente: mostriamo l'archivio ufficiale, il nome del file interno e il numero di pagina. L'evidenziazione di una frase **dentro il PDF originale** non è implementata; il relatore la considera facoltativa («se ci riesci»). Non scambiare l'estratto testuale con un'evidenziazione del documento.
+Se la fonte ha un **URL diretto PDF**, il link include `#page=N` dove il browser lo supporta. Se punta a uno **ZIP**, non inventiamo un PDF web inesistente: il pulsante estrae il file PDF nominato dalla fonte e mostra la pagina nell'app attraverso un visualizzatore opzionale. Il pulsante richiede una connessione allo ZIP regionale; non è garantito su ogni documento. L'evidenziazione di una frase **dentro il PDF originale** non è implementata; il relatore la considera facoltativa («se ci riesci»). Non scambiare l'estratto testuale con un'evidenziazione del documento.
 
 ## Quattro casi da mostrare
 
@@ -32,7 +33,7 @@ Le otto domande già usate per ottimizzare i motori restano **set di sviluppo**,
 
 1. Aprire il chatbot e selezionare il metodo desiderato.
 2. Inviare una domanda alla volta e verificare che la risposta sia generata dall'LLM, non precaricata.
-3. Aprire «Fonti consultate»: controllare documento, pagina e tipo di collegamento.
+3. Aprire «Fonti consultate»: controllare documento, pagina e tipo di collegamento. Se la fonte è nello ZIP, provare «Visualizza la pagina del PDF originale» (il PDF deve essere scaricabile).
 4. Aprire «Passaggi del testo consultato»: controllare che il passo provenga dalla stessa pagina e che non contenga una conclusione inventata.
 5. Per rimandi distinguere il riferimento testuale dal reale recupero della nota precedente.
 6. Per l'assenza di dati non trasformare il mancato recupero di una query in un fatto normativo.
