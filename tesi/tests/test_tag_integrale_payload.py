@@ -179,6 +179,23 @@ class TagIntegralPayloadTests(unittest.TestCase):
         self.assertIn("lutezio",page2)
         self.assertIn("registro",page2)
 
+
+    def test_debug_source_statistics_pluvicto(self):
+        with sqlite3.connect(self.path) as db:
+            db.row_factory=sqlite3.Row
+            notes=[dict(r) for r in db.execute(
+                "SELECT id,anno,nome_file,percorso_zip FROM note "
+                "WHERE nome_file LIKE '%PLUVICTO%' COLLATE NOCASE")]
+            for note in notes:
+                pages=[dict(p) for p in db.execute(
+                    "SELECT numero_pagina,length(testo) AS n,testo "
+                    "FROM pagine WHERE nota_id=? ORDER BY numero_pagina",
+                    (note["id"],))]
+                print("PLUV-DIAG",note["anno"],note["nome_file"],
+                      [(p["numero_pagina"],p["n"],"lutezio" in (p["testo"] or "").casefold(),
+                        "registro" in (p["testo"] or "").casefold())
+                       for p in pages],flush=True)
+
     def test_wegovy_sei_aic_raggiungono_sintesi(self):
         question=("Quante confezioni di WEGOVY sono presenti "
                   "nell'articolo 1 della determina 23A02767? "
