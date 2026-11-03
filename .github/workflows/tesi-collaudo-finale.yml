@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'tesi/collaudo_finale.py'
+      - 'tesi/sintesi_tag.py'
       - '.github/workflows/tesi-collaudo-finale.yml'
   workflow_dispatch:
     inputs:
@@ -12,7 +13,7 @@ on:
         description: 'Quante domande inviare ai due motori'
         type: choice
         options: ['1','2','4']
-        default: '2'
+        default: '4'
       modello:
         description: 'Stesso modello per entrambe le tecniche'
         type: string
@@ -50,7 +51,7 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           MODEL: ${{ inputs.modello || 'gemini/gemini-3.5-flash-lite' }}
-          N: ${{ inputs.max_domande || '2' }}
+          N: ${{ inputs.max_domande || '4' }}
         run: |
           python -m tesi.collaudo_finale --live --model "$MODEL" \
             --max-domande "$N" --out dist_tesi/collaudo_live.json
