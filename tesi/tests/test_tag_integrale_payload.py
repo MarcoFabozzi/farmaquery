@@ -42,7 +42,9 @@ def run_without_provider(db, question, answer, select_none=False):
     requests=[]
     def fake_ask(model,system,payload,**kwargs):
         requests.append((system,payload,kwargs))
-        return answer,{
+        output=answer[min(len(requests)-1,len(answer)-1)] if (
+            isinstance(answer,(list,tuple))) else answer
+        return output,{
             "token_input":8,"token_output":4,"costo_usd":0.001}
     with patch.dict(sys.modules,{"lotus":fake_lotus,
                                  "lotus.models":fake_models,
@@ -180,27 +182,36 @@ class TagIntegralPayloadTests(unittest.TestCase):
         self.assertIn("registro",page2)
 
 
-    def test_debug_source_statistics_pluvicto(self):
+    def test_pluvicto_nota_non_troncata_da_procedura_allegata(self):
+        from tesi.verifica_completezza_tag import missing_requirement_cues
+        question=(
+            "Secondo la nota regionale PLUVICTO del 18/04/2025, quali "
+            "sono tutte le cinque strutture di Medicina Nucleare "
+            "individuate e quali requisiti aggiuntivi sono richiesti?")
+        first_answer=(
+            "Le cinque strutture sono elencate nella nota e devono "
+            "essere autorizzate alla detenzione del lutezio 177.")
+        corrected_answer=(
+            first_answer+
+            " Devono inoltre essere abilitate al registro AIFA.")
         with sqlite3.connect(self.path) as db:
             db.row_factory=sqlite3.Row
-            notes=[dict(r) for r in db.execute(
-                "SELECT id,anno,nome_file,percorso_zip FROM note "
-                "WHERE nome_file LIKE '%PLUVICTO%' COLLATE NOCASE")]
-            for note in notes:
-                pages=[dict(p) for p in db.execute(
-                    "SELECT numero_pagina,length(testo) AS n,testo "
-                    "FROM pagine WHERE nota_id=? ORDER BY numero_pagina",
-                    (note["id"],))]
-                print("PLUV-DIAG",note["anno"],note["nome_file"],
-                      [(p["numero_pagina"],p["n"],"lutezio" in (p["testo"] or "").casefold(),
-                        "registro" in (p["testo"] or "").casefold())
-                       for p in pages],flush=True)
-                for p in pages:
-                    raw=" ".join(str(p["testo"] or "").split())
-                    pos=raw.casefold().find("registro")
-                    print("PLUV-PAGE",p["numero_pagina"],"START",raw[:175],
-                          "REGISTRO",raw[max(0,pos-110):pos+200] if pos>=0 else "-",
-                          flush=True)
+            result,requests=run_without_provider(
+                db,question,[first_answer,corrected_answer])
+        self.assertTrue(result["contesto_integrale_completo"])
+        self.assertEqual(result["verifica_contesto"],"integrale")
+        self.assertNotIn("supera il limite di contesto",result["risposta"])
+        first_sources=requests[0][1]["evidenze"]
+        self.assertEqual(
+            {x["fonte"].split("#p")[1].split(" ")[0] for x in first_sources},
+            {"1","2"})
+        self.assertTrue(any("registro" in x["testo"].casefold()
+                            for x in first_sources))
+        self.assertIn("abilitazione al registro",
+                      missing_requirement_cues(question,first_answer,first_sources))
+        self.assertEqual(len(requests),2)
+        self.assertTrue(result["revisione_completezza_llm"])
+        self.assertIn("registro AIFA",result["risposta"])
 
     def test_wegovy_sei_aic_raggiungono_sintesi(self):
         question=("Quante confezioni di WEGOVY sono presenti "
