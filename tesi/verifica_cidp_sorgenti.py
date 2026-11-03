@@ -142,6 +142,27 @@ def main():
         "note_con_indizi_di_categoria_e_centro":len(doc_candidates),
         "note_totali":len(by_doc),"distinzione":"solo candidati, non gold"})
 
+    broad_terms=("miasten","miotrof","miopati","miosit","dermatom",
+                 "distrof","muscol","spinal","neuropat","poliradicolo",
+                 "cidp","transtiret","atassia")
+    broader={}
+    for src in source_rows:
+        doc=broader.setdefault(src["path_zip"],{
+            "nome":src["nome"],"anno":src["anno"],"pdf":src["path_zip"],
+            "pagine_federico":[],"pagine_cliniche":[]})
+        body=src["testo"].casefold()
+        if "federico" in body:
+            doc["pagine_federico"].append(int(src["pagina"]))
+        if any(t in body for t in broad_terms):
+            doc["pagine_cliniche"].append(int(src["pagina"]))
+    broad=[d for d in broader.values()
+           if d["pagine_federico"] and d["pagine_cliniche"]]
+    for item in broad:
+        println("CANDIDATO_AMPIO",item)
+    println("COPERTURA_AMPIA",{
+        "documenti_con_federico_e_termini_clinici":len(broad),
+        "nota":"selezione di ricerca, non valutazione clinica"})
+
     # Allarga il controllo ai documenti candidati individuati nel
     # corpus, più le note note da precedenti prove che possono avere
     # testo OCR del centro non intercettato dall'espressione semplice.
