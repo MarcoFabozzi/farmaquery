@@ -56,6 +56,32 @@ class StandardSqlTests(unittest.TestCase):
                                             fromlist=["SCHEMA"]).SCHEMA,
                           "domanda":"Quale indicazione di FARMACO X?"})
 
+    def test_pluvicto_maiuscolo_usa_collate_nocase_senza_retry(self):
+        self.db.execute(
+            "INSERT INTO ema_medicinali VALUES "
+            "('EMEA/H/C/005483','Pluvicto',"
+            "'lutetium (177Lu) vipivotide tetraxetan',"
+            "'Authorised','2026-07-20','indicazione','https://www.ema.europa.eu')"
+        )
+        self.assertEqual(self.db.execute(
+            "SELECT COUNT(*) FROM ema_medicinali WHERE nome='PLUVICTO'"
+        ).fetchone()[0],0)
+        query=("SELECT principio_attivo,ema_id FROM ema_medicinali "
+               "WHERE nome='PLUVICTO' COLLATE NOCASE")
+        with patch("tesi.pilota_tag_vs_sql.ask",side_effect=[
+            (query,self.usage),
+            ("Il principio attivo è lutetium (177Lu) vipivotide tetraxetan.",self.usage),
+        ]) as llm:
+            answer=sql_method(self.db,
+                "Qual è il principio attivo di PLUVICTO secondo EMA?","mock")
+        self.assertIn("COLLATE NOCASE",SQL_GENERATION_PROMPT)
+        self.assertEqual(llm.call_count,2)  # generazione SQL + sintesi
+        self.assertEqual(answer["sql_tentativi"],1)
+        self.assertEqual(answer["righe_sql"],1)
+        self.assertEqual(answer["stato"],"OK")
+        self.assertIn("lutetium",answer["risposta"])
+        self.assertTrue(any("005483" in x for x in answer["fonti"]))
+
     def test_zero_righe_non_riprova_ne_sintetizza(self):
         query="SELECT nome FROM ema_medicinali WHERE nome='INESISTENTE'"
         with patch("tesi.pilota_tag_vs_sql.ask",
