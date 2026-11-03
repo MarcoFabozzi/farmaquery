@@ -1,0 +1,115 @@
+name: Tesi - pilot 8 gold TAG vs Text-to-SQL
+
+on:
+  pull_request:
+    paths:
+      - 'tesi/pilota_8_audit.py'
+      - 'tesi/tests/test_pilota_8_audit.py'
+      - 'tesi/benchmark_regolatorio_8_validati.csv'
+      - '.github/workflows/tesi-pilota-8.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tesi/pilota_8_audit.py'
+      - 'tesi/tests/test_pilota_8_audit.py'
+      - 'tesi/benchmark_regolatorio_8_validati.csv'
+      - '.github/workflows/tesi-pilota-8.yml'
+  workflow_dispatch:
+    inputs:
+      esegui_api:
+        description: 'Esegui chiamate API reali? (disabilitato per default)'
+        type: boolean
+        required: true
+        default: false
+      max_domande:
+        description: 'Quante domande gold (dalla prima)?'
+        type: choice
+        options: ['2', '8']
+        default: '2'
+      modello:
+        description: 'Modello LiteLLM disponibile su Gemini (stesso per entrambi)'
+        type: string
+        required: true
+        default: 'gemini/gemini-2.5-flash'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  pilota:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test metodologici offline
+        run: |
+          python -m unittest -v tesi.tests.test_pilota_8_audit
+          python -m unittest -v tesi.tests.test_benchmark_regolatorio_30
+      - name: Scarica lo stesso SQLite immutabile del 2 novembre
+        uses: actions/download-artifact@v4
+        with:
+          name: tesi-snapshot-fonti-online
+          run-id: 41436480339
+          github-token: ${{ github.token }}
+          path: dist_tesi
+      - name: Verifica otto gold, pagine e SHA-256 senza LLM
+        run: |
+          python -m tesi.pilota_8_audit \
+            --db dist_tesi/esperimento_online.sqlite \
+            --manifest dist_tesi/manifest_fonti_online.json \
+            --out dist_tesi/pilota_8_preflight.json
+          python -m tesi.esegui_benchmark \
+            --db dist_tesi/esperimento_online.sqlite \
+            --manifest dist_tesi/manifest_fonti_online.json \
+            --domande tesi/benchmark_regolatorio_8_validati.csv \
+            --max-domande 8 > dist_tesi/anteprima_otto_gold.json
+      - name: Installa LOTUS per esecuzione API esplicitamente richiesta
+        if: github.event_name == 'workflow_dispatch' && inputs.esegui_api == true
+        run: python -m pip install -r tesi/requirements-esperimenti.txt
+      - name: Esegui entrambi i metodi sullo stesso modello e database
+        if: github.event_name == 'workflow_dispatch' && inputs.esegui_api == true
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          EXPERIMENT_MODEL: ${{ inputs.modello }}
+          MAX_QUESTIONS: ${{ inputs.max_domande }}
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "::error::Configurare GEMINI_API_KEY in Settings > Secrets and variables > Actions"
+            exit 1
+          fi
+          python -m tesi.esegui_benchmark \
+            --db dist_tesi/esperimento_online.sqlite \
+            --manifest dist_tesi/manifest_fonti_online.json \
+            --domande tesi/benchmark_regolatorio_8_validati.csv \
+            --model "$EXPERIMENT_MODEL" \
+            --max-domande "$MAX_QUESTIONS" \
+            --conferma-chiamate \
+            --out dist_tesi/risposte_grezze_8.csv
+      - name: Consolida tentativi e segnala incompletezze (non assegna voti)
+        if: always()
+        run: |
+          if [ -f dist_tesi/risposte_grezze_8.csv ]; then
+            python -m tesi.pilota_8_audit \
+              --db dist_tesi/esperimento_online.sqlite \
+              --manifest dist_tesi/manifest_fonti_online.json \
+              --risposte dist_tesi/risposte_grezze_8.csv \
+              --csv-consolidato dist_tesi/risposte_da_revisionare_8.csv \
+              --out dist_tesi/pilota_8_risultati_non_valutati.json
+          fi
+      - name: Pubblica audit e output per revisione
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tesi-pilota-8-risultati
+          path: |
+            dist_tesi/pilota_8_preflight.json
+            dist_tesi/anteprima_otto_gold.json
+            dist_tesi/risposte_grezze_8.csv
+            dist_tesi/risposte_da_revisionare_8.csv
+            dist_tesi/pilota_8_risultati_non_valutati.json
+          if-no-files-found: warn
+          retention-days: 30
