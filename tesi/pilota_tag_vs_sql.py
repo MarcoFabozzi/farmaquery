@@ -20,12 +20,6 @@ from tesi.recupero_gu import domanda_gu, candidati_gu
 from tesi.recupero_regionale import regional_candidates, categoria
 from tesi.contesto_integrale import contesto_integrale,richiede_sezione_completa,AIC_RE
 from tesi.verifica_completezza_tag import revise_if_needed,enumeration_warning
-from tesi.sql_category_support import (category_sql_context,
-                                      select_generation_guidance,CATEGORY_RETRY_RULES,
-                                      SQL_SYNTAX_REPAIR_RULES,
-                                      CATEGORY_DIVERSITY_RETRY_RULES,
-                                      DOCUMENT_SQL_RETRY_RULES,
-                                      SQL_EXECUTION_REPAIR_RULES)
 from tesi.tag_budget import (selection_mode,semantic_plan,expand_selected,
                              sem_filter_controlled,preserve_category_recall)
 from tesi.sintesi_tag import (CATEGORY_SYSTEM, compact_category_evidence,
@@ -852,152 +846,47 @@ SQL_CONTEXT_CHARS = 24000
 
 
 def _limit_from_sql(sql):
-    hit=re.search(r"\bLIMIT\s+([0-9]+)\b",sql,re.I)
-    return int(hit.group(1)) if hit else None
-
-
-def _category_excerpt(value,question,max_chars=1350):
-    """Finestre testuali con posizione, non prove cliniche preconfezionate.
-
-    Raccoglie contesto iniziale e passi attorno a parole della domanda e
-    alle espansioni di categoria condivise; non inventa né salda fonti.
-    """
-    value=str(value)
-    if len(value)<=max_chars:
-        return value
-    from tesi.recupero_regionale import categoria
-    _,terms=categoria(question or "")
-    facility=re.search(r"\b(?:AOU|AORN|IRCCS)\s+([A-Za-zÀ-ÿ]{4,})",
-                       question or "",re.I)
-    named=facility.group(1).casefold() if facility else ""
-    anchors=([named] if named else [])+list(terms)
-    windows=[(0,min(230,len(value)))]
-    lowered=value.casefold()
-    # La struttura viene cercata per prima; un indizio clinico diverso
-    # compare in un'altra finestra, se presente.
-    budget=max_chars-260
-    for word in anchors:
-        if not word:
-            continue
-        found=lowered.find(word.casefold())
-        if found<0:
-            continue
-        lo=max(0,found-190)
-        hi=min(len(value),found+430)
-        if any(lo<end and hi>start for start,end in windows):
-            continue
-        size=min(hi-lo,max(0,budget))
-        if size<90:
-            break
-        windows.append((lo,lo+size))
-        budget-=size+8
-        if len(windows)>=3:
-            break
-    windows.sort()
-    excerpts=[]
-    for start,end in windows:
-        excerpts.append(value[start:end])
-    return " [...] ".join(excerpts)[:max_chars]
+    """Indica il LIMIT della singola SELECT, se esplicitamente presente."""
+    match=re.search(r"\bLIMIT\s+([0-9]+)\b",sql,re.I)
+    return int(match.group(1)) if match else None
 
 
 def _sql_context(raw,category=False,question=""):
-    """Contesto citabile e limitato, bilanciato per documenti nelle categorie."""
+    """Limita solo la quantità di righe/testo data al LLM, senza ricerca semantica.
+
+    category/question sono conservati per compatibilità con i test storici;
+    non viene applicato alcun trattamento specifico per categoria clinica.
+    """
     output=[]
-    consumed=0
+    chars=0
     cut=False
-    for record in raw:
-        original=dict(record)
+    for item in raw:
         row={}
-        for key,value in original.items():
+        for key,value in dict(item).items():
             if value is None:
                 row[key]=None
-                continue
-            text=str(value)
-            if category and key=="testo" and len(text)>1350:
-                row[key]=_category_excerpt(text,question)
-                cut=True
             else:
-                limit=1800 if category else 2500
-                row[key]=text[:limit]
-                if len(text)>limit:
+                string=str(value)
+                row[key]=string[:2500]
+                if len(string)>2500:
                     cut=True
-        size=len(json.dumps(row,ensure_ascii=False))
-        if consumed+size>SQL_CONTEXT_CHARS:
+        cost=len(json.dumps(row,ensure_ascii=False))
+        if chars+cost>SQL_CONTEXT_CHARS:
             cut=True
             break
         output.append(row)
-        consumed+=size
+        chars+=cost
     return output,cut
 
 
-def _balanced_category_rows(records):
-    """Riduce la moltiplicazione dovuta a JOIN 1:N e alterna le note.
-
-    Per una domanda sulle note regionali l'unità documentale è la pagina
-    (nota_id, numero_pagina), non la confezione AIFA. Nessun nome di
-    medicinale o autorizzazione viene dedotto durante questa operazione.
-    """
-    groups={}
-    seen=set()
-    duplicates=0
-    for item in records:
-        row=dict(item)
-        note=str(row.get("nota_id") or row.get("nome_file") or
-                 row.get("medicinale") or "NON_IDENTIFICATA")
-        page=row.get("numero_pagina")
-        if row.get("nota_id") is not None and page is not None:
-            key=("REGIONE",str(row["nota_id"]),str(page))
-        else:
-            key=("RIGA",json.dumps(row,sort_keys=True,ensure_ascii=False,
-                                   default=str))
-        if key in seen:
-            duplicates+=1
-            continue
-        seen.add(key)
-        groups.setdefault(note,[]).append(row)
-    balanced=[]
-    while any(groups.values()):
-        for group in groups.values():
-            if group:
-                balanced.append(group.pop(0))
-    return balanced,duplicates
-
-
-def _category_note_count(rows):
-    return len({str(row.get("nota_id") or row.get("nome_file") or
-                    row.get("medicinale") or "")
-                for row in rows if row})
-
-
-def _needs_category_coverage_retry(sql,rows,truncated):
-    if not rows:
-        return False
-    docs=_category_note_count(rows)
-    # Una ricerca dominata da una singola nota non può essere
-    # considerata esaustiva se ha esaurito il limite o usa una JOIN
-    # che moltiplica le confezioni. Non forziamo sempre il retry.
-    repeated_join=bool(re.search(
-        r"\bJOIN\s+aifa_confezioni\b",sql,re.I))
-    # Il taglio rende impossibile attestare l'assenza di ulteriori note,
-    # anche se le prime righe contengono già molti documenti diversi.
-    return truncated or (docs<=2 and repeated_join)
-
-
-def _combine_category_context(first,second,question=""):
-    combined,_=_balanced_category_rows([*first,*second])
-    return _sql_context(combined,category=True,question=question)
-
-
 def _execute_generated_select(db,sql,category=False,question=""):
-    """Esegue una SELECT validata con gli stessi limiti per tutti i tentativi."""
+    """Esegue una sola SELECT validata, con limiti stabili per entrambi i motori."""
     start=time.monotonic()
     db.set_progress_handler(lambda:1 if time.monotonic()-start>12 else 0,10000)
     try:
         raw=_in_phase("esecuzione SQL",
                       lambda:db.execute(sql).fetchmany(SQL_ROW_LIMIT+1))
-        selected=( _balanced_category_rows(raw[:SQL_ROW_LIMIT])[0]
-                   if category else raw[:SQL_ROW_LIMIT])
-        rows,context_cut=_sql_context(selected,category=category,question=question)
+        rows,context_cut=_sql_context(raw[:SQL_ROW_LIMIT])
         query_limit=_limit_from_sql(sql)
         truncated=(len(raw)>SQL_ROW_LIMIT or context_cut or
                    (query_limit is not None and len(raw)>=query_limit))
@@ -1006,302 +895,78 @@ def _execute_generated_select(db,sql,category=False,question=""):
     return rows,truncated
 
 
-def _absolute_negative_on_partial_sql(answer,rows,truncated,category):
-    """Blocca conclusioni di assenza globale da un sottoinsieme SQL.
+SQL_GENERATION_PROMPT=(
+    "Traduci la domanda in una sola query SQL SQLite SELECT. "
+    "Utilizza esclusivamente le tabelle e colonne elencate nello schema. "
+    "Non utilizzare PRAGMA, modifiche al database o più istruzioni. "
+    "Includi aic, ema_id, oppure nota_id e numero_pagina quando "
+    "disponibili, in modo da poter citare i dati trovati. "
+    "Per la Gazzetta includi codice AS gu_codice o documento_id. "
+    "Restituisci soltanto SQL, senza Markdown né spiegazioni."
+)
 
-    Non trasforma candidati in fatti: distingue un risultato incompleto
-    dall'affermazione ingiustificata che non esistano medicinali.
-    """
-    if not (category and truncated and rows):
-        return False
-    statement=str(answer or "")
-    if re.search(r"(?im)^\s*(?:[-*]\s*)?medicinale\s*:",statement):
-        return False
-    return bool(re.search(
-        r"(?:non\s+(?:sono|risultano)\s+presenti\s+(?:medicinali|farmaci)"
-        r"|nessun\s+(?:medicinale|farmaco)"
-        r"|non\s+(?:esistono|vi\s+sono)\s+(?:medicinali|farmaci)"
-        r"|(?:l['’]?)?informazione\s+richiesta\s+non\s+[eè]\s+documentata"
-        r"|non\s+[eè]\s+documentata\s+nello\s+snapshot)",
-        statement,flags=re.I))
-
-
-def _sql_note_hints(db,question,limit=6):
-    """Metadati candidati dallo stesso SQLite, senza usare risposte gold.
-
-    Privilegia la coincidenza con PIÙ parole del nome commerciale, anziché
-    ritornare prematuramente la prima nota che contiene una parola generica.
-    """
-    available={r[0] for r in db.execute(
-        "SELECT name FROM sqlite_master WHERE type='table'")}
-    if "note" not in available:
-        return []
-    upper_tokens=list(dict.fromkeys(
-        re.findall(r"(?<!\w)[A-Z][A-Z0-9-]{3,}(?!\w)",str(question))))
-    tokens=[token for token in upper_tokens if token not in {
-        "SINFONIA","CAMPANIA","EGFR","ATTR-CM","FIGO",
-        "RNRL","FILE","MEDICINA","LOTUS"}]
-    found={}
-    for token in tokens[:8]:
-        pattern=_like(token)
-        for row in db.execute(
-            "SELECT id,nome_file,anno,farmaco_candidato,"
-            "protocollo_candidato,percorso_zip FROM note "
-            "WHERE farmaco_candidato LIKE ? ESCAPE '\\' COLLATE NOCASE "
-            "OR nome_file LIKE ? ESCAPE '\\' COLLATE NOCASE "
-            "ORDER BY anno DESC LIMIT ?",
-            (pattern,pattern,limit*3)):
-            found[row["id"]]=dict(row)
-    def rank(row):
-        name=(str(row.get("farmaco_candidato") or "")+" "+
-              str(row.get("nome_file") or "")).upper()
-        overlap=sum(1 for token in tokens if token in name)
-        return (-overlap,-int(row.get("anno") or 0),str(row["id"]))
-    return sorted(found.values(),key=rank)[:limit]
-
+SQL_ANSWER_PROMPT=(
+    "Rispondi in italiano alla domanda esclusivamente sulla base delle "
+    "righe restituite dalla SELECT, senza ricercare altre informazioni. "
+    "Se non ci sono prove sufficienti per una parte della domanda, "
+    "indica che non è documentata nei risultati SQL; non inventare. "
+    "Se classe_a_h_snapshot è NULL non affermare una classe C ufficiale. "
+    "Non scambiare la presenza di un centro nel testo con una "
+    "autorizzazione esplicitamente documentata. "
+    "Se i risultati sono troncati, non dichiarare l'elenco esaustivo. "
+    "Riporta nome del documento e pagina quando le righe lo consentono."
+)
 
 
 def sql_method(db,question,model):
-    category_context=category_sql_context(question)
-    request={"schema":SCHEMA,"domanda":question}
-    if category_context:
-        request["contesto_categoria"]=category_context
-    generated,first=_in_phase("generazione SQL",ask,model,
-                              select_generation_guidance(question),request)
-    attempts=1
-    syntax_repair=False
-    try:
-        sql=_in_phase("validazione SQL",validate_sql,generated)
-    except EnginePhaseError as exc:
-        # Recupero soltanto da SQL sintatticamente non parsabile: le
-        # query non autorizzate continuano a essere respinte senza retry.
-        if exc.error_type!="ParseError":
-            raise
-        retry_request={
-            "schema":SCHEMA,
-            "domanda":question,
-            "query_sql_rifiutata_dal_parser":generated[:12000],
-            "contesto_categoria":category_context,
-        }
-        regenerated,retry_usage=_in_phase(
-            "correzione sintassi SQL",ask,model,
-            SQL_SYNTAX_REPAIR_RULES,retry_request)
-        sql=_in_phase("validazione SQL",validate_sql,regenerated)
-        first=_accumulate(first,retry_usage)
-        attempts+=1
-        syntax_repair=True
+    """Text-to-SQL STANDARD: un prompt SQL, una SELECT, una sintesi se non vuota.
 
-    first_sql=sql
-    runtime_repair=False
-    try:
-        rows,truncated=_execute_generated_select(
-            db,sql,category=bool(category_context),question=question)
-    except EnginePhaseError as exc:
-        cause=exc.__cause__ or exc.original
-        if (exc.phase!="esecuzione SQL"
-            or not isinstance(cause,sqlite3.OperationalError)
-            or any(word in str(cause).lower()
-                   for word in ("interrupted","locked","readonly",
-                                "disk i/o","unable to open"))):
-            raise
-        # Una sola seconda SELECT; mai riutilizzare SQL non validato.
-        message=str(cause).lower()
-        kind=("COLONNA_NON_PRESENTE" if "no such column" in message else
-              "TABELLA_NON_PRESENTE" if "no such table" in message else
-              "AMBIGUITA_COLONNA" if "ambiguous column" in message else
-              "ERRORE_SQL_OPERATIVO")
-        regenerated,repair_usage=_in_phase(
-            "correzione SQL eseguibile",ask,model,SQL_EXECUTION_REPAIR_RULES,
-            {"schema":SCHEMA,"domanda":question,
-             "sql_precedente_non_eseguibile":first_sql,
-             "tipo_errore_sql":kind,
-             "metadati_note_candidate":_sql_note_hints(db,question)})
-        sql=_in_phase("validazione SQL",validate_sql,regenerated)
-        first=_accumulate(first,repair_usage)
-        attempts+=1
-        runtime_repair=True
-        rows,truncated=_execute_generated_select(
-            db,sql,category=bool(category_context),question=question)
-    zero_row_retry=False
-    note_hints=[]
-    if not category_context and not rows and "nota" in question.casefold():
-        note_hints=_sql_note_hints(db,question)
-        if note_hints:
-            retry_payload={
-                "schema":SCHEMA,
-                "domanda":question,
-                "query_precedente_senza_righe":sql,
-                "righe_primo_tentativo":0,
-                "metadati_note_candidate":note_hints,
-                "avviso":("Queste note sono candidate, non prove: leggere "
-                         "il testo delle pagine prima di rispondere.")
-            }
-            regenerated,retry_usage=_in_phase(
-                "revisione SQL",ask,model,DOCUMENT_SQL_RETRY_RULES,retry_payload)
-            sql=_in_phase("validazione SQL",validate_sql,regenerated)
-            first=_accumulate(first,retry_usage)
-            attempts+=1
-            zero_row_retry=True
-            rows,truncated=_execute_generated_select(
-                db,sql,category=False,question=question)
-
-    if category_context and not rows:
-        # Un'altra SELECT è ammessa solo per lo ZERO-righe, mai per
-        # aggirare i controlli di sola lettura su una query rifiutata.
-        retry_payload={
-            "schema":SCHEMA,
-            "domanda":question,
-            "contesto_categoria":category_context,
-            "query_precedente_senza_righe":first_sql,
-            "righe_primo_tentativo":0
-        }
-        regenerated,retry_usage=_in_phase(
-            "revisione SQL",ask,model,CATEGORY_RETRY_RULES,retry_payload)
-        revised=_in_phase("validazione SQL",validate_sql,regenerated)
-        attempts+=1
-        zero_row_retry=True
-        first=_accumulate(first,retry_usage)
-        sql=revised
-        rows,truncated=_execute_generated_select(db,sql,category=bool(category_context),
-                                             question=question)
-
-    # Un risultato non vuoto può essere comunque dominato da ripetizioni
-    # di una sola nota; una seconda SELECT, sempre generata dal modello,
-    # cerca una maggiore varietà documentale. Le evidenze restano distinte.
-    coverage_retry=False
-    coverage_retry_status="non_necessario"
-    sql_evidence_queries=[sql]
-    if (category_context and rows and
-            _needs_category_coverage_retry(sql,rows,truncated)):
-        coverage_retry=True
-        previous_sql=sql
-        retry_payload={
-            "schema":SCHEMA,
-            "domanda":question,
-            "contesto_categoria":category_context,
-            "query_precedente_con_copertura_limitata":previous_sql,
-            "note_distinte_prima_riprova":_category_note_count(rows),
-            "risultato_troncato":truncated
-        }
-        try:
-            alternative_sql_raw,extra_usage=_in_phase(
-                "miglioramento copertura SQL",ask,model,
-                CATEGORY_DIVERSITY_RETRY_RULES,retry_payload)
-            attempts+=1
-            first=_accumulate(first,extra_usage)
-            alternative_sql=_in_phase(
-                "validazione SQL",validate_sql,alternative_sql_raw)
-            other_rows,other_cut=_execute_generated_select(
-                db,alternative_sql,category=True,question=question)
-            sql_evidence_queries.append(alternative_sql)
-            if other_rows:
-                previous_count=_category_note_count(rows)
-                merged,merge_cut=_combine_category_context(rows,other_rows,question=question)
-                rows=merged
-                # Anche la prima SELECT può essere stata troncata: non
-                # nascondere il limite dopo aver unito più query.
-                truncated=truncated or other_cut or merge_cut
-                sql=alternative_sql
-                coverage_retry_status=(
-                    "nuove_note" if _category_note_count(rows)>previous_count
-                    else "nessuna_nuova_nota")
-            else:
-                coverage_retry_status="seconda_query_senza_righe"
-        except EnginePhaseError as exc:
-            # La seconda query è facoltativa: se il modello fallisce o
-            # genera SQL vietato, conserva la prima SELECT già validata.
-            coverage_retry_status="rifiutata_o_non_eseguibile"
-            if exc.phase=="miglioramento copertura SQL":
-                attempts+=1
-
+    Non usa LOTUS, espansioni di categorie, ricerche ausiliarie,
+    query di recupero, correzioni automatiche o revisori di completezza.
+    Un errore SQL è un errore tecnico e viene riportato come tale.
+    """
+    generated,first=_in_phase(
+        "generazione SQL",ask,model,SQL_GENERATION_PROMPT,
+        {"schema":SCHEMA,"domanda":question})
+    sql=_in_phase("validazione SQL",validate_sql,generated)
+    rows,truncated=_execute_generated_select(db,sql)
     citations=_sql_sources(db,rows)
-    metadata={"sql_tentativi":attempts,
-              "sql_iniziale":first_sql if zero_row_retry or coverage_retry or runtime_repair else None,
-              "sql_correzione_operativa":runtime_repair,
-              "sql_riprova_documentale":bool(zero_row_retry and not category_context),
-              "note_candidate_riprova":len(note_hints),
-              "sql_correzione_sintassi":syntax_repair,
-              "sql_riprova_copertura":coverage_retry,
-              "sql_esito_riprova_copertura":coverage_retry_status,
-              "sql_query_fonti":sql_evidence_queries,
-              "note_distinte_sql":_category_note_count(rows) if category_context else None,
-              "categoria_implicita":bool(category_context)}
+    metadata={"sql_tentativi":1,"sql_iniziale":None,
+              "versione_text_to_sql":"standard-v1",
+              "categoria_implicita":False}
     if not rows:
-        # Zero righe NON equivale ad assenza documentale: può essere un
-        # falso negativo della query, soprattutto per categorie astratte.
-        return {
-            "risposta":("Nessuna riga restituita dalle query Text-to-SQL "
-                       "per questa categoria. Non è una prova che "
-                       "l'informazione sia assente nello snapshot."
-                       if category_context else
-                       "Le SELECT Text-to-SQL non hanno restituito "
-                       "prove per la nota cercata. Questo NON dimostra "
-                       "che il documento sia assente nello snapshot."
-                       if note_hints else
-                       "Informazione non documentata nello snapshot consultato."),
-            "fonti":[],"sql":sql,"righe_sql":0,
-            "stato":"NESSUNA_RIGA_SQL" if (category_context or note_hints) else "NESSUNA_EVIDENZA",
-            "risultato_parziale":bool(category_context or note_hints),
-            **first,"costo_completo":first.get("costo_usd") is not None,
-            **metadata
-        }
-
-    answer,second=_in_phase("sintesi SQL",ask,model,
-        "Rispondi in italiano SOLO in base alle righe SELECT e alle fonti. "
-        "Non interpretare un dato AIFA/EMA come autorizzazione regionale. "
-        "Se la classe_a_h_snapshot è NULL, indica C solo come deduzione per esclusione dagli elenchi A/H, mai come classe ufficialmente attestata. Distingui data della lista A/H e data della determina. "
-        "Per categorie implicite non confondere il termine clinico generale "
-        "con il nome letterale della patologia e, se la query restituisce "
-        "pagine diverse della stessa nota, distingui la sezione con "
-        "l'indicazione dalla tabella del centro. La co-occorrenza "
-        "non certifica l'autorizzazione. "
-        "Se mancano dati o evidenze, scrivi 'non documentato nello snapshot'. "
-        "Non inventare citazioni; se i risultati sono parziali "
-        "non dichiarare una lista completa E NON dire che non esistono "
-        "medicinali: il contesto è un campione di pagine candidate. "
-        "Se non puoi verificare l'associazione centro-indicazione, "
-        "scrivi che la prova è insufficiente, senza dedurre assenza. "
-        "Se più SELECT concorrono "
-        "alle evidenze, esamina tutte le note senza considerare i "
-        "candidati automaticamente autorizzati.",
-        {"domanda":question,"righe_sql":rows,"fonti_recuperate":citations,
-         "righe_limite":SQL_ROW_LIMIT,"risultati_parziali":truncated,
-         "note_distinte":metadata["note_distinte_sql"],
-         "query_eseguite":sql_evidence_queries})
+        return {"risposta":(
+                    "La query SQL generata non ha restituito risultati "
+                    "nello snapshot consultato. Questo non dimostra "
+                    "che l'informazione sia assente nei documenti."),
+                "fonti":[],"sql":sql,"righe_sql":0,
+                "stato":"NESSUNA_EVIDENZA",
+                "risultato_parziale":False,
+                **first,"costo_completo":first.get("costo_usd") is not None,
+                **metadata}
+    answer,second=_in_phase(
+        "sintesi SQL",ask,model,SQL_ANSWER_PROMPT,
+        {"domanda":question,"righe_sql":rows,
+         "fonti_recuperate":citations,
+         "risultati_parziali":truncated})
     total=_accumulate(first,second)
-    incorrect_absence=_absolute_negative_on_partial_sql(
-        answer,rows,truncated,bool(category_context))
-    original_answer=answer if incorrect_absence else None
-    if incorrect_absence:
-        answer=(
-            "Le query Text-to-SQL hanno restituito "+str(len(rows))+
-            " righe di evidenza da "+str(_category_note_count(rows))+
-            " note candidate, ma i risultati sono parziali. "
-            "Dalle righe disponibili non è stata verificata una "
-            "corrispondenza sufficiente tra indicazione e centro "
-            "prescrittore per produrre un elenco attendibile. "
-            "Non è corretto concludere che non esistano medicinali "
-            "pertinenti nello snapshot: occorre verificare le "
-            "sezioni originali delle note.")
     if truncated:
         answer+=("\n\nAvvertenza: risultati SQL parziali per limite di "
                  "righe, limite della query o di contesto. L'elenco non "
                  "può essere considerato completo.")
-    sql_evidence=[{"tipo":"SQL","fonte":"Riga "+str(ix+1),
-                   "testo":str(record.get("testo") or record.get("indicazione_ema")
-                               or record.get("descrizione") or "")}
-                  for ix,record in enumerate(rows) if
-                  (record.get("testo") or record.get("indicazione_ema")
-                   or record.get("descrizione"))]
+    evidence=[{"tipo":"SQL","fonte":"Riga "+str(i+1),
+               "testo":str(row.get("testo") or row.get("indicazione_ema")
+                            or row.get("descrizione") or "")}
+              for i,row in enumerate(rows)
+              if row.get("testo") or row.get("indicazione_ema")
+              or row.get("descrizione")]
     return {"risposta":answer,"fonti":citations,"sql":sql,
-            "evidenze_fonti":_source_previews(sql_evidence),
+            "evidenze_fonti":_source_previews(evidence),
             "righe_sql":len(rows),
-            "stato":("RISPOSTA_NON_VERIFICATA" if incorrect_absence else
-                     "RISULTATI_PARZIALI" if truncated else "OK"),
-            "negazione_non_supportata_sql":incorrect_absence,
-            "risposta_modello_originale_sql":original_answer,
-            "risultato_parziale":truncated,**total,
-            "costo_completo":total["costo_usd"] is not None,**metadata}
+            "stato":"RISULTATI_PARZIALI" if truncated else "OK",
+            "risultato_parziale":truncated,
+            **total,"costo_completo":total["costo_usd"] is not None,
+            **metadata}
 
 
 def main():
