@@ -1213,7 +1213,10 @@ def sql_method(db,question,model):
 
     citations=_sql_sources(db,rows)
     metadata={"sql_tentativi":attempts,
-              "sql_iniziale":first_sql if zero_row_retry or coverage_retry else None,
+              "sql_iniziale":first_sql if zero_row_retry or coverage_retry or runtime_repair else None,
+              "sql_correzione_operativa":runtime_repair,
+              "sql_riprova_documentale":bool(zero_row_retry and not category_context),
+              "note_candidate_riprova":len(note_hints),
               "sql_correzione_sintassi":syntax_repair,
               "sql_riprova_copertura":coverage_retry,
               "sql_esito_riprova_copertura":coverage_retry_status,
@@ -1228,10 +1231,14 @@ def sql_method(db,question,model):
                        "per questa categoria. Non è una prova che "
                        "l'informazione sia assente nello snapshot."
                        if category_context else
+                       "Le SELECT Text-to-SQL non hanno restituito "
+                       "prove per la nota cercata. Questo NON dimostra "
+                       "che il documento sia assente nello snapshot."
+                       if note_hints else
                        "Informazione non documentata nello snapshot consultato."),
             "fonti":[],"sql":sql,"righe_sql":0,
-            "stato":"NESSUNA_RIGA_SQL" if category_context else "NESSUNA_EVIDENZA",
-            "risultato_parziale":bool(category_context),
+            "stato":"NESSUNA_RIGA_SQL" if (category_context or note_hints) else "NESSUNA_EVIDENZA",
+            "risultato_parziale":bool(category_context or note_hints),
             **first,"costo_completo":first.get("costo_usd") is not None,
             **metadata
         }
