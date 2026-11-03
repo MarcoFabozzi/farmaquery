@@ -14,6 +14,7 @@ on:
     paths:
       - 'tesi/build_frozen_demo.py'
       - '.github/workflows/tesi-deploy-statico.yml'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -106,7 +107,7 @@ jobs:
             git push origin HEAD:main
           fi
       - name: Interroga TAG e Text-to-SQL sullo stesso SQLite congelato
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && vars.FARMAQUERY_RUN_LIVE_DEMO == 'true')
         continue-on-error: true
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -117,7 +118,7 @@ jobs:
             echo "LLM_NON_CONFIGURATO" > frozen_source/esito_interrogazioni.txt
           else
             python -m pip install --disable-pip-version-check -r requirements.txt
-            python tesi/esegui_benchmark.py \
+            python -m tesi.esegui_benchmark \
               --db frozen_source/tesi_demo.sqlite \
               --manifest risultati/tesi_statico_20261102.json \
               --domande tesi/demo_finale_quattro_domande.csv \
@@ -126,7 +127,7 @@ jobs:
               --max-domande 4 --conferma-chiamate
           fi
       - name: Conserva risposte effettive, senza attribuire punteggi gold
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && vars.FARMAQUERY_RUN_LIVE_DEMO == 'true')
         uses: actions/upload-artifact@v4
         with:
           name: tesi-demo-risposte-dei-due-motori
