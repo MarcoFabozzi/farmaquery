@@ -25,6 +25,7 @@ from tesi.sql_category_support import (category_sql_context,
                                       SQL_SYNTAX_REPAIR_RULES,
                                       CATEGORY_DIVERSITY_RETRY_RULES,
                                       DOCUMENT_SQL_RETRY_RULES,
+                                      DOCUMENT_SQL_COVERAGE_RULES,
                                       SQL_EXECUTION_REPAIR_RULES)
 from tesi.tag_budget import (selection_mode,semantic_plan,expand_selected,
                              sem_filter_controlled,preserve_category_recall)
@@ -918,6 +919,14 @@ def _sql_context(raw,category=False,question=""):
                 cut=True
             else:
                 limit=1800 if category else 2500
+                # Le SELECT possono già aver recuperato il testo
+                # corretto: non troncare indiscriminatamente i requisiti
+                # delle note prima della sintesi. I quesiti documentali
+                # nominativi ottengono più spazio per pagina, sempre
+                # entro il budget totale di contesto.
+                if (not category and key=="testo" and
+                    re.search(r"\bnota\b",question,re.I)):
+                    limit=7000
                 row[key]=text[:limit]
                 if len(text)>limit:
                     cut=True
@@ -1059,6 +1068,84 @@ def _sql_note_hints(db,question,limit=6):
         return (-overlap,-int(row.get("anno") or 0),str(row["id"]))
     return sorted(found.values(),key=rank)[:limit]
 
+
+
+def _sql_missing_document_pages(db,rows,question,max_notes=3):
+    """Verifica la copertura delle pagine, NON il contenuto delle risposte.
+
+    Il controllo considera solo note già rintracciate dalla SELECT
+    generata dal modello. Non inserisce medicinali o risposte gold.
+    """
+    q=str(question).casefold()
+    if (not re.search(r"\bnota\b",q)
+        or not re.search(
+            r"\btutt[ieo]\b|\besattamente\b|\brequisit\w*\b|"
+            r"\bcondizion\w*\b|\bindicazion\w*\b|"
+            r"\bcombinazion\w*\b|\bassociazion\w*\b",q)):
+        return []
+    # Una pagina citata esplicitamente non autorizza a dedurre che
+    # siano rilevanti tutte le altre pagine del PDF.
+    if (re.search(r"\b(?:pagina|pag\.)\s*\d+\b",q)
+        and not re.search(r"\btutt[ieo]\b|\besattamente\b",q)):
+        return []
+    ids={}
+    for record in rows:
+        note_id=record.get("nota_id")
+        page=record.get("numero_pagina")
+        if note_id is not None and page is not None:
+            try:
+                ids.setdefault(str(note_id),set()).add(int(page))
+            except (TypeError,ValueError):
+                continue
+    if not ids:
+        return []
+    if "pagine" not in {r[0] for r in db.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'")}:
+        return []
+    columns={r[1] for r in db.execute("PRAGMA table_info(pagine)")}
+    if not {"nota_id","numero_pagina","testo"}.issubset(columns):
+        return []
+    condition=(" AND metodo IN ('TESTO','OCR')" if "metodo" in columns else "")
+    missing=[]
+    for note_id,seen in list(ids.items())[:max_notes]:
+        original=[int(r[0]) for r in db.execute(
+            "SELECT numero_pagina FROM pagine WHERE nota_id=?"
+            +condition+" AND length(trim(testo))>0 "
+            "ORDER BY numero_pagina LIMIT 16",(note_id,))]
+        # Un documento di molte pagine può contenere allegati/procedure:
+        # non avviare un recupero automatico indiscriminato.
+        if not original or len(original)>12:
+            continue
+        absent=[number for number in original if number not in seen]
+        if absent:
+            missing.append({
+                "nota_id":note_id,
+                "pagine_presenti":sorted(seen),
+                "pagine_da_verificare":absent,
+                "pagine_totali_documento":len(original)
+            })
+    return missing
+
+
+def _merge_document_sql_context(first,second,question):
+    """Unisce prove della stessa pagina senza duplicare né inventare righe."""
+    indexed={}
+    for source in (first,second):
+        for row in source:
+            value=dict(row)
+            note=value.get("nota_id")
+            page=value.get("numero_pagina")
+            if note is not None and page is not None:
+                key=("PAGE",str(note),str(page))
+            else:
+                key=("ROW",json.dumps(value,sort_keys=True,
+                                      ensure_ascii=False,default=str))
+            if key not in indexed or len(str(value.get("testo") or "")) > len(
+                    str(indexed[key].get("testo") or "")):
+                indexed[key]=value
+    ordered=sorted(indexed.values(),key=lambda row:(
+        str(row.get("nota_id") or ""),int(row.get("numero_pagina") or 0)))
+    return _sql_context(ordered,category=False,question=question)
 
 
 def sql_method(db,question,model):
