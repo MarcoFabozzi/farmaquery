@@ -954,7 +954,13 @@ def sql_method(db,question,model):
         "generazione SQL",ask,model,SQL_GENERATION_PROMPT,
         {"schema":_sql_schema(db),"domanda":question})
     sql=_in_phase("validazione SQL",validate_sql,generated)
-    rows,truncated=_execute_generated_select(db,sql)
+    try:
+        rows,truncated=_execute_generated_select(db,sql)
+    except EnginePhaseError as exc:
+        # Nessun retry: conserva la SELECT gia' validata, per la diagnosi
+        # trasparente dell'errore senza rivelare il testo di SQLite/provider.
+        exc.sql=sql
+        raise
     citations=_sql_sources(db,rows)
     metadata={"sql_tentativi":1,"sql_iniziale":None,
               "versione_text_to_sql":"standard-v1",
