@@ -179,6 +179,103 @@ class CompactTagSynthesisTests(unittest.TestCase):
         self.assertEqual([r["esito"] for r in audit],
                          ["accettato","non_proposto_dal_modello"])
 
+    def test_citazioni_ocr_con_nome_ospedale_esteso(self):
+        # Differenze innocue: abbreviazione di AOU, accenti e parole
+        # interposte nel nome del centro realmente elencato.
+        from tesi.sintesi_tag import _candidate_short_name
+        source=("Presidi di riferimento regionale per la malattia rara "
+                "Miastenia gravis generalizzata refrattaria (MGg). "
+                "AOU UNIVERSITA' DEGLI STUDI DI NAPOLI FEDERICO II, "
+                "NAPOLI - UOC di Neurologia.")
+        candidate={
+            "documento_e_medicinale_candidato":
+                "Documento: MEDICINA DI PROVA.pdf; farmaco candidato: MEDICINA;",
+            "passaggi":[{"pagina":3,"estratto":source}],
+            "fonti":["2024/MEDICINA DI PROVA.pdf#p3"]
+        }
+        item={
+            "confermato":True,"medicinale":"MEDICINA",
+            "patologia":"Miastenia gravis generalizzata",
+            "indicazione":"Trattamento della MGg refrattaria",
+            "pagina_indicazione":3,"pagina_centro":3,
+            "citazione_indicazione":
+                "Trattamento della miastenia gravis generalizzata refrattaria",
+            "citazione_centro":"AOU Federico II, Napoli"
+        }
+        audit=[]
+        additions=verified_additions(
+            json.dumps({"nuove_voci":[item]},ensure_ascii=False),
+            [candidate],
+            "Quali medicinali neuromuscolari prescritti presso l'AOU Federico II?",
+            _candidate_short_name,diagnostics=audit)
+        self.assertEqual(len(additions),1)
+        self.assertEqual(audit[-1]["esito"],"accettato_con_ancore")
+        self.assertIn("pagina 3",additions[0])
+        self.assertIn("MEDICINA",additions[0])
+
+    def test_ancore_non_convalidano_centri_o_diagnosi_assenti(self):
+        from tesi.sintesi_tag import _candidate_short_name
+        document={
+            "documento_e_medicinale_candidato":
+                "Documento: MEDICINA.pdf; farmaco candidato: MEDICINA;",
+            "passaggi":[{"pagina":2,"estratto":
+                "Indicazione per miastenia gravis generalizzata. "
+                "Presidi: AORN Cardarelli, Napoli."}],
+            "fonti":["2024/MEDICINA.pdf#p2"]
+        }
+        item={
+            "confermato":True,"medicinale":"MEDICINA",
+            "patologia":"Miastenia gravis",
+            "indicazione":"Trattamento MGg",
+            "pagina_indicazione":2,"pagina_centro":2,
+            "citazione_indicazione":"Miastenia gravis generalizzata",
+            "citazione_centro":"AOU Federico II, Napoli"
+        }
+        audit=[]
+        self.assertEqual(verified_additions(
+            json.dumps({"nuove_voci":[item]}),[document],
+            "Medicinali neuromuscolari AOU Federico II",_candidate_short_name,
+            diagnostics=audit),[])
+        self.assertEqual(audit[-1]["esito"],"citazione_centro_non_trovata")
+        # Una diagnosi presente in un'altra pagina non giustifica
+        # un'associazione ricostruita con citazioni approssimative.
+        doc2=dict(document)
+        doc2["passaggi"]=[
+            {"pagina":1,"estratto":"Miastenia gravis generalizzata refrattaria."},
+            {"pagina":2,"estratto":
+             "AOU UNIVERSITA DEGLI STUDI DI NAPOLI FEDERICO II."}
+        ]
+        doc2["fonti"]=["2024/MEDICINA.pdf#p1","2024/MEDICINA.pdf#p2"]
+        item["pagina_indicazione"]=1
+        item["citazione_indicazione"]=(
+            "Trattamento della miastenia gravis generalizzata refrattaria")
+        self.assertEqual(verified_additions(
+            json.dumps({"nuove_voci":[item]}),[doc2],
+            "Medicinali neuromuscolari AOU Federico II",_candidate_short_name),[])
+
+    def test_rifiuto_di_citazione_mostra_testo_proposto(self):
+        from tesi.sintesi_tag import _candidate_short_name
+        doc={
+            "documento_e_medicinale_candidato":
+                "Documento: MEDICINA.pdf; farmaco candidato: MEDICINA;",
+            "passaggi":[{"pagina":3,"estratto":
+                         "Miastenia gravis. AOU Universita Federico II."}],
+            "fonti":["2024/MEDICINA.pdf#p3"]
+        }
+        item={
+            "confermato":True,"medicinale":"MEDICINA",
+            "patologia":"Miastenia gravis",
+            "indicazione":"Trattamento della miastenia",
+            "pagina_indicazione":3,"pagina_centro":3,
+            "citazione_indicazione":"Miastenia gravis",
+            "citazione_centro":"AOU struttura inesistente"
+        }
+        audit=[]
+        verified_additions(json.dumps({"nuove_voci":[item]}),[doc],
+                           "Malattie neuromuscolari AOU Federico II",
+                           _candidate_short_name,diagnostics=audit)
+        self.assertEqual(audit[0]["esito"],"citazione_centro_non_pertinente")
+
     def test_ask_timeout_e_limite_risposta_separati(self):
         class Usage:
             prompt_tokens=30
