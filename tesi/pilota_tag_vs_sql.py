@@ -16,6 +16,7 @@ import sqlite3
 import time
 
 from errori_chatbot import EnginePhaseError
+from tesi.contatore_llm import (direct_attempt,instrument_lotus,measured_engine)
 from tesi.recupero_gu import domanda_gu, candidati_gu
 from tesi.recupero_regionale import regional_candidates, categoria
 from tesi.recupero_sql_first import retrieve_category_sql_first
@@ -645,6 +646,7 @@ def ask(model,system,payload,*,timeout=40,max_tokens=None):
              "timeout":timeout,"num_retries":0}
     if max_tokens is not None:
         request["max_tokens"]=max_tokens
+    direct_attempt()
     result=_in_phase("connessione LLM",completion,**request)
     usage=getattr(result,"usage",None)
     data={
@@ -719,6 +721,7 @@ def tag(db,question,model):
     # ridurre le richieste contemporanee evita burst inutili verso Gemini.
     lm=_in_phase("inizializzazione TAG",LM,model,
                  max_batch_size=2 if category_question else 4)
+    instrument_lotus(lm)
     _in_phase("inizializzazione TAG",lotus.settings.configure,lm=lm,enable_cache=False)
     frame=pd.DataFrame(planned)
     selected=_in_phase("selezione TAG",lambda: sem_filter_controlled(frame,
@@ -1212,6 +1215,13 @@ def sql_method(db,question,model):
             "risultato_parziale":truncated,
             **total,"costo_completo":total["costo_usd"] is not None,
             **metadata}
+
+
+# Le due pipeline hanno un contatore isolato per interrogazione.
+# Le chiamate LLM dirette sono contate al momento dell'invio; i
+# messaggi LOTUS tramite la sua fase di invio non-cached.
+tag=measured_engine(tag)
+sql_method=measured_engine(sql_method)
 
 
 def main():
