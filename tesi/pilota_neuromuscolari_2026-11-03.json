@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "stato": "PILOTA_ESPLORATIVO_NON_USARE_PER_ACCURATEZZA_BENCHMARK",
+  "id_caso": "NEUROMUSCOLARI_FEDERICO_II_2026_11_03",
+  "descrizione_domanda": "Medicinali per malattie neuromuscolari con prescrizione presso AOU Federico II secondo le note regionali Campania",
+  "testo_originale_domanda_non_archiviato": true,
+  "gold_file": "tesi/riferimento_neuromuscolari_federico_ii_2026-11-03.json",
+  "snapshot_sha256_riferimento": "bb43ae4b00b6d581f4209ad83cbf9945054628868e6a52c59470ad32cada9a53",
+  "provenienza": "Nomi e tempi trascritti dai resoconti precedenti della conversazione, non estratti da log grezzi",
+  "verifiche_non_disponibili": [
+    "log integrali dei due output",
+    "versioni commit dei due motori",
+    "identita del modello e parametri di generazione",
+    "hash degli SQLite realmente interrogati nelle due prove",
+    "valutazione completa di ogni associazione indicazione-centro-citazione"
+  ],
+  "risultati": [
+    {
+      "metodo": "TAG",
+      "nomi_medicinali": [
+        "EVRYSDI",
+        "AGAMREE",
+        "DUVYZAT",
+        "ULTOMIRIS",
+        "SOLIRIS",
+        "ZILBRYSQ",
+        "VYVGART"
+      ],
+      "tempo_secondi_riportato": 10.5,
+      "osservazioni": "Possibili omissioni; nessuna valutazione completa delle citazioni per questa esecuzione"
+    },
+    {
+      "metodo": "Text-to-SQL",
+      "nomi_medicinali": [
+        "EVRYSDI",
+        "ULTOMIRIS",
+        "KIOVIG",
+        "HYQVIA"
+      ],
+      "tempo_secondi_riportato": 11,
+      "errori_documentali_verificati": [
+        {
+          "medicinale": "ULTOMIRIS",
+          "tipo": "ASSOCIAZIONE_INDICAZIONE_TABELLA",
+          "pagina_usata": 2,
+          "pagina_corretta": 3,
+          "descrizione": "Pagina 2: NMOSD; pagina 3: centri della miastenia gravis generalizzata. La tabella NMOSD non puo dimostrare un centro per MGg."
+        }
+      ],
+      "osservazioni": "KIOVIG e HYQVIA confermati nel riferimento documentale, ma l'esecuzione non ha prodotto una risposta completa"
+    }
+  ],
+  "avvertenza": "Le metriche di presenza dei NOMI non certificano la correttezza di indicazioni, centri, riferimenti, stato attuale o effetto normativo. La risposta gold e provvisoria e il pilot non e un confronto a parita di versioni verificata."
+}
