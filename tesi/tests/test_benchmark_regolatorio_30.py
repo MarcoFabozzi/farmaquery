@@ -21,8 +21,12 @@ class BenchmarkRelatoreTests(unittest.TestCase):
         self.assertEqual(Counter(x["categoria"] for x in records), CATEGORIES)
         self.assertEqual({x["snapshot_sha256"] for x in records}, {FROZEN})
         validated = {x["id"] for x in records if x["stato_validazione"] == "VALIDATO"}
-        self.assertEqual(validated, {"Q05", "Q06", "Q07", "Q08",
+        self.assertEqual(validated, {"Q01", "Q05", "Q06", "Q07", "Q08",
                                      "Q09", "Q21", "Q28", "Q29"})
+        q01=next(x for x in records if x["id"]=="Q01")
+        self.assertEqual(q01["fonti_gold"],"EMA:EMEA/H/C/005483")
+        self.assertIn("PSMA-positivo",q01["risposta_gold"])
+        self.assertIn("taxani",q01["risposta_gold"])
         self.assertTrue(all(x["stato_validazione"] == "DA_VERIFICARE"
                             for x in records if x["categoria"] == "NEGATIVA"))
         self.assertTrue(all(not x["risposta_gold"] and not x["fonti_gold"]
