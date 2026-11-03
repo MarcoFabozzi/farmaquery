@@ -199,7 +199,8 @@ class SqlCategoryTests(unittest.TestCase):
         self.assertEqual(result["sql_tentativi"],2)
         self.assertEqual(result["note_distinte_sql"],2)
         self.assertEqual(result["righe_sql"],4)
-        self.assertEqual(result["sql_iniziale"],first_sql)
+        from tesi.pilota_tag_vs_sql import validate_sql
+        self.assertEqual(result["sql_iniziale"],validate_sql(first_sql))
         self.assertEqual(len(result["sql_query_fonti"]),2)
         self.assertTrue(result["risultato_parziale"])
         self.assertEqual(result["token_input"],30)
