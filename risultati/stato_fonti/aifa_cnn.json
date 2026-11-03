@@ -1,8 +1,8 @@
 {
   "fonte": "aifa_cnn",
   "esito": "OK",
-  "ultimo_successo_utc": "2026-11-02T10:31:49+00:00",
-  "precedente_successo_utc": "2026-11-02T10:20:13+00:00",
+  "ultimo_successo_utc": "2026-11-03T05:36:15+00:00",
+  "precedente_successo_utc": "2026-11-02T10:31:49+00:00",
   "statistiche": {
     "data_riferimento_file_cnn": "2026-10-14",
     "righe_file_cnn": 3098,
@@ -16,7 +16,7 @@
     },
     "nota": "La C(nn) in elenco storico non certifica la classificazione attuale",
     "metodo_scoperta": "pagina_aifa",
-    "ultima_scoperta_indice_utc": "2026-11-02T10:31:40+00:00"
+    "ultima_scoperta_indice_utc": "2026-11-03T05:36:02+00:00"
   },
   "fonti": {
     "aifa_cnn": {
