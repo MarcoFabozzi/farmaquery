@@ -59,8 +59,8 @@ def _static_paths(environ=None,root=ROOT):
     # Evita che i test con un root temporaneo ereditino la copia pubblica.
     if Path(root).resolve()!=ROOT.resolve():
         return None
-    fixed=ROOT/"risultati"/"tesi_statico_v2.sqlite.gz"
-    info=ROOT/"risultati"/"tesi_statico_v2.json"
+    fixed=ROOT/"risultati"/"tesi_statico_20261102.sqlite.gz"
+    info=ROOT/"risultati"/"tesi_statico_20261102.json"
     if fixed.exists()!=info.exists():
         raise ValueError("Fotografia statica incompleta: manca SQLite o manifesto")
     return (fixed,info) if fixed.is_file() and info.is_file() else None
@@ -84,8 +84,10 @@ def _verified_static_snapshot(source,manifest):
         raise ValueError("Manifesto statico senza sha256_sqlite")
     if source.suffix.lower()==".gz":
         packed_sha=meta.get("sha256_gzip")
-        if not packed_sha or _file_digest(source)!=packed_sha:
+        if packed_sha and _file_digest(source)!=packed_sha:
             raise ValueError("Archivio compresso statico diverso dal manifesto")
+        # Il builder esistente conserva soltanto SHA-256 del contenuto
+        # decompresso: è comunque obbligatorio validarlo prima dell'uso.
         folder=Path(tempfile.mkdtemp(prefix="farmaquery_static_"))
         db=folder/"fotografia_statica.sqlite"
         try:
