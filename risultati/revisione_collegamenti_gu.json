@@ -1,5 +1,5 @@
 {
-  "generato_utc": "2026-11-02T08:28:13+00:00",
+  "generato_utc": "2026-11-03T08:21:46+00:00",
   "totale_evidenze": 100,
   "riepilogo": {
     "AIC_NON_NEL_DATABASE_PRINCIPALE": 1,
@@ -16,7 +16,7 @@
       "codice_presentazione_ue": "EU/1/24/1891/001",
       "aic": "051960019",
       "nome_aifa": "LEQEMBI",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "LECANEMAB",
       "ema_documentato": "EMEA/H/C/005966",
       "stato_revisione": "COLLEGAMENTO_GIA_DOCUMENTATO",
       "candidati_ema_per_nome": [
@@ -35,7 +35,7 @@
       "codice_presentazione_ue": "EU/1/24/1891/002",
       "aic": "051960021",
       "nome_aifa": "LEQEMBI",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "LECANEMAB",
       "ema_documentato": "EMEA/H/C/005966",
       "stato_revisione": "COLLEGAMENTO_GIA_DOCUMENTATO",
       "candidati_ema_per_nome": [
@@ -54,7 +54,7 @@
       "codice_presentazione_ue": "EU/1/25/1926/001",
       "aic": "052446010",
       "nome_aifa": "KISUNLA",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "DONANEMAB",
       "ema_documentato": "EMEA/H/C/006024",
       "stato_revisione": "COLLEGAMENTO_GIA_DOCUMENTATO",
       "candidati_ema_per_nome": [
@@ -73,7 +73,7 @@
       "codice_presentazione_ue": "EU/1/25/1926/002",
       "aic": "052446022",
       "nome_aifa": "KISUNLA",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "DONANEMAB",
       "ema_documentato": "EMEA/H/C/006024",
       "stato_revisione": "COLLEGAMENTO_GIA_DOCUMENTATO",
       "candidati_ema_per_nome": [
@@ -92,7 +92,7 @@
       "codice_presentazione_ue": "EU/1/24/1888/002",
       "aic": "051922021",
       "nome_aifa": "AHZANTIVE",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "AFLIBERCEPT",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -111,7 +111,7 @@
       "codice_presentazione_ue": "EU/1/24/1851/003",
       "aic": "051622037",
       "nome_aifa": "ANZUPGO",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "DELGOCITINIB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -130,7 +130,7 @@
       "codice_presentazione_ue": "EU/1/24/1896/013",
       "aic": "052003136",
       "nome_aifa": "AVTOZMA",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "TOCILIZUMAB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -149,7 +149,7 @@
       "codice_presentazione_ue": "EU/1/24/1896/014",
       "aic": "052003148",
       "nome_aifa": "AVTOZMA",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "TOCILIZUMAB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -168,7 +168,7 @@
       "codice_presentazione_ue": "EU/1/25/1949/002",
       "aic": "052340027",
       "nome_aifa": "DAZUBLYS",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "TRASTUZUMAB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -187,7 +187,7 @@
       "codice_presentazione_ue": "EU/1/15/1007/005",
       "aic": "044268050",
       "nome_aifa": "GARDASIL 9",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "VACCINO PAPILLOMAVIRUS UMANO (TIPI UMANI 6, 11, 16, 18, 31, 33, 45, 52,58)",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -206,7 +206,7 @@
       "codice_presentazione_ue": "EU/1/17/1257/003",
       "aic": "046106035",
       "nome_aifa": "HERZUMA",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "TRASTUZUMAB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -225,7 +225,7 @@
       "codice_presentazione_ue": "EU/1/24/1855/002",
       "aic": "051464028",
       "nome_aifa": "IQIRVO",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "ELAFIBRANOR",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -244,7 +244,7 @@
       "codice_presentazione_ue": "EU/1/21/1590/008",
       "aic": "049808088",
       "nome_aifa": "LIBMYRIS",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "ADALIMUMAB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -263,7 +263,7 @@
       "codice_presentazione_ue": "EU/1/21/1590/009",
       "aic": "049808090",
       "nome_aifa": "LIBMYRIS",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "ADALIMUMAB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -282,7 +282,7 @@
       "codice_presentazione_ue": "EU/1/26/2042/001",
       "aic": "053206013",
       "nome_aifa": "VIJOICE",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "ALPELISIB",
       "ema_documentato": null,
       "stato_revisione": "NOME_EMA_AMBIGUO_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -306,7 +306,7 @@
       "codice_presentazione_ue": "EU/1/26/2042/002",
       "aic": "053206025",
       "nome_aifa": "VIJOICE",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "ALPELISIB",
       "ema_documentato": null,
       "stato_revisione": "NOME_EMA_AMBIGUO_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -330,7 +330,7 @@
       "codice_presentazione_ue": "EU/1/26/2042/003",
       "aic": "053206037",
       "nome_aifa": "VIJOICE",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "ALPELISIB",
       "ema_documentato": null,
       "stato_revisione": "NOME_EMA_AMBIGUO_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -354,7 +354,7 @@
       "codice_presentazione_ue": "EU/1/26/2042/004",
       "aic": "053206049",
       "nome_aifa": "VIJOICE",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "ALPELISIB",
       "ema_documentato": null,
       "stato_revisione": "NOME_EMA_AMBIGUO_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -378,7 +378,7 @@
       "codice_presentazione_ue": "EU/1/26/2047/001",
       "aic": "053205011",
       "nome_aifa": "VISLYFA",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "RANIBIZUMAB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -397,7 +397,7 @@
       "codice_presentazione_ue": "EU/1/26/2047/002",
       "aic": "053205023",
       "nome_aifa": "VISLYFA",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "RANIBIZUMAB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -416,7 +416,7 @@
       "codice_presentazione_ue": "EU/1/23/1726/003",
       "aic": "050666039",
       "nome_aifa": "OPZELURA",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "RUXOLITINIB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -435,7 +435,7 @@
       "codice_presentazione_ue": "EU/1/23/1779/003",
       "aic": "051043038",
       "nome_aifa": "RIMMYRAH",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "RANIBIZUMAB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -454,7 +454,7 @@
       "codice_presentazione_ue": "EU/1/18/1291/007",
       "aic": "047626078",
       "nome_aifa": "RIZMOIC",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "NALDEMEDINA",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -473,7 +473,7 @@
       "codice_presentazione_ue": "EU/1/22/1628/003",
       "aic": "050007032",
       "nome_aifa": "SONDELBAY",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "TERIPARATIDE",
       "ema_documentato": null,
       "stato_revisione": "NOME_EMA_AMBIGUO_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -497,7 +497,7 @@
       "codice_presentazione_ue": "EU/1/21/1608/013",
       "aic": "049883135",
       "nome_aifa": "WEGOVY",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -516,7 +516,7 @@
       "codice_presentazione_ue": "EU/1/21/1608/014",
       "aic": "049883147",
       "nome_aifa": "WEGOVY",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -535,7 +535,7 @@
       "codice_presentazione_ue": "EU/1/21/1608/015",
       "aic": "049883150",
       "nome_aifa": "WEGOVY",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -554,7 +554,7 @@
       "codice_presentazione_ue": "EU/1/21/1608/016",
       "aic": "049883162",
       "nome_aifa": "WEGOVY",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -573,7 +573,7 @@
       "codice_presentazione_ue": "EU/1/21/1608/017",
       "aic": "049883174",
       "nome_aifa": "WEGOVY",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -592,7 +592,7 @@
       "codice_presentazione_ue": "EU/1/21/1608/018",
       "aic": "049883186",
       "nome_aifa": "WEGOVY",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -611,7 +611,7 @@
       "codice_presentazione_ue": "EU/1/21/1608/019",
       "aic": "049883198",
       "nome_aifa": "WEGOVY",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -630,7 +630,7 @@
       "codice_presentazione_ue": "EU/1/21/1608/020",
       "aic": "049883200",
       "nome_aifa": "WEGOVY",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -649,7 +649,7 @@
       "codice_presentazione_ue": "EU/1/21/1608/021",
       "aic": "049883212",
       "nome_aifa": "WEGOVY",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -668,7 +668,7 @@
       "codice_presentazione_ue": "EU/1/21/1608/022",
       "aic": "049883224",
       "nome_aifa": "WEGOVY",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -687,7 +687,7 @@
       "codice_presentazione_ue": "EU/1/21/1608/023",
       "aic": "049883236",
       "nome_aifa": "WEGOVY",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -706,7 +706,7 @@
       "codice_presentazione_ue": "EU/1/21/1608/024",
       "aic": "049883248",
       "nome_aifa": "WEGOVY",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -725,7 +725,7 @@
       "codice_presentazione_ue": "EU/1/21/1608/025",
       "aic": "049883251",
       "nome_aifa": "WEGOVY",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -744,7 +744,7 @@
       "codice_presentazione_ue": "EU/1/21/1608/026",
       "aic": "049883263",
       "nome_aifa": "WEGOVY",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -763,7 +763,7 @@
       "codice_presentazione_ue": "EU/1/21/1608/027",
       "aic": "049883275",
       "nome_aifa": "WEGOVY",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -782,7 +782,7 @@
       "codice_presentazione_ue": "EU/1/21/1608/028",
       "aic": "049883287",
       "nome_aifa": "WEGOVY",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -801,7 +801,7 @@
       "codice_presentazione_ue": "EU/1/21/1608/029",
       "aic": "049883299",
       "nome_aifa": "WEGOVY",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -820,7 +820,7 @@
       "codice_presentazione_ue": "EU/1/21/1608/030",
       "aic": "049883301",
       "nome_aifa": "WEGOVY",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -839,7 +839,7 @@
       "codice_presentazione_ue": "EU/1/24/1812/002",
       "aic": "051244022",
       "nome_aifa": "WYOST",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "DENOSUMAB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -858,7 +858,7 @@
       "codice_presentazione_ue": "EU/1/24/1812/003",
       "aic": "051244034",
       "nome_aifa": "WYOST",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "DENOSUMAB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -877,7 +877,7 @@
       "codice_presentazione_ue": "EU/1/26/2036/001",
       "aic": "053209019",
       "nome_aifa": "ABLYMICO",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "LIRAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -896,7 +896,7 @@
       "codice_presentazione_ue": "EU/1/26/2036/002",
       "aic": "053209021",
       "nome_aifa": "ABLYMICO",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "LIRAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -915,7 +915,7 @@
       "codice_presentazione_ue": "EU/1/26/2036/003",
       "aic": "053209033",
       "nome_aifa": "ABLYMICO",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "LIRAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -934,7 +934,7 @@
       "codice_presentazione_ue": "EU/1/26/2044/001",
       "aic": "053239012",
       "nome_aifa": "BOEY",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "TRENIBOTULINUMTOXINE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -953,7 +953,7 @@
       "codice_presentazione_ue": "EU/1/25/2011/001",
       "aic": "053189015",
       "nome_aifa": "CENRIFKI",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "TOLEBRUTINIB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -972,7 +972,7 @@
       "codice_presentazione_ue": "EU/1/25/2011/002",
       "aic": "053189027",
       "nome_aifa": "CENRIFKI",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "TOLEBRUTINIB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -991,7 +991,7 @@
       "codice_presentazione_ue": "EU/1/25/2011/003",
       "aic": "053189039",
       "nome_aifa": "CENRIFKI",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "TOLEBRUTINIB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1010,7 +1010,7 @@
       "codice_presentazione_ue": "EU/1/26/2046/001",
       "aic": "053258012",
       "nome_aifa": "ETCAMAH",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "CAMIZESTRANT",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1029,7 +1029,7 @@
       "codice_presentazione_ue": "EU/1/26/2038/001",
       "aic": "053145013",
       "nome_aifa": "ITVISMA",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "ONASEMNOGENE ABEPARVOVEC",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1048,7 +1048,7 @@
       "codice_presentazione_ue": "EU/1/26/2040/001",
       "aic": "053208017",
       "nome_aifa": "JASCAYD",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "NERANDOMILAST",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1067,7 +1067,7 @@
       "codice_presentazione_ue": "EU/1/26/2040/002",
       "aic": "053208029",
       "nome_aifa": "JASCAYD",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "NERANDOMILAST",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1086,7 +1086,7 @@
       "codice_presentazione_ue": "EU/1/26/2040/003",
       "aic": "053208031",
       "nome_aifa": "JASCAYD",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "NERANDOMILAST",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1105,7 +1105,7 @@
       "codice_presentazione_ue": "EU/1/26/2040/004",
       "aic": "053208043",
       "nome_aifa": "JASCAYD",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "NERANDOMILAST",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1124,7 +1124,7 @@
       "codice_presentazione_ue": "EU/1/26/2040/005",
       "aic": "053208056",
       "nome_aifa": "JASCAYD",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "NERANDOMILAST",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1143,7 +1143,7 @@
       "codice_presentazione_ue": "EU/1/26/2040/006",
       "aic": "053208068",
       "nome_aifa": "JASCAYD",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "NERANDOMILAST",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1162,7 +1162,7 @@
       "codice_presentazione_ue": "EU/1/26/2040/007",
       "aic": "053208070",
       "nome_aifa": "JASCAYD",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "NERANDOMILAST",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1181,7 +1181,7 @@
       "codice_presentazione_ue": "EU/1/26/2040/008",
       "aic": "053208082",
       "nome_aifa": "JASCAYD",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "NERANDOMILAST",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1200,7 +1200,7 @@
       "codice_presentazione_ue": "EU/1/26/2040/009",
       "aic": "053208094",
       "nome_aifa": "JASCAYD",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "NERANDOMILAST",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1219,7 +1219,7 @@
       "codice_presentazione_ue": "EU/1/26/2040/010",
       "aic": "053208106",
       "nome_aifa": "JASCAYD",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "NERANDOMILAST",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1238,7 +1238,7 @@
       "codice_presentazione_ue": "EU/1/26/2037/001",
       "aic": "053210011",
       "nome_aifa": "LIRAGLUTIDE STADA",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "LIRAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1257,7 +1257,7 @@
       "codice_presentazione_ue": "EU/1/26/2037/002",
       "aic": "053210023",
       "nome_aifa": "LIRAGLUTIDE STADA",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "LIRAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1276,7 +1276,7 @@
       "codice_presentazione_ue": "EU/1/26/2037/003",
       "aic": "053210035",
       "nome_aifa": "LIRAGLUTIDE STADA",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "LIRAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1295,7 +1295,7 @@
       "codice_presentazione_ue": "EU/1/26/2037/004",
       "aic": "053210047",
       "nome_aifa": "LIRAGLUTIDE STADA",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "LIRAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1314,7 +1314,7 @@
       "codice_presentazione_ue": "EU/1/26/2037/005",
       "aic": "053210050",
       "nome_aifa": "LIRAGLUTIDE STADA",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "LIRAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1333,7 +1333,7 @@
       "codice_presentazione_ue": "EU/1/26/2039/001",
       "aic": "053180016",
       "nome_aifa": "PALBOCICLIB VIATRIS",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "PALBOCICLIB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1352,7 +1352,7 @@
       "codice_presentazione_ue": "EU/1/26/2039/002",
       "aic": "053180028",
       "nome_aifa": "PALBOCICLIB VIATRIS",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "PALBOCICLIB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1371,7 +1371,7 @@
       "codice_presentazione_ue": "EU/1/26/2039/003",
       "aic": "053180030",
       "nome_aifa": "PALBOCICLIB VIATRIS",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "PALBOCICLIB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1390,7 +1390,7 @@
       "codice_presentazione_ue": "EU/1/26/2039/004",
       "aic": "053180042",
       "nome_aifa": "PALBOCICLIB VIATRIS",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "PALBOCICLIB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1409,7 +1409,7 @@
       "codice_presentazione_ue": "EU/1/26/2039/005",
       "aic": "053180055",
       "nome_aifa": "PALBOCICLIB VIATRIS",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "PALBOCICLIB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1428,7 +1428,7 @@
       "codice_presentazione_ue": "EU/1/26/2039/006",
       "aic": "053180067",
       "nome_aifa": "PALBOCICLIB VIATRIS",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "PALBOCICLIB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1447,7 +1447,7 @@
       "codice_presentazione_ue": "EU/1/26/2039/007",
       "aic": "053180079",
       "nome_aifa": "PALBOCICLIB VIATRIS",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "PALBOCICLIB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1466,7 +1466,7 @@
       "codice_presentazione_ue": "EU/1/26/2039/008",
       "aic": "053180081",
       "nome_aifa": "PALBOCICLIB VIATRIS",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "PALBOCICLIB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1485,7 +1485,7 @@
       "codice_presentazione_ue": "EU/1/26/2039/009",
       "aic": "053180093",
       "nome_aifa": "PALBOCICLIB VIATRIS",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "PALBOCICLIB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1504,7 +1504,7 @@
       "codice_presentazione_ue": "EU/1/26/2039/010",
       "aic": "053180105",
       "nome_aifa": "PALBOCICLIB VIATRIS",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "PALBOCICLIB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1523,7 +1523,7 @@
       "codice_presentazione_ue": "EU/1/26/2039/011",
       "aic": "053180117",
       "nome_aifa": "PALBOCICLIB VIATRIS",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "PALBOCICLIB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1542,7 +1542,7 @@
       "codice_presentazione_ue": "EU/1/26/2039/012",
       "aic": "053180129",
       "nome_aifa": "PALBOCICLIB VIATRIS",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "PALBOCICLIB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1561,7 +1561,7 @@
       "codice_presentazione_ue": "EU/1/26/2039/013",
       "aic": "053180131",
       "nome_aifa": "PALBOCICLIB VIATRIS",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "PALBOCICLIB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1580,7 +1580,7 @@
       "codice_presentazione_ue": "EU/1/26/2039/014",
       "aic": "053180143",
       "nome_aifa": "PALBOCICLIB VIATRIS",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "PALBOCICLIB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1599,7 +1599,7 @@
       "codice_presentazione_ue": "EU/1/26/2039/015",
       "aic": "053180156",
       "nome_aifa": "PALBOCICLIB VIATRIS",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "PALBOCICLIB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1618,7 +1618,7 @@
       "codice_presentazione_ue": "EU/1/26/2039/016",
       "aic": "053180168",
       "nome_aifa": "PALBOCICLIB VIATRIS",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "PALBOCICLIB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1637,7 +1637,7 @@
       "codice_presentazione_ue": "EU/1/26/2039/017",
       "aic": "053180170",
       "nome_aifa": "PALBOCICLIB VIATRIS",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "PALBOCICLIB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1656,7 +1656,7 @@
       "codice_presentazione_ue": "EU/1/26/2039/018",
       "aic": "053180182",
       "nome_aifa": "PALBOCICLIB VIATRIS",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "PALBOCICLIB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1688,7 +1688,7 @@
       "codice_presentazione_ue": "EU/1/26/2043/001",
       "aic": "053179014",
       "nome_aifa": "REXATILUX",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "RANIBIZUMAB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1707,7 +1707,7 @@
       "codice_presentazione_ue": "EU/1/26/2043/002",
       "aic": "053179026",
       "nome_aifa": "REXATILUX",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "RANIBIZUMAB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1726,7 +1726,7 @@
       "codice_presentazione_ue": "EU/1/19/1361/010",
       "aic": "047821107",
       "nome_aifa": "SKYRIZI",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "RISANKIZUMAB",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1745,7 +1745,7 @@
       "codice_presentazione_ue": "EU/1/25/2014/001",
       "aic": "052903010",
       "nome_aifa": "MYQORZO",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "AFICAMTEN",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1764,7 +1764,7 @@
       "codice_presentazione_ue": "EU/1/25/2014/002",
       "aic": "052903022",
       "nome_aifa": "MYQORZO",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "AFICAMTEN",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1783,7 +1783,7 @@
       "codice_presentazione_ue": "EU/1/25/2014/003",
       "aic": "052903034",
       "nome_aifa": "MYQORZO",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "AFICAMTEN",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1802,7 +1802,7 @@
       "codice_presentazione_ue": "EU/1/25/2014/004",
       "aic": "052903046",
       "nome_aifa": "MYQORZO",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "AFICAMTEN",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1821,7 +1821,7 @@
       "codice_presentazione_ue": "EU/1/25/1992/001",
       "aic": "052735014",
       "nome_aifa": "KYINSU",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "INSULINA ICODEC; SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1840,7 +1840,7 @@
       "codice_presentazione_ue": "EU/1/25/1992/002",
       "aic": "052735026",
       "nome_aifa": "KYINSU",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "INSULINA ICODEC; SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1859,7 +1859,7 @@
       "codice_presentazione_ue": "EU/1/25/1992/003",
       "aic": "052735038",
       "nome_aifa": "KYINSU",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "INSULINA ICODEC; SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1878,7 +1878,7 @@
       "codice_presentazione_ue": "EU/1/25/1992/004",
       "aic": "052735040",
       "nome_aifa": "KYINSU",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "INSULINA ICODEC; SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1897,7 +1897,7 @@
       "codice_presentazione_ue": "EU/1/25/1992/005",
       "aic": "052735053",
       "nome_aifa": "KYINSU",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "INSULINA ICODEC; SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [
@@ -1916,7 +1916,7 @@
       "codice_presentazione_ue": "EU/1/25/1992/006",
       "aic": "052735065",
       "nome_aifa": "KYINSU",
-      "principio_attivo_aifa": "",
+      "principio_attivo_aifa": "INSULINA ICODEC; SEMAGLUTIDE",
       "ema_documentato": null,
       "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
       "candidati_ema_per_nome": [

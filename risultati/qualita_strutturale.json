@@ -1,19 +1,17 @@
 {
-  "generato_utc": "2026-11-02T08:28:13+00:00",
+  "generato_utc": "2026-11-03T08:21:46+00:00",
   "stato": "OK",
   "controlli_bloccanti": [],
   "avvertenze": [
-    "La percentuale di medicinali con link EU-AIC documentato è ancora bassa",
-    "aifa_ah: non esiste ancora un rapporto di successo",
-    "aifa_cnn: non esiste ancora un rapporto di successo"
+    "La percentuale di medicinali con link EU-AIC documentato è ancora bassa"
   ],
   "metriche": {
     "errori_foreign_key": 0,
     "conteggi": {
-      "acquisizioni": 8,
-      "aifa_confezioni": 10606,
-      "classi_snapshot": 54,
-      "cnn_elenco_storico": 41,
+      "acquisizioni": 11,
+      "aifa_confezioni": 10607,
+      "classi_snapshot": 2186,
+      "cnn_elenco_storico": 1842,
       "ema_medicinali": 2357,
       "ema_revisioni_snapshot": 2357,
       "eventi_verificati": 4,
@@ -21,7 +19,7 @@
       "gu_allegati": 33,
       "gu_coppie_eu_aic": 100,
       "link_verificati": 10,
-      "match_candidati": 10720
+      "match_candidati": 10721
     },
     "riferimenti_orfani": {
       "link_senza_ema": 0,
@@ -48,23 +46,23 @@
   "fonti": {
     "ema": {
       "stato": "OK",
-      "ultima_acquisizione_utc": "2026-11-02T05:20:55+00:00"
+      "ultima_acquisizione_utc": "2026-11-03T05:14:27+00:00"
     },
     "aifa_anagrafica": {
       "stato": "OK",
-      "ultima_acquisizione_utc": "2026-11-01T12:27:02+00:00"
+      "ultima_acquisizione_utc": "2026-11-03T05:20:16+00:00"
     },
     "aifa_ah": {
-      "stato": "NON_ANCORA_VERIFICATO",
-      "ultima_acquisizione_utc": null
+      "stato": "OK",
+      "ultima_acquisizione_utc": "2026-11-03T05:30:35+00:00"
     },
     "aifa_cnn": {
-      "stato": "NON_ANCORA_VERIFICATO",
-      "ultima_acquisizione_utc": null
+      "stato": "OK",
+      "ultima_acquisizione_utc": "2026-11-03T05:36:15+00:00"
     },
     "gazzetta": {
       "stato": "OK",
-      "ultima_acquisizione_utc": "2026-11-02T05:37:58+00:00"
+      "ultima_acquisizione_utc": "2026-11-03T06:35:37+00:00"
     }
   },
   "nota": "Solo qualita strutturale e provenienza locale: non verifica la classe vigente."
