@@ -161,7 +161,6 @@ def revise_category_if_needed(model,question,answer,compact,ask_fn):
         "domanda":question,
         "prima_risposta_da_ricontrollare":answer,
         "documenti_candidati_non_elencati":missing,
-        "documenti_gia_considerati":compact,
         "avviso":"Documenti candidati NON equivalgono a prescrizioni provate. "
                  "Si devono verificare indicazione, centro e pagina insieme.",
     }
