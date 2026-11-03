@@ -6,6 +6,8 @@ Le chiavi API si leggono SOLO dal server, mai dalla chat.
 from __future__ import annotations
 
 from contextlib import closing
+from hashlib import sha256
+import sqlite3
 import json
 import os
 from pathlib import Path
@@ -36,16 +38,64 @@ CACHE_CODE_SOURCES=(
 )
 
 
+def _static_paths(environ=None):
+    """Modalita' fissa: due file espliciti, senza fallback sugli aggiornamenti."""
+    environ=os.environ if environ is None else environ
+    db=str(environ.get("FARMAQUERY_STATIC_DB_PATH") or "").strip()
+    manifest=str(environ.get("FARMAQUERY_STATIC_MANIFEST_PATH") or "").strip()
+    if bool(db)!=bool(manifest):
+        raise ValueError("Imposta sia FARMAQUERY_STATIC_DB_PATH sia "
+                         "FARMAQUERY_STATIC_MANIFEST_PATH")
+    return (Path(db).expanduser().resolve(),
+            Path(manifest).expanduser().resolve()) if db else None
+
+
+def _verified_static_snapshot(db,manifest):
+    """Verifica la copia statica prima di offrirla a entrambi i motori."""
+    if not db.is_file() or not manifest.is_file():
+        raise FileNotFoundError("Snapshot statico o relativo manifesto assenti")
+    meta=json.loads(manifest.read_text(encoding="utf-8"))
+    expected=meta.get("sha256_sqlite")
+    if not expected:
+        raise ValueError("Manifesto statico senza sha256_sqlite")
+    h=sha256()
+    with db.open("rb") as reader:
+        for block in iter(lambda:reader.read(1024*1024),b""):
+            h.update(block)
+    if h.hexdigest()!=expected:
+        raise ValueError("Snapshot statico diverso dal manifesto; nessuna "
+                         "ricostruzione automatica dalle fonti online")
+    with sqlite3.connect(db.as_uri()+"?mode=ro",uri=True) as con:
+        con.execute("PRAGMA query_only=ON")
+        if con.execute("PRAGMA integrity_check").fetchone()[0]!="ok":
+            raise ValueError("SQLite statico non integro")
+        necessary={"note","pagine","aifa_confezioni","ema_medicinali",
+                   "strutture_registri","nota_centro_documentato"}
+        found={r[0] for r in con.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'")}
+        if not necessary<=found:
+            raise ValueError("Database statico privo di tabelle richieste")
+    return meta
+
+
 def snapshot_version(root=ROOT):
-    """La cache Streamlit si invalida con dati O codice del motore aggiornati."""
+    """La cache usa SOLO i file statici se la modalità fissa è configurata."""
+    paths=_static_paths()
+    if paths is not None:
+        return tuple((str(path),path.stat().st_mtime_ns,path.stat().st_size)
+                     for path in paths)
     base=Path(root)
     relevant=REQUIRED+CACHE_CODE_SOURCES
-    return tuple((name, (base/name).stat().st_mtime_ns,
+    return tuple((name,(base/name).stat().st_mtime_ns,
                   (base/name).stat().st_size) for name in relevant)
 
 
 def prepare_snapshot(root=ROOT):
-    """Genera file temporanei in sola lettura; non modifica il sito o il repo."""
+    """Snapshot statico quando configurato; altrimenti modalità legacy."""
+    paths=_static_paths()
+    if paths is not None:
+        database,manifest=paths
+        return database,_verified_static_snapshot(database,manifest)
     from tesi.prepara_snapshot_online import build_snapshot
     folder=Path(tempfile.mkdtemp(prefix="farmaquery_chat_"))
     db=folder/"esperimento_online.sqlite"
