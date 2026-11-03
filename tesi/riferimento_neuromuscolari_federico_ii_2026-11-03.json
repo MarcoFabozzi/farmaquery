@@ -1,0 +1,282 @@
+{
+  "schema": 1,
+  "titolo": "Risposta di riferimento per patologie neuromuscolari e AOU Federico II nello snapshot FarmaQuery",
+  "data_verifica": "2026-11-03",
+  "snapshot_sha256": "bb43ae4b00b6d581f4209ad83cbf9945054628868e6a52c59470ad32cada9a53",
+  "stato": "RIFERIMENTO_DOCUMENTALE_PROVVISORIO_CON_TASSONOMIA_ESPLICITA",
+  "metodologia": "Archivi ZIP ufficiali 2022-2026 confrontati per SHA-256 con snapshot, PDF singoli per SHA-256 e indicazione/struttura controllate sulle pagine originali. Pool di 25 note candidate individuate tra 380 tramite una ricerca ampia. Non viene attestata l'assenza di altri casi non intercettati dal filtro lessicale.",
+  "criterio_core": "Malattie del motoneurone, muscolo scheletrico, giunzione neuromuscolare e nervi periferici, comprese miopatie infiammatorie e polineuropatie ereditarie/infiammatorie.",
+  "criterio_esteso": "Include anche atassia di Friedreich secondo la classificazione della Muscular Dystrophy Association; il criterio EURO-NMD più ristretto non la elenca esplicitamente tra i suoi cinque gruppi.",
+  "nota_clinica": "L'indicazione EMA/AIFA generale non deve essere confusa con gli specifici criteri della nota regionale o del registro.",
+  "nota_temporale": "Le note dimostrano designazioni regionali alla data del documento, non l'abilitazione operativa attuale dei medici.",
+  "conta_core": 13,
+  "conta_esteso": 14,
+  "note_originali_con_sha_verificato": 27,
+  "note_screening_ricerca_ampia": 25,
+  "documenti_snapshot": 380,
+  "archivi_verificati": [
+    {
+      "anno": 2022,
+      "sha256_zip": "7a4d07d0e102102c6acfdc8e4120dffec5098a4980330176b1bd62b5477e77aa",
+      "bytes": 94130502
+    },
+    {
+      "anno": 2023,
+      "sha256_zip": "a26441de5468e2f1159345b572caf5cfcd9fbc12f29be0294a1e69cf770b1716",
+      "bytes": 81715850
+    },
+    {
+      "anno": 2024,
+      "sha256_zip": "c17b3d9dd54f70438c443c4b960be10abbce33b8ef42d929f64c4333884f2f9a",
+      "bytes": 24188507
+    },
+    {
+      "anno": 2025,
+      "sha256_zip": "d11f06be1acd94b4b20c0d2059553cb7b47837f4a8c6368fca01d8721fdd8806",
+      "bytes": 11790544
+    },
+    {
+      "anno": 2026,
+      "sha256_zip": "92e64fd5c897cf794f8c4e7f125542151dfef7bc9c1a9058f969dea855268097",
+      "bytes": 10342655
+    }
+  ],
+  "casi_positivi": [
+    {
+      "medicinale": "EVRYSDI",
+      "patologia": "Atrofia muscolare spinale 5q",
+      "indicazione": "Trattamento della SMA 5q secondo l'indicazione della nota",
+      "pdf": "note 2025 - 18.12.2025/EVRYSDI 2025.pdf",
+      "anno": 2025,
+      "sha256_pdf": "986bc169ccae185de2f98679053063f6949d247694878eff35248cecc32960fa",
+      "archivio_ufficiale": "https://www.regione.campania.it/sites/default/files/2025-12/note%202025%20-%2018.12.2025.zip",
+      "pagina_indicazione": 1,
+      "pagina_centro": 2,
+      "relazione_prova": "NOTA_REGIONALE_SEZIONE_SPECIFICA",
+      "perimetro": "core"
+    },
+    {
+      "medicinale": "AGAMREE",
+      "patologia": "Distrofia muscolare di Duchenne",
+      "indicazione": "Trattamento della DMD in pazienti di almeno 4 anni",
+      "pdf": "note-regionali-2026 22.09.2026/07-2026/AGAMREE  Prot.N.0663946-2026.pdf",
+      "anno": 2026,
+      "sha256_pdf": "168461a0c299c8d77dd84eca2eb47ea9758b27a09c490db1d12bd66246b22dd5",
+      "archivio_ufficiale": "https://www.regione.campania.it/sites/default/files/2026-09/note-regionali-2026%2022.09.2026.zip",
+      "pagina_indicazione": 1,
+      "pagina_centro": 2,
+      "relazione_prova": "NOTA_REGIONALE_SEZIONE_SPECIFICA",
+      "perimetro": "core"
+    },
+    {
+      "medicinale": "DUVYZAT",
+      "patologia": "Distrofia muscolare di Duchenne",
+      "indicazione": "Trattamento della DMD in pazienti deambulanti di almeno 6 anni in trattamento con corticosteroidi",
+      "pdf": "note-regionali-2026 22.09.2026/DUVYZAT  Prot.N.0368583-2026.pdf",
+      "anno": 2026,
+      "sha256_pdf": "a189c0c213a0f39dd03341c52d9e729748f5874536815ea8037538cc78f5af1d",
+      "archivio_ufficiale": "https://www.regione.campania.it/sites/default/files/2026-09/note-regionali-2026%2022.09.2026.zip",
+      "pagina_indicazione": 1,
+      "pagina_centro": 2,
+      "relazione_prova": "NOTA_REGIONALE_SEZIONE_SPECIFICA",
+      "perimetro": "core"
+    },
+    {
+      "medicinale": "ULTOMIRIS",
+      "patologia": "Miastenia gravis generalizzata",
+      "indicazione": "Trattamento aggiuntivo della MGg AChR-positiva; la tabella corretta per la miastenia è a pagina 3, NON la NMOSD a pagina 2",
+      "pdf": "ptr-note-regionali-11.12.24 ore 16.40/ULTOMIRIS neurolielite e miastenia.pdf",
+      "anno": 2024,
+      "sha256_pdf": "a24fa26fd79e45c495afe9fb1888d2ff55254ad2126325bf9527e1973a432342",
+      "archivio_ufficiale": "https://www.regione.campania.it/assets/documents/ptr-note-regionali-11-12-24-ore-16-40.zip",
+      "pagina_indicazione": 1,
+      "pagina_centro": 3,
+      "relazione_prova": "NOTA_REGIONALE_SEZIONE_SPECIFICA",
+      "perimetro": "core"
+    },
+    {
+      "medicinale": "SOLIRIS",
+      "patologia": "Miastenia gravis generalizzata refrattaria",
+      "indicazione": "Trattamento della MGg refrattaria; elenco regionale dei centri MGg a pagina 4, distinta dalla NMOSD",
+      "pdf": "PTR_Note regionali 2022/SOLIRIS.pdf",
+      "anno": 2022,
+      "sha256_pdf": "caf609adb5ec0e3cdd553c8de9b85f125566cdda998fcb215717af4dd413c44c",
+      "archivio_ufficiale": "https://www.regione.campania.it/assets/documents/ptr-note-regionali-2022.zip",
+      "pagina_indicazione": 1,
+      "pagina_centro": 4,
+      "relazione_prova": "NOTA_REGIONALE_SEZIONE_SPECIFICA",
+      "perimetro": "core"
+    },
+    {
+      "medicinale": "ZILBRYSQ",
+      "patologia": "Miastenia gravis generalizzata",
+      "indicazione": "Terapia aggiuntiva della gMG secondo la nota regionale",
+      "pdf": "note 2025 - 18.12.2025/ZILBRYSQ.pdf",
+      "anno": 2025,
+      "sha256_pdf": "88a14281ddd4e3753a927a85024ab2e96c8ef7fac0aeec92e73c1df63d4dd98d",
+      "archivio_ufficiale": "https://www.regione.campania.it/sites/default/files/2025-12/note%202025%20-%2018.12.2025.zip",
+      "pagina_indicazione": 1,
+      "pagina_centro": 2,
+      "relazione_prova": "NOTA_REGIONALE_SEZIONE_SPECIFICA",
+      "perimetro": "core"
+    },
+    {
+      "medicinale": "VYVGART",
+      "patologia": "Miastenia gravis generalizzata",
+      "indicazione": "Terapia aggiuntiva per MGg AChR-positiva; la nota regionale usa la sottocategoria di accesso MGg refrattaria per la tabella dei centri",
+      "pdf": "PTR_NoteRegionali2023_020124/VYVGART.pdf",
+      "anno": 2023,
+      "sha256_pdf": "0ced790916562b0b77368a3bff11cd26c81e35106909d78084bf32ad40e8be0d",
+      "archivio_ufficiale": "https://www.regione.campania.it/assets/documents/ptr-noteregionali2023-020124-x01day5s6s08qz9q.zip",
+      "pagina_indicazione": 1,
+      "pagina_centro": 3,
+      "relazione_prova": "NOTA_REGIONALE_SEZIONE_SPECIFICA",
+      "perimetro": "core"
+    },
+    {
+      "medicinale": "KIOVIG",
+      "patologia": "Poliradicoloneuropatia demielinizzante infiammatoria cronica (CIDP)",
+      "indicazione": "Immunomodulazione in adulti, bambini e adolescenti per CIDP",
+      "pdf": "PTR_Note regionali 2022/KIOVIG.pdf",
+      "anno": 2022,
+      "sha256_pdf": "1d8148dd7a76efe28e367418df0578e67dc5d5ce44309d006ae9d78cfeadd771",
+      "archivio_ufficiale": "https://www.regione.campania.it/assets/documents/ptr-note-regionali-2022.zip",
+      "pagina_indicazione": 1,
+      "pagina_centro": 2,
+      "relazione_prova": "NOTA_REGIONALE_SEZIONE_SPECIFICA",
+      "perimetro": "core"
+    },
+    {
+      "medicinale": "HYQVIA",
+      "patologia": "Polineuropatia demielinizzante infiammatoria cronica (CIDP)",
+      "indicazione": "Terapia immunomodulante di mantenimento della CIDP dopo stabilizzazione con immunoglobuline endovenose (IVIg)",
+      "pdf": "note 2025 - 18.12.2025/HYQVIA CIDP.pdf",
+      "anno": 2025,
+      "sha256_pdf": "dfb6231803b1b1a669785f27fb0470180c466f73103e44c2d6558fc1bb8f4f01",
+      "archivio_ufficiale": "https://www.regione.campania.it/sites/default/files/2025-12/note%202025%20-%2018.12.2025.zip",
+      "pagina_indicazione": 1,
+      "pagina_centro": 2,
+      "relazione_prova": "NOTA_REGIONALE_SEZIONE_SPECIFICA",
+      "perimetro": "core"
+    },
+    {
+      "medicinale": "HIZENTRA",
+      "patologia": "Polineuropatia demielinizzante infiammatoria cronica (CIDP)",
+      "indicazione": "Aggiornamento esplicito dei centri prescrittori HIZENTRA per CIDP mediante la stessa ricognizione RF0180 riportata nella nota HYQVIA",
+      "pdf": "note 2025 - 18.12.2025/HYQVIA CIDP.pdf",
+      "anno": 2025,
+      "sha256_pdf": "dfb6231803b1b1a669785f27fb0470180c466f73103e44c2d6558fc1bb8f4f01",
+      "archivio_ufficiale": "https://www.regione.campania.it/sites/default/files/2025-12/note%202025%20-%2018.12.2025.zip",
+      "pagina_indicazione": 2,
+      "pagina_centro": 2,
+      "relazione_prova": "RINVIO_ESPLICITO_AGGIORNAMENTO_STESSI_CENTRI",
+      "perimetro": "core"
+    },
+    {
+      "medicinale": "GAMTEN",
+      "patologia": "Dermatomiosite in fase attiva",
+      "indicazione": "Immunomodulazione nell'adulto affetto da dermatomiosite attiva, secondo i criteri descritti nella nota",
+      "pdf": "ptr-note-regionali-11.12.24 ore 16.40/GAMTEN/GAMTEN.pdf",
+      "anno": 2024,
+      "sha256_pdf": "b3233bfdf03a2edd911ad62126098c8b811046c64ac8d35bf5e6162e8b61a5ed",
+      "archivio_ufficiale": "https://www.regione.campania.it/assets/documents/ptr-note-regionali-11-12-24-ore-16-40.zip",
+      "pagina_indicazione": 1,
+      "pagina_centro": 2,
+      "relazione_prova": "NOTA_REGIONALE_SEZIONE_SPECIFICA",
+      "perimetro": "core"
+    },
+    {
+      "medicinale": "AMVUTTRA",
+      "patologia": "Polineuropatia ereditaria da transtiretina (hATTR)",
+      "indicazione": "Trattamento dell'amiloidosi ereditaria da transtiretina con polineuropatia allo stadio 1 o 2; centri corretti in tabella 2, pagina 3",
+      "pdf": "note-regionali-2026 22.09.2026/07-2026/AMVUTTRA Prot.N.0634617-2026.pdf",
+      "anno": 2026,
+      "sha256_pdf": "df776281364ffdf35081520c815780f83f64b33f3d1a7e110e850225712cc415",
+      "archivio_ufficiale": "https://www.regione.campania.it/sites/default/files/2026-09/note-regionali-2026%2022.09.2026.zip",
+      "pagina_indicazione": 1,
+      "pagina_centro": 3,
+      "relazione_prova": "NOTA_REGIONALE_SEZIONE_SPECIFICA",
+      "perimetro": "core"
+    },
+    {
+      "medicinale": "WAINZUA",
+      "patologia": "Neuropatia ereditaria da transtiretina (ATTRv)",
+      "indicazione": "Trattamento dell'amiloidosi ATTRv in adulti con polineuropatia allo stadio 1 o 2",
+      "pdf": "note-regionali-2026 22.09.2026/07-2026/WAINZUA  Prot.N.0664045-2026.pdf",
+      "anno": 2026,
+      "sha256_pdf": "4698afd9db2001fdab5caa54aed1d9f344fd39e383080c614116788159dce3c7",
+      "archivio_ufficiale": "https://www.regione.campania.it/sites/default/files/2026-09/note-regionali-2026%2022.09.2026.zip",
+      "pagina_indicazione": 1,
+      "pagina_centro": 2,
+      "relazione_prova": "NOTA_REGIONALE_SEZIONE_SPECIFICA",
+      "perimetro": "core"
+    },
+    {
+      "medicinale": "SKYCLARYS",
+      "patologia": "Atassia di Friedreich",
+      "indicazione": "Trattamento dell'atassia di Friedreich a partire dai 16 anni; inclusione nel perimetro neuromuscolare esteso, non nel criterio EURO-NMD ristretto",
+      "pdf": "note-regionali-2026 22.09.2026/SKYCLARYS  Prot.N.0143659-2026.pdf",
+      "anno": 2026,
+      "sha256_pdf": "ff5e657f8d40c81962e7f882ede78177bb5dfc1e65de35a954fa12f861a6fa8a",
+      "archivio_ufficiale": "https://www.regione.campania.it/sites/default/files/2026-09/note-regionali-2026%2022.09.2026.zip",
+      "pagina_indicazione": 1,
+      "pagina_centro": 2,
+      "relazione_prova": "NOTA_REGIONALE_SEZIONE_SPECIFICA",
+      "perimetro": "esteso"
+    }
+  ],
+  "esclusioni_esaminate": [
+    {
+      "medicinale": "ALHEMO",
+      "motivo": "Emofilia, difetti della coagulazione"
+    },
+    {
+      "medicinale": "BEYONTTRA",
+      "motivo": "Cardiomiopatia da ATTR, non indicazione neuropatica"
+    },
+    {
+      "medicinale": "CAMZYOS",
+      "motivo": "Cardiomiopatia ipertrofica ostruttiva"
+    },
+    {
+      "medicinale": "FILSUVEZ GEL",
+      "motivo": "Epidermolisi bollosa, indicazione dermatologica"
+    },
+    {
+      "medicinale": "FINTEPLA",
+      "motivo": "Sindrome di Dravet: crisi epilettiche, non malattia neuromuscolare nel criterio prescelto"
+    },
+    {
+      "medicinale": "IMFINZI",
+      "motivo": "Indicazioni oncologiche"
+    },
+    {
+      "medicinale": "MYALEPTA",
+      "motivo": "Lipodistrofia e deficit di leptina"
+    },
+    {
+      "medicinale": "OPDIVO",
+      "motivo": "Indicazioni oncologiche"
+    },
+    {
+      "medicinale": "PROCYSBI",
+      "motivo": "Cistinosi nefropatica"
+    },
+    {
+      "medicinale": "VOXZOGO",
+      "motivo": "Acondroplasia, displasia scheletrica"
+    }
+  ],
+  "casi_dello_stesso_medicinale_non_aggiunti_come_nuove_voci": [
+    "SOLIRIS pediatrico (2025): estensione di SOLIRIS, non medicinale differente",
+    "VYVGART sc (2025): nuova formulazione di VYVGART",
+    "AMVUTTRA (2023): nota precedente della stessa molecola"
+  ],
+  "limitazioni": [
+    "Non si assumono sinonimi clinici fuori dalla tassonomia definita.",
+    "Lo screening usa termini di ricerca e non prova la completezza assoluta dell'archivio.",
+    "Le citazioni di HIZENTRA sono di tipo richiamo esplicito alla ricognizione HYQVIA; per un gold strettamente basato su un elenco autonomo di prescrittori, valutare separatamente questo caso.",
+    "La nota VYVGART può usare criteri di registro più restrittivi rispetto all'indicazione di prodotto.",
+    "Necessaria revisione metodologica del relatore prima di fissare il benchmark definitivo."
+  ]
+}
