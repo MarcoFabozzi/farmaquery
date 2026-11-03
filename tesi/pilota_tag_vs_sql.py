@@ -26,7 +26,8 @@ from tesi.tag_budget import (selection_mode,semantic_plan,expand_selected,
                              sem_filter_controlled,preserve_category_recall)
 from tesi.sintesi_tag import (CATEGORY_SYSTEM, compact_category_evidence,
                               CATEGORY_RESPONSE_TIMEOUT_SECONDS,
-                              revise_category_if_needed)
+                              revise_category_if_needed,
+                              expand_review_pages)
 
 
 SCHEMA = """Tabelle disponibili (SQLite, SOLA LETTURA):
@@ -694,8 +695,9 @@ def tag(db,question,model):
         answer,usage=ask(model,system_tag,payload,
                          timeout=CATEGORY_RESPONSE_TIMEOUT_SECONDS,
                          max_tokens=1400)
+        review_context=expand_review_pages(db,question,answer,compact)
         answer,extra_category_usage,category_revised,category_missing=(
-            revise_category_if_needed(model,question,answer,compact,ask))
+            revise_category_if_needed(model,question,answer,review_context,ask))
         if extra_category_usage is not None:
             usage=_accumulate(usage,extra_category_usage)
     else:
