@@ -1,0 +1,21 @@
+{
+  "tipo": "SNAPSHOT_STATICO_DEMO_TESI",
+  "data_fonte": "2026-11-02",
+  "snapshot_origine_sha256": "bb43ae4b00b6d581f4209ad83cbf9945054628868e6a52c59470ad32cada9a53",
+  "sha256_sqlite": "86acb23022ada37454ce8b0571d327695c910a9973d9c336fe2f371a7ee277ea",
+  "conteggi": {
+    "note": 380,
+    "pagine": 942,
+    "aifa_confezioni": 160314,
+    "ema_medicinali": 2357,
+    "nota_centro_documentato": 28,
+    "nota_aifa_corrispondenze": 1132,
+    "nota_rimando_revisionato": 2,
+    "revisione_relazioni_manuale_v2": 28
+  },
+  "limiti": [
+    "28 relazioni revisionate, non tutte le 380 note",
+    "23 relazioni non verificate visivamente sul PDF",
+    "corrispondenze AIFA nominali, non autorizzazioni vigenti"
+  ]
+}
