@@ -26,6 +26,29 @@ class DiagnosticTests(unittest.TestCase):
         self.assertEqual(result["codice_errore"],"SQL")
         self.assertEqual(result["fase_errore"],"validazione SQL")
 
+    def test_operational_error_classificato_e_select_visibile(self):
+        bad=sqlite3.OperationalError("no such column: segreto123")
+        err=EnginePhaseError("esecuzione SQL",bad)
+        err.sql="SELECT colonna_assente FROM note"
+        result=label_error(err)
+        self.assertEqual(result["codice_errore"],"SQL")
+        self.assertEqual(result["sql"],"SELECT colonna_assente FROM note")
+        self.assertIn("colonna non esistente",result["risposta"])
+        self.assertNotIn("segreto123",result["risposta"])
+
+    def test_non_mostra_query_non_validata(self):
+        err=EnginePhaseError("validazione SQL",ValueError("messaggio segreto"))
+        err.sql="DELETE FROM note"
+        result=label_error(err)
+        self.assertEqual(result["codice_errore"],"SQL")
+        self.assertNotIn("sql",result)
+        self.assertNotIn("messaggio segreto",result["risposta"])
+
+    def test_query_interrotta_messaggio_sicuro(self):
+        err=EnginePhaseError("esecuzione SQL",sqlite3.OperationalError("interrupted"))
+        result=label_error(err)
+        self.assertIn("limite di esecuzione",result["risposta"])
+
     def test_prova_minima_gemini_senza_rete(self):
         fake=MagicMock()
         fake.choices[0].message.content="OK"
