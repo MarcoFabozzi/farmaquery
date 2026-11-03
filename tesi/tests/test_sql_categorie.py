@@ -245,6 +245,76 @@ class SqlCategoryTests(unittest.TestCase):
         self.assertEqual(result["sql_tentativi"],2)
         self.assertEqual(result["righe_sql"],2)
 
+    def test_contesto_categorie_conserva_centri_e_patologie_lontani(self):
+        from tesi.pilota_tag_vs_sql import _category_excerpt
+        text=("Intestazione della nota. " + "X"*1800 +
+              " AOU Universitaria Federico II, Napoli. "+ "Y"*1550 +
+              "Miastenia gravis generalizzata.")
+        excerpt=_category_excerpt(text,
+            "Quali malattie neuromuscolari per AOU Federico II?",
+            max_chars=1350)
+        self.assertLessEqual(len(excerpt),1350)
+        self.assertIn("Federico II",excerpt)
+        self.assertIn("Miastenia",excerpt)
+        self.assertIn("[...]",excerpt)
+
+    def test_limite_ottanta_attiva_riprova_con_piu_di_due_note(self):
+        # Riproduce il mancato retry della prima versione: piu' di
+        # due note nel campione, ma LIMIT 80 taglia altre pagine.
+        for idx in range(2,5):
+            self.db.execute(
+                "INSERT INTO note VALUES (?,?,?,?,?,?,?,?,?)",
+                (f"regional-{idx}",f"TERAPIA {idx}.pdf",
+                 f"2026/TERAPIA {idx}.pdf",2026,f"TERAPIA {idx}",
+                 None,None,None,"https://regione.test/note.zip"))
+        for idx in range(1,5):
+            for page in range(3,34):
+                self.db.execute(
+                    "INSERT INTO pagine VALUES (?,?,?,?)",
+                    (f"regional-{idx}",page,
+                     "Miastenia gravis e centro AOU Federico II; "
+                     + "riga di evidenza "+str(page),"TESTO"))
+        self.db.commit()
+        base=(
+            "SELECT n.id AS nota_id,p.numero_pagina,p.testo,"
+            "n.nome_file,n.farmaco_candidato AS medicinale "
+            "FROM note n JOIN pagine p ON n.id=p.nota_id "
+        )
+        first_sql=base+"ORDER BY n.id,p.numero_pagina LIMIT 80"
+        next_sql=base+"ORDER BY n.id DESC,p.numero_pagina LIMIT 80"
+        usage={"token_input":9,"token_output":8,"costo_usd":0.001}
+        with patch("tesi.pilota_tag_vs_sql.ask",
+                   side_effect=[(first_sql,usage),(next_sql,usage),
+                                ("Non sono presenti medicinali che soddisfano "
+                                 "i criteri. L'informazione richiesta non "
+                                 "è documentata nello snapshot.",usage)]) as fake:
+            result=sql_method(self.db,self.question,"mock-llm")
+        self.assertEqual(fake.call_count,3)
+        self.assertEqual(result["sql_tentativi"],2)
+        self.assertTrue(result["sql_riprova_copertura"])
+        self.assertGreaterEqual(result["note_distinte_sql"],3)
+        self.assertTrue(result["risultato_parziale"])
+        self.assertTrue(result["negazione_non_supportata_sql"])
+        self.assertEqual(result["stato"],"RISPOSTA_NON_VERIFICATA")
+        self.assertIn("Non è corretto concludere",result["risposta"])
+        self.assertIn("Non sono presenti",result["risposta_modello_originale_sql"])
+        self.assertNotIn("Non sono presenti",result["risposta"])
+        self.assertIn("risultato_troncato",
+                      fake.call_args_list[1].args[2])
+
+    def test_assoluta_negazione_senza_taglio_non_riscritta(self):
+        from tesi.pilota_tag_vs_sql import _absolute_negative_on_partial_sql
+        answer="Non sono presenti medicinali."
+        rows=[{"nota_id":"a","numero_pagina":2,"testo":"Evidenza"}]
+        self.assertFalse(_absolute_negative_on_partial_sql(
+            answer,rows,False,True))
+        self.assertFalse(_absolute_negative_on_partial_sql(
+            answer,[],True,True))
+        self.assertFalse(_absolute_negative_on_partial_sql(
+            "Medicinale: TERAPIA",rows,True,True))
+        self.assertTrue(_absolute_negative_on_partial_sql(
+            answer,rows,True,True))
+
     def test_fallimento_due_select_non_diventa_assenza_documentale(self):
         sql=("SELECT medicinale FROM strutture_registri "
              "WHERE patologia LIKE '%categoria-inesistente%'")

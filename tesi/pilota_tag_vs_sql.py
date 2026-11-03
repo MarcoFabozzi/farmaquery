@@ -854,18 +854,71 @@ def _limit_from_sql(sql):
     return int(hit.group(1)) if hit else None
 
 
-def _sql_context(raw):
-    """Estrae righe citabili e segnala eventuali tagli di celle o contesto."""
+def _category_excerpt(value,question,max_chars=1350):
+    """Finestre testuali con posizione, non prove cliniche preconfezionate.
+
+    Raccoglie contesto iniziale e passi attorno a parole della domanda e
+    alle espansioni di categoria condivise; non inventa né salda fonti.
+    """
+    value=str(value)
+    if len(value)<=max_chars:
+        return value
+    from tesi.recupero_regionale import categoria
+    _,terms=categoria(question or "")
+    facility=re.search(r"\b(?:AOU|AORN|IRCCS)\s+([A-Za-zÀ-ÿ]{4,})",
+                       question or "",re.I)
+    named=facility.group(1).casefold() if facility else ""
+    anchors=([named] if named else [])+list(terms)
+    windows=[(0,min(230,len(value)))]
+    lowered=value.casefold()
+    # La struttura viene cercata per prima; un indizio clinico diverso
+    # compare in un'altra finestra, se presente.
+    budget=max_chars-260
+    for word in anchors:
+        if not word:
+            continue
+        found=lowered.find(word.casefold())
+        if found<0:
+            continue
+        lo=max(0,found-190)
+        hi=min(len(value),found+430)
+        if any(lo<end and hi>start for start,end in windows):
+            continue
+        size=min(hi-lo,max(0,budget))
+        if size<90:
+            break
+        windows.append((lo,lo+size))
+        budget-=size+8
+        if len(windows)>=3:
+            break
+    windows.sort()
+    excerpts=[]
+    for start,end in windows:
+        excerpts.append(value[start:end])
+    return " [...] ".join(excerpts)[:max_chars]
+
+
+def _sql_context(raw,category=False,question=""):
+    """Contesto citabile e limitato, bilanciato per documenti nelle categorie."""
     output=[]
     consumed=0
     cut=False
     for record in raw:
         original=dict(record)
-        row={key:(str(value)[:2500] if value is not None else None)
-             for key,value in original.items()}
-        if any(value is not None and len(str(value))>2500
-               for value in original.values()):
-            cut=True
+        row={}
+        for key,value in original.items():
+            if value is None:
+                row[key]=None
+                continue
+            text=str(value)
+            if category and key=="testo" and len(text)>1350:
+                row[key]=_category_excerpt(text,question)
+                cut=True
+            else:
+                limit=1800 if category else 2500
+                row[key]=text[:limit]
+                if len(text)>limit:
+                    cut=True
         size=len(json.dumps(row,ensure_ascii=False))
         if consumed+size>SQL_CONTEXT_CHARS:
             cut=True
@@ -923,15 +976,17 @@ def _needs_category_coverage_retry(sql,rows,truncated):
     # che moltiplica le confezioni. Non forziamo sempre il retry.
     repeated_join=bool(re.search(
         r"\bJOIN\s+aifa_confezioni\b",sql,re.I))
-    return docs<=2 and (truncated or repeated_join)
+    # Il taglio rende impossibile attestare l'assenza di ulteriori note,
+    # anche se le prime righe contengono già molti documenti diversi.
+    return truncated or (docs<=2 and repeated_join)
 
 
-def _combine_category_context(first,second):
+def _combine_category_context(first,second,question=""):
     combined,_=_balanced_category_rows([*first,*second])
-    return _sql_context(combined)
+    return _sql_context(combined,category=True,question=question)
 
 
-def _execute_generated_select(db,sql,category=False):
+def _execute_generated_select(db,sql,category=False,question=""):
     """Esegue una SELECT validata con gli stessi limiti per tutti i tentativi."""
     start=time.monotonic()
     db.set_progress_handler(lambda:1 if time.monotonic()-start>12 else 0,10000)
@@ -940,13 +995,33 @@ def _execute_generated_select(db,sql,category=False):
                       lambda:db.execute(sql).fetchmany(SQL_ROW_LIMIT+1))
         selected=( _balanced_category_rows(raw[:SQL_ROW_LIMIT])[0]
                    if category else raw[:SQL_ROW_LIMIT])
-        rows,context_cut=_sql_context(selected)
+        rows,context_cut=_sql_context(selected,category=category,question=question)
         query_limit=_limit_from_sql(sql)
         truncated=(len(raw)>SQL_ROW_LIMIT or context_cut or
                    (query_limit is not None and len(raw)>=query_limit))
     finally:
         db.set_progress_handler(None,0)
     return rows,truncated
+
+
+def _absolute_negative_on_partial_sql(answer,rows,truncated,category):
+    """Blocca conclusioni di assenza globale da un sottoinsieme SQL.
+
+    Non trasforma candidati in fatti: distingue un risultato incompleto
+    dall'affermazione ingiustificata che non esistano medicinali.
+    """
+    if not (category and truncated and rows):
+        return False
+    statement=str(answer or "")
+    if re.search(r"(?im)^\s*(?:[-*]\s*)?medicinale\s*:",statement):
+        return False
+    return bool(re.search(
+        r"(?:non\s+(?:sono|risultano)\s+presenti\s+(?:medicinali|farmaci)"
+        r"|nessun\s+(?:medicinale|farmaco)"
+        r"|non\s+(?:esistono|vi\s+sono)\s+(?:medicinali|farmaci)"
+        r"|(?:l['’]?)?informazione\s+richiesta\s+non\s+[eè]\s+documentata"
+        r"|non\s+[eè]\s+documentata\s+nello\s+snapshot)",
+        statement,flags=re.I))
 
 
 def sql_method(db,question,model):
@@ -980,7 +1055,8 @@ def sql_method(db,question,model):
         syntax_repair=True
 
     first_sql=sql
-    rows,truncated=_execute_generated_select(db,sql,category=bool(category_context))
+    rows,truncated=_execute_generated_select(db,sql,category=bool(category_context),
+                                             question=question)
     zero_row_retry=False
 
     if category_context and not rows:
@@ -1000,7 +1076,8 @@ def sql_method(db,question,model):
         zero_row_retry=True
         first=_accumulate(first,retry_usage)
         sql=revised
-        rows,truncated=_execute_generated_select(db,sql,category=bool(category_context))
+        rows,truncated=_execute_generated_select(db,sql,category=bool(category_context),
+                                             question=question)
 
     # Un risultato non vuoto può essere comunque dominato da ripetizioni
     # di una sola nota; una seconda SELECT, sempre generata dal modello,
@@ -1029,11 +1106,11 @@ def sql_method(db,question,model):
             alternative_sql=_in_phase(
                 "validazione SQL",validate_sql,alternative_sql_raw)
             other_rows,other_cut=_execute_generated_select(
-                db,alternative_sql,category=True)
+                db,alternative_sql,category=True,question=question)
             sql_evidence_queries.append(alternative_sql)
             if other_rows:
                 previous_count=_category_note_count(rows)
-                merged,merge_cut=_combine_category_context(rows,other_rows)
+                merged,merge_cut=_combine_category_context(rows,other_rows,question=question)
                 rows=merged
                 # Anche la prima SELECT può essere stata troncata: non
                 # nascondere il limite dopo aver unito più query.
@@ -1087,7 +1164,11 @@ def sql_method(db,question,model):
         "non certifica l'autorizzazione. "
         "Se mancano dati o evidenze, scrivi 'non documentato nello snapshot'. "
         "Non inventare citazioni; se i risultati sono parziali "
-        "non dichiarare una lista completa. Se più SELECT concorrono "
+        "non dichiarare una lista completa E NON dire che non esistono "
+        "medicinali: il contesto è un campione di pagine candidate. "
+        "Se non puoi verificare l'associazione centro-indicazione, "
+        "scrivi che la prova è insufficiente, senza dedurre assenza. "
+        "Se più SELECT concorrono "
         "alle evidenze, esamina tutte le note senza considerare i "
         "candidati automaticamente autorizzati.",
         {"domanda":question,"righe_sql":rows,"fonti_recuperate":citations,
@@ -1095,6 +1176,20 @@ def sql_method(db,question,model):
          "note_distinte":metadata["note_distinte_sql"],
          "query_eseguite":sql_evidence_queries})
     total=_accumulate(first,second)
+    incorrect_absence=_absolute_negative_on_partial_sql(
+        answer,rows,truncated,bool(category_context))
+    original_answer=answer if incorrect_absence else None
+    if incorrect_absence:
+        answer=(
+            "Le query Text-to-SQL hanno restituito "+str(len(rows))+
+            " righe di evidenza da "+str(_category_note_count(rows))+
+            " note candidate, ma i risultati sono parziali. "
+            "Dalle righe disponibili non è stata verificata una "
+            "corrispondenza sufficiente tra indicazione e centro "
+            "prescrittore per produrre un elenco attendibile. "
+            "Non è corretto concludere che non esistano medicinali "
+            "pertinenti nello snapshot: occorre verificare le "
+            "sezioni originali delle note.")
     if truncated:
         answer+=("\n\nAvvertenza: risultati SQL parziali per limite di "
                  "righe, limite della query o di contesto. L'elenco non "
@@ -1107,7 +1202,11 @@ def sql_method(db,question,model):
                    or record.get("descrizione"))]
     return {"risposta":answer,"fonti":citations,"sql":sql,
             "evidenze_fonti":_source_previews(sql_evidence),
-            "righe_sql":len(rows),"stato":"RISULTATI_PARZIALI" if truncated else "OK",
+            "righe_sql":len(rows),
+            "stato":("RISPOSTA_NON_VERIFICATA" if incorrect_absence else
+                     "RISULTATI_PARZIALI" if truncated else "OK"),
+            "negazione_non_supportata_sql":incorrect_absence,
+            "risposta_modello_originale_sql":original_answer,
             "risultato_parziale":truncated,**total,
             "costo_completo":total["costo_usd"] is not None,**metadata}
 
