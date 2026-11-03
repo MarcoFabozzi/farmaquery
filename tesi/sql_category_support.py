@@ -92,6 +92,26 @@ CATEGORY_RETRY_RULES = (
 # Secondo tentativo quando una SELECT regolarmente eseguita restituisce
 # zero righe per un documento che potrebbe essere presente nello snapshot.
 # Non include elenchi di risposte, protocolli o farmaci di benchmark.
+DOCUMENT_SQL_COVERAGE_RULES = (
+    "La prima SELECT ha recuperato almeno una pagina della nota, ma "
+    "NON tutte le pagine leggibili che potrebbero contenere le "
+    "informazioni richieste. Genera una SECONDA singola SELECT SQLite "
+    "di sola lettura per la stessa nota usando nota_id e le pagine "
+    "del documento, non filtri su singole parole della domanda. "
+    "Per il documento citante NON confondere l'anno della nota "
+    "precedente richiamata. Se una data compare nella pagina 1, "
+    "NON imporre p.testo LIKE sulla data per tutte le altre pagine: "
+    "il filtro può escludere esattamente la pagina dei requisiti. "
+    "Preferisci note n JOIN pagine p ON p.nota_id=n.id, "
+    "con WHERE n.id per i documenti già individuati. "
+    "Restituisci n.id AS nota_id, p.numero_pagina, "
+    "n.nome_file e p.testo. LIMIT massimo 80, senza markdown. "
+    "Le pagine mancanti indicate sono un controllo di copertura, "
+    "non un elenco di fatti probatori o risposte gold. "
+    "Non inventare alcun contenuto."
+)
+
+
 DOCUMENT_SQL_RETRY_RULES = (
     "La SELECT precedente ha restituito ZERO RIGHE: non significa "
     "che la fonte o il fatto siano assenti. Genera una NUOVA singola "
@@ -164,6 +184,12 @@ def select_generation_guidance(question):
         "Per più indicazioni della stessa nota NON imporre che "
         "ogni indicazione compaia nei campi menzione/stato dei centri "
         "o su ogni pagina: recupera le pagine della nota. "
+        "Se la data di una nota è verificata in n.data_candidata, "
+        "NON combinarla con p.testo LIKE sulla data in modo che "
+        "le pagine senza la data vengano escluse. Per quesiti su "
+        "requisiti, centri, più indicazioni o tabelle, includi "
+        "tutte le pagine testuali della nota pertinente, "
+        "non soltanto quelle che ripetono la data o il nome. "
         "Per le classi usa: CASE WHEN classe_a_h_snapshot IN ('A','H') "
         "THEN classe_a_h_snapshot ELSE 'C (dedotta per esclusione)' END "
         "AS classe. Includi anche classe_a_h_snapshot e classe_a_h_data "
