@@ -61,9 +61,21 @@ revisione_relazioni_manuale_v2(relazione_id, nota_id, pagina, estratto_evidenza,
 revisione_collegamenti_aifa_v2(relazione_id, stato, nota)
 Chiavi di relazione: note.id = nota_metadati_revisionati.nota_id;
 note.id = nota_centro_documentato.nota_id.
-La colonna farmaco_candidato appartiene ESCLUSIVAMENTE a note, non a
-nota_metadati_revisionati. Per filtrare i metadati per nome commerciale
-servirebbe una JOIN con note.
+Campi da NON confondere nelle JOIN tra note e centri:
+- note contiene farmaco_candidato, protocollo_candidato, data_candidata,
+  ma NON contiene protocollo, data_nota o centro.
+- nota_metadati_revisionati contiene protocollo e data_nota,
+  ma NON contiene farmaco_candidato.
+- nota_centro_documentato contiene centro e numero_pagina,
+  ma NON contiene protocollo.
+Per associare nome del farmaco, centro e protocollo servono queste relazioni
+esplicite: nota_centro_documentato.nota_id = note.id e
+nota_metadati_revisionati.nota_id = note.id.
+Le date note.data_candidata sono estratte dal testo e possono avere formato
+GG.MM.AAAA (es. 18.04.2025); nota_metadati_revisionati.data_nota puo' avere
+formato AAAA-MM-GG (es. 2025-04-18). Non confrontare stringhe di date in
+formati diversi. Se la data non e' necessaria a distinguere le note,
+preferisci filtrare per farmaco_candidato e identificativo/protocollo.
 Le corrispondenze nominali con AIFA non certificano un'autorizzazione vigente.
 La verifica su TESTO estratto non equivale a verifica visiva del PDF."""
 
@@ -936,6 +948,9 @@ SQL_GENERATION_PROMPT=(
     "Per ogni riferimento a colonna verifica che sia elencato fra "
     "le colonne della tabella corrispondente nello schema; "
     "non attribuire a una tabella colonne appartenenti ad altre. "
+    "Nei collegamenti tra note e centri seleziona i nomi delle colonne "
+    "dalla tabella corretta e verifica il formato di eventuali date: "
+    "un confronto fra stringhe con formati diversi non e' affidabile. "
     "Non utilizzare PRAGMA, modifiche al database o più istruzioni. "
     "Includi aic, ema_id, oppure nota_id e numero_pagina quando "
     "disponibili, in modo da poter citare i dati trovati. "

@@ -17,7 +17,8 @@ class StandardSqlTests(unittest.TestCase):
             data_decisione_ue TEXT,indicazione_ema TEXT,url_ema TEXT
           );
           CREATE TABLE note(
-            id TEXT,nome_file TEXT,percorso_zip TEXT,archivio_url TEXT
+            id TEXT,nome_file TEXT,percorso_zip TEXT,archivio_url TEXT,
+            farmaco_candidato TEXT,data_candidata TEXT
           );
           CREATE TABLE pagine(
             nota_id TEXT,numero_pagina INTEGER,testo TEXT,metodo TEXT
@@ -27,7 +28,8 @@ class StandardSqlTests(unittest.TestCase):
             'Indicazione documentata', 'https://www.ema.europa.eu/example');
           INSERT INTO note VALUES(
             'r1','FARMACO X.pdf','2026/FARMACO X.pdf',
-            'https://www.regione.campania.it/note.zip');
+            'https://www.regione.campania.it/note.zip',
+            'FARMACO X','18.04.2025');
           INSERT INTO pagine VALUES(
             'r1',1,'Indicazione documentata per la terapia A','TESTO');
         """)
@@ -90,7 +92,8 @@ class StandardSqlTests(unittest.TestCase):
         self.db.execute("CREATE TABLE nota_centro_documentato(id TEXT)")
         self.db.execute("CREATE TABLE revisione_relazioni_manuale_v2(relazione_id TEXT)")
         schema=_sql_schema(self.db)
-        self.assertIn("farmaco_candidato appartiene ESCLUSIVAMENTE a note",schema)
+        self.assertIn("note contiene farmaco_candidato, protocollo_candidato",schema)
+        self.assertIn("nota_metadati_revisionati contiene protocollo",schema)
         self.assertIn("note.id = nota_metadati_revisionati.nota_id",schema)
 
     def test_errore_union_colonna_sbagliata_non_si_corregge(self):
@@ -152,6 +155,45 @@ class StandardSqlTests(unittest.TestCase):
         self.assertTrue(any("2026/FARMACO X.pdf#p1" in x
                             for x in answer["fonti"]))
         self.assertEqual(answer["righe_sql"],1)
+
+    def test_join_centri_metadati_data_diversa_una_select(self):
+        self.db.executescript("""
+            CREATE TABLE nota_metadati_revisionati(
+                nota_id TEXT,protocollo TEXT,data_nota TEXT);
+            CREATE TABLE nota_centro_documentato(
+                nota_id TEXT,centro TEXT,numero_pagina INTEGER);
+            CREATE TABLE revisione_relazioni_manuale_v2(relazione_id TEXT);
+            INSERT INTO nota_metadati_revisionati VALUES
+                ('r1','PG/2025/0001234','2025-04-18');
+            INSERT INTO nota_centro_documentato VALUES
+                ('r1','Centro A',2),('r1','Centro B',2);
+        """)
+        schema=_sql_schema(self.db)
+        self.assertIn("note contiene farmaco_candidato, protocollo_candidato",schema)
+        self.assertIn("nota_metadati_revisionati contiene protocollo",schema)
+        self.assertIn("GG.MM.AAAA",schema)
+        self.assertIn("AAAA-MM-GG",schema)
+        self.assertIn("formati diversi",SQL_GENERATION_PROMPT)
+        query=(
+            "SELECT c.nota_id,c.centro,m.protocollo,c.numero_pagina "
+            "FROM nota_centro_documentato AS c "
+            "JOIN note AS n ON n.id=c.nota_id "
+            "JOIN nota_metadati_revisionati AS m ON m.nota_id=n.id "
+            "WHERE n.farmaco_candidato='FARMACO X' COLLATE NOCASE "
+            "AND m.data_nota='2025-04-18' ORDER BY c.centro"
+        )
+        with patch("tesi.pilota_tag_vs_sql.ask",side_effect=[
+            (query,self.usage),
+            ("La nota individua Centro A e Centro B.",self.usage)
+        ]) as llm:
+            answer=sql_method(
+                self.db,"Quali centri per FARMACO X del 18/04/2025?","mock")
+        self.assertEqual(llm.call_count,2)  # 1 SELECT, 1 sintesi
+        self.assertEqual(answer["sql_tentativi"],1)
+        self.assertEqual(answer["righe_sql"],2)
+        self.assertEqual(answer["stato"],"OK")
+        self.assertTrue(any("FARMACO X.pdf#p2" in x
+                            for x in answer["fonti"]))
 
     def test_sql_non_valido_non_si_rigenera(self):
         with patch("tesi.pilota_tag_vs_sql.ask",
