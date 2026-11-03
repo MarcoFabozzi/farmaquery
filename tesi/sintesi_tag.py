@@ -24,7 +24,11 @@ CATEGORY_SYSTEM = (
     "per QUELLA indicazione. La semplice intestazione di un PDF o la "
     "presenza di un nome di ospedale non provano un'autorizzazione. "
     "Non includere la sclerosi multipla automaticamente nelle malattie "
-    "neuromuscolari. La miastenia gravis è una patologia della giunzione "
+    "neuromuscolari. Le miopatie infiammatorie, fra cui la "
+    "dermatomiosite, possono rientrare nel perimetro neuromuscolare "
+    "anche quando la nota le classifica amministrativamente nel sistema "
+    "osteomuscolare e nel tessuto connettivo. La miastenia gravis "
+    "è una patologia della giunzione "
     "neuromuscolare e NON va esclusa dalla categoria neuromuscolare "
     "soltanto perché è autoimmune. Per ciascuna nota distinguere "
     "la miastenia dalle indicazioni diverse, come NMOSD, e verificare "
@@ -239,6 +243,88 @@ def expand_review_pages(db,question,answer,compact,max_docs=6,max_pages=2,max_ch
     return enriched
 
 
+def secondary_medicine_candidates(db,question,compact,max_candidates=6):
+    """Trova secondi medicinali richiamati per l'aggiornamento dei centri.
+
+    L'aggiornamento documentato e' soltanto un candidato: la sintesi TAG
+    deve ancora verificare la patologia, la tabella e l'ospedale citato.
+    Il nome e le prove provengono dalle pagine SQLite, mai dal benchmark.
+    """
+    from tesi.recupero_regionale import categoria
+    if not categoria(question)[0]:
+        return []
+    pattern=re.compile(
+        r"(?i:(?:aggiornat[ioe]|abilitat[ioe]|autorizzat[ioe])\s+"
+        r"(?:(?:i|gli|le)\s+)?(?:centri|presidi)\s+"
+        r"(?:prescrittori|abilitati)\s+(?:del|per\s+il)\s+"
+        r"(?:farmaco|medicinale)\s+)"
+        r"([A-Z][A-Z0-9_-]{3,})"
+    )
+    found=[]
+    seen=set()
+    center=re.search(r"\b(?:federico|cardarelli|vanvitelli)\b",
+                     question,re.I)
+    for doc in compact:
+        key=str(doc.get("chiave") or "")
+        if not key.startswith("REGIONE:DOC:"):
+            continue
+        note_id=key.split("REGIONE:DOC:",1)[1]
+        try:
+            pages=[dict(x) for x in db.execute(
+                "SELECT numero_pagina,testo FROM pagine WHERE nota_id=? "
+                "AND metodo IN ('TESTO','OCR') ORDER BY numero_pagina",
+                (note_id,))]
+        except Exception:
+            continue
+        if not pages:
+            continue
+        first_name=_candidate_short_name(doc).casefold()
+        if center and not any(center.group().casefold() in
+                              str(page["testo"] or "").casefold()
+                              for page in pages):
+            continue
+        for page in pages:
+            body=" ".join(str(page["testo"] or "").split())
+            for match in pattern.finditer(body):
+                name=match.group(1)
+                if name.casefold() in seen or name.casefold()==first_name:
+                    continue
+                source_by_page={}
+                for source in doc.get("fonti",[]):
+                    m=re.search(r"#p(\d+)\b",str(source))
+                    if m:
+                        source_by_page[int(m.group(1))]=str(source)
+                others=[p for p in pages
+                        if p["numero_pagina"]!=page["numero_pagina"]]
+                ordered=[page]+others
+                passages=[]
+                sources=[]
+                for p in ordered:
+                    no=int(p["numero_pagina"])
+                    if no not in source_by_page:
+                        continue
+                    passages.append({"pagina":no,
+                                     "estratto":str(p["testo"] or "")[:10000]})
+                    sources.append(source_by_page[no])
+                    if len(passages)>=2:
+                        break
+                if not passages or passages[0]["pagina"]!=page["numero_pagina"]:
+                    continue
+                seen.add(name.casefold())
+                found.append({
+                    "chiave":key+":SECONDARIO:"+name,
+                    "documento_e_medicinale_candidato":(
+                        "farmaco candidato: "+name+
+                        "; citato in aggiornamento dei centri di una nota "
+                        "intestata a un altro medicinale"),
+                    "passaggi":passages,"fonti":sources,
+                    "origine_verifica":"secondo medicinale citato nell'atto",
+                })
+                if len(found)>=max_candidates:
+                    return found
+    return found
+
+
 def revise_category_if_needed(model,question,answer,compact,ask_fn,
                               audit=None,stats=None,max_checks=4):
     """Riesamina un candidato per chiamata, senza riscrivere il primo elenco.
@@ -248,6 +334,10 @@ def revise_category_if_needed(model,question,answer,compact,ask_fn,
     Conserva le evidenze originali, non promuove i candidati automaticamente.
     """
     missing=missing_category_candidates(answer,compact)
+    # I secondi medicinali citati esplicitamente in un aggiornamento
+    # vengono verificati con le medesime regole delle note principali.
+    missing.sort(key=lambda doc: 0 if doc.get("origine_verifica") ==
+                 "secondo medicinale citato nell'atto" else 1)
     if not missing:
         if stats is not None:
             stats.update({"chiamate":0,"candidati":0,"accettati":0})
@@ -270,7 +360,11 @@ def revise_category_if_needed(model,question,answer,compact,ask_fn,
         }
         reviewed,usage=ask_fn(
             model,
-            "Esamina SOLTANTO il medicinale candidato fornito. Verifica "
+            "Esamina SOLTANTO il medicinale candidato fornito. "
+            "Se e' nominato come secondo medicinale nella nota di un "
+            "altro farmaco, accerta il collegamento ESPLICITO fra il "
+            "richiamo, la specifica indicazione e i centri richiesti: "
+            "non basta che due nomi compaiano nello stesso PDF. Verifica "
             "la categoria richiesta e la CORRISPONDENZA fra indicazione "
             "e centro nella stessa sezione del documento; la mera "
             "menzione della struttura non basta. Restituisci soltanto "
