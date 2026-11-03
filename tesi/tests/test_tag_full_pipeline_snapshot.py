@@ -4,6 +4,8 @@ Eseguono recupero, raggruppamento LOTUS simulato, sintesi e controllo finale.
 I valori di fonte NON sono incorporati nel codice dell'applicazione.
 """
 from contextlib import closing
+import json
+import re
 from pathlib import Path
 import sqlite3
 import sys
@@ -95,13 +97,30 @@ class TagFullPipelineSnapshotTests(unittest.TestCase):
         self.assertTrue(any("ULTOMIRIS" in
                             c["documento_e_medicinale_candidato"]
                             for c in missing))
+        def confirmed_omission(payload):
+            notes=payload["documenti_candidati_non_elencati"]
+            note=next(d for d in notes if
+                      d["medicinale_candidato"].upper()=="ULTOMIRIS")
+            page3=next(p["estratto"] for p in note["passaggi"]
+                       if p["pagina"]==3)
+            indication=re.search(r"miastenia gravis.{0,35}",page3,re.I)
+            center=re.search(r"NAPOLI FEDERICO II.{0,20}",page3,re.I)
+            self.assertIsNotNone(indication)
+            self.assertIsNotNone(center)
+            return json.dumps({"nuove_voci":[{
+                "confermato":True,
+                "medicinale":"ULTOMIRIS",
+                "patologia":"Miastenia gravis generalizzata",
+                "indicazione":"Trattamento di MGg per l'indicazione della nota",
+                "pagina_indicazione":3,
+                "pagina_centro":3,
+                "citazione_indicazione":indication.group(),
+                "citazione_centro":center.group(),
+            }]},ensure_ascii=False)
+
         result,calls=self._run(question,[
             lambda payload:first,
-            lambda payload:("Medicinale: SOLIRIS — miastenia gravis, "
-                            "Federico II, p.4.\n"
-                            "Medicinale: ULTOMIRIS — miastenia gravis "
-                            "generalizzata refrattaria, Federico II, "
-                            "pagina 3, nota PG/2024/0427490.")
+            confirmed_omission
         ])
         self.assertEqual(len(calls),2)
         self.assertTrue(result["revisione_categoria_llm"])
