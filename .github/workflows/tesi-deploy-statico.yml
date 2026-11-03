@@ -35,11 +35,18 @@ jobs:
           run-id: 41436480339
           github-token: ${{ github.token }}
           path: frozen_source
+      - name: Recupera i documenti GU dalla STESSA versione sorgente
+        uses: actions/checkout@v4
+        with:
+          ref: 630613a1b3e5353fe33e207e843fb8dad5591b2a
+          path: frozen_gu
+          persist-credentials: false
       - name: Prepara SQLite statico e manifesta SHA-256
         run: |
           python -m tesi.build_frozen_demo \
             --db frozen_source/esperimento_online.sqlite \
             --manifest frozen_source/manifest_fonti_online.json \
+            --gu-root frozen_gu \
             --output risultati/tesi_statico_20261102.sqlite.gz \
             --output-manifest risultati/tesi_statico_20261102.json
       - name: Verifica archivio, hash e tabelle statiche
@@ -59,7 +66,9 @@ jobs:
                   assert db.execute('PRAGMA integrity_check').fetchone()[0]=='ok'
                   for tab,num in (('note',380),('pagine',942),('nota_centro_documentato',28)):
                       assert db.execute('SELECT COUNT(*) FROM '+tab).fetchone()[0]==num
-                  print('Snapshot statico verificato:',manifest['sha256_sqlite'])
+                  assert db.execute("SELECT COUNT(*) FROM gu_atti").fetchone()[0]>0
+                  assert db.execute("SELECT COUNT(*) FROM gu_segmenti").fetchone()[0]>0
+                  print('Snapshot statico con GU verificato:',manifest['sha256_sqlite'])
           PY
       - name: Archivia il database per il confronto locale
         uses: actions/upload-artifact@v4
