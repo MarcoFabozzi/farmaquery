@@ -71,25 +71,90 @@ def _reply(question,method,model,has_key,remaining):
             return label_error(exc)
 
 
-def _show_citation(ref):
-    """Mostra pagina e archivio originali senza fingere link PDF nei file ZIP."""
+def _citation_details(ref):
+    """Prepara un link sicuro, distinguendo un archivio ZIP dal PDF.
+
+    Un URL allo ZIP regionale NON apre il PDF interno alla pagina: non
+    inventare URL diretti o aggiungere #page a file diversi dai PDF.
+    """
     source=str(ref)
-    match=re.match(r"^(.+?)#p([0-9]+) \| archivio: (https?://\S+)$",source)
+    match=re.match(
+        r"^(.+?)#p([0-9]+) \| archivio: (https?://\S+)$",source)
+    page=None
+    is_regional=bool(match)
     if match:
-        name,page,url=match.groups()
-        st.caption(name+" — pagina "+page+" del PDF contenuto nell'archivio")
+        name,page_text,url=match.groups()
+        page=int(page_text)
+        title=name+" — pagina "+str(page)
     else:
         parts=source.split(" | ",1)
+        title=parts[0]
         url=parts[1].split("#segmento-",1)[0] if len(parts)==2 else ""
-        st.caption(parts[0])
-    if url and urlsplit(url).hostname and (
-        urlsplit(url).hostname.endswith(".aifa.gov.it")
-        or urlsplit(url).hostname=="www.aifa.gov.it"
-        or urlsplit(url).hostname=="www.regione.campania.it"
-        or urlsplit(url).hostname=="www.ema.europa.eu"
-        or urlsplit(url).hostname=="www.gazzettaufficiale.it"
-    ):
-        st.markdown("[Apri la fonte ufficiale]("+url+")")
+    parsed=urlsplit(url)
+    host=(parsed.hostname or "").lower()
+    allowed=bool(parsed.scheme=="https" and parsed.username is None
+                 and parsed.password is None and (
+        host=="www.regione.campania.it"
+        or host=="www.ema.europa.eu"
+        or host=="www.gazzettaufficiale.it"
+        or host=="www.aifa.gov.it"
+        or host.endswith(".aifa.gov.it")))
+    if not allowed:
+        url=""
+    is_pdf=bool(url and parsed.path.casefold().endswith(".pdf"))
+    is_archive=bool(is_regional and url and not is_pdf)
+    if is_pdf and page is not None:
+        # Il browser PDF puo usare l'ancora pagina solo con un URL al PDF.
+        url=parsed._replace(fragment="page="+str(page)).geturl()
+    label=("Apri il PDF ufficiale alla pagina indicata" if is_pdf and page else
+           "Apri il PDF ufficiale" if is_pdf else
+           "Apri l'archivio ufficiale della Regione" if is_archive else
+           "Apri la fonte ufficiale")
+    return {"titolo":title,"url":url,"etichetta":label,
+            "archivio":is_archive,"pagina":page,
+            "documento":name if is_regional else ""}
+
+
+@st.cache_data(ttl=3600,max_entries=2,show_spinner=False)
+def _cached_pdf_from_archive(url,document):
+    from demo_fonti_pdf import pdf_from_official_archive
+    return pdf_from_official_archive(url,document)
+
+
+def _show_citation(ref,instance_key=""):
+    """Fonte e pagina con anteprima opzionale del vero PDF nello ZIP."""
+    details=_citation_details(ref)
+    st.caption(details["titolo"])
+    if details["url"]:
+        st.markdown("["+details["etichetta"]+"]("+details["url"]+")")
+    if details["archivio"]:
+        st.caption("Il PDF è contenuto nello ZIP: il link apre "
+                   "l'archivio, non direttamente il documento interno.")
+        if st.button("Visualizza la pagina del PDF originale",
+                     key="pdf_demo_"+instance_key):
+            try:
+                with st.spinner("Apro la pagina dal PDF ufficiale..."):
+                    data=_cached_pdf_from_archive(
+                        details["url"],details["documento"])
+                    from streamlit_pdf_viewer import pdf_viewer
+                    pdf_viewer(input=data,
+                               pages_to_render=[details["pagina"]],
+                               height=540,key="viewer_"+instance_key)
+            except Exception:
+                st.warning("Anteprima PDF non disponibile: consulta "
+                           "il nome, il numero di pagina e l'estratto "
+                           "testuale della fonte riportati nella demo.")
+
+
+def _show_excerpt(source):
+    """Passo documentale mostrato come citazione; non altera il PDF."""
+    raw=str(source.get("estratto") or "").strip()
+    if not raw:
+        return
+    st.caption("Passaggio recuperato dal database · "+
+               str(source.get("tipo") or "Fonte"))
+    # Il testo del documento resta testuale, senza eseguire HTML o Markdown.
+    st.text(raw)
 
 
 @st.dialog("Assistente FarmaQuery",width="large")
@@ -147,22 +212,24 @@ def assistant_dialog():
     with st.container(height=290,border=True):
         if not history:
             st.caption("Scrivi una domanda per iniziare.")
-        for item in history:
+        for msg_index,item in enumerate(history):
             with st.chat_message(item["role"]):
                 st.markdown(item["text"])
                 if item["role"]=="assistant":
                     if item.get("fonti"):
                         with st.expander("Fonti consultate"):
-                            for ref in item["fonti"]:
-                                _show_citation(ref)
+                            for ref_index,ref in enumerate(item["fonti"]):
+                                _show_citation(
+                                    ref,instance_key=method+"_"+str(msg_index)+
+                                    "_"+str(ref_index))
                     if item.get("evidenze_fonti"):
-                        with st.expander("Estratti dei dati consultati"):
-                            st.caption("Estratti del contesto recuperato, non "
-                                       "verifiche normative indipendenti.")
+                        with st.expander("Passaggi del testo consultato"):
+                            st.caption("Testo originale estratto dalle fonti, "
+                                       "non evidenziazione nel PDF e non "
+                                       "verifica normativa indipendente.")
                             for source in item["evidenze_fonti"]:
-                                st.caption(source.get("tipo","Fonte")+" · "+
-                                           source.get("fonte","")[:150])
-                                st.text(source.get("estratto",""))
+                                st.caption(str(source.get("fonte") or "")[:200])
+                                _show_excerpt(source)
                     if method=="Text-to-SQL" and item.get("sql"):
                         with st.expander("Query SQL"):
                             if item.get("sql_correzione_sintassi"):
