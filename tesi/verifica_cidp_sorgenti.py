@@ -167,7 +167,7 @@ def main():
     # corpus, più le note note da precedenti prove che possono avere
     # testo OCR del centro non intercettato dall'espressione semplice.
     verify_paths={d["path_zip"] for d in selected}
-    for possible in doc_candidates:
+    for possible in broad:
         verify_paths.add(possible["pdf"])
     for keyword in ("SOLIRIS","VYVGART"):
         for row in db.execute(
