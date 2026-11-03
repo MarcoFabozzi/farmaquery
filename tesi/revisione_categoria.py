@@ -164,6 +164,11 @@ def verified_additions(review_text,missing,question,name_fn,diagnostics=None):
         if not mode_center:
             report(name,"citazione_centro_non_trovata",evidence2)
             continue
+        if (p1!=p2 and (mode_ind!="letterale" or mode_center!="letterale")):
+            # Non usare un match semplificato per accostare un'indicazione
+            # di un'altra pagina alla tabella di un centro diverso.
+            report(name,"ancore_di_pagine_diverse")
+            continue
         sources=[str(src).split(" | ",1)[0] for src in doc.get("fonti",[])]
         sources=[src for src in sources if src.endswith("#p"+str(p2))]
         if not sources:
