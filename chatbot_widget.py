@@ -68,7 +68,16 @@ def _reply(question,method,model,has_key,remaining):
         except Exception as exc:
             # NON visualizzare il messaggio grezzo: può contenere chiavi API
             # o dettagli privati della richiesta. Mostra fase e classe sicure.
-            return label_error(exc)
+            outcome=label_error(exc)
+            # Misure tecniche sicure anche se la chiamata ha fallito.
+            diagnostics=getattr(exc,"metriche_llm",None)
+            if isinstance(diagnostics,dict):
+                outcome.update({
+                    key:diagnostics.get(key)
+                    for key in ("chiamate_llm_effettive","chiamate_llm_dirette",
+                                "chiamate_llm_lotus","tempo_backend_s")
+                })
+            return outcome
 
 
 def _citation_details(ref):
@@ -252,14 +261,27 @@ def assistant_dialog():
                         st.caption("LOTUS non ha selezionato gruppi: risposta "
                                    "elaborata dal testo integrale della "
                                    "pagina identificata, recuperata dallo SQLite.")
+                    if item.get("chiamate_llm_effettive") is not None:
+                        st.caption(
+                            "Invii LLM misurati: "+
+                            str(item["chiamate_llm_effettive"])+
+                            " · diretti: "+str(item.get("chiamate_llm_dirette","?"))+
+                            " · LOTUS: "+str(item.get("chiamate_llm_lotus") or 0))
+                    elif item.get("chiamate_llm_stimate") is not None:
+                        st.caption(
+                            "Chiamate LLM stimate (conteggio completo non disponibile): "+
+                            str(item["chiamate_llm_stimate"]))
                     if method=="TAG" and item.get("modalita_selezione"):
                         st.caption(
                             "Selezione TAG: "+str(item["modalita_selezione"])+
                             " · evidenze: "+str(item.get("righe_recuperate","?"))+
-                            " · elementi LOTUS: "+str(item.get("righe_sem_filter","?"))+
-                            " · chiamate LLM stimate (non misurate): "+
-                            str(item.get("chiamate_llm_stimate","?"))
-                        )
+                            " · elementi LOTUS: "+str(item.get("righe_sem_filter","?")))
+                    if method=="TAG" and item.get("sql_first_note_con_centro"):
+                        st.caption(
+                            "SQL-first · note che menzionano la struttura: "+
+                            str(item["sql_first_note_con_centro"])+
+                            " · note candidate per la sintesi: "+
+                            str(item.get("sql_first_note_preselezionate",0)))
 
                     if method=="TAG" and item.get("statistiche_revisione_categoria"):
                         stats=item["statistiche_revisione_categoria"]
@@ -315,6 +337,13 @@ def assistant_dialog():
                         "righe_recuperate":result.get("righe_recuperate"),
                         "righe_sem_filter":result.get("righe_sem_filter"),
                         "chiamate_llm_stimate":result.get("chiamate_llm_stimate"),
+                        "chiamate_llm_effettive":result.get("chiamate_llm_effettive"),
+                        "chiamate_llm_dirette":result.get("chiamate_llm_dirette"),
+                        "chiamate_llm_lotus":result.get("chiamate_llm_lotus"),
+                        "tempo_backend_s":result.get("tempo_backend_s"),
+                        "sql_first_note_con_centro":result.get("sql_first_note_con_centro"),
+                        "sql_first_note_preselezionate":result.get(
+                            "sql_first_note_preselezionate"),
                         "diagnostica_revisione_categoria":result.get(
                             "diagnostica_revisione_categoria",[]),
                         "statistiche_revisione_categoria":result.get(

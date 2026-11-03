@@ -16,8 +16,10 @@ import sqlite3
 import time
 
 from errori_chatbot import EnginePhaseError
+from tesi.contatore_llm import (direct_attempt,instrument_lotus,measured_engine)
 from tesi.recupero_gu import domanda_gu, candidati_gu
 from tesi.recupero_regionale import regional_candidates, categoria
+from tesi.recupero_sql_first import retrieve_category_sql_first
 from tesi.contesto_integrale import contesto_integrale,richiede_sezione_completa,AIC_RE
 from tesi.verifica_completezza_tag import revise_if_needed,enumeration_warning
 from tesi.tag_budget import (selection_mode,semantic_plan,expand_selected,
@@ -532,10 +534,19 @@ def evidence_candidates(db,question,max_rows=18):
         else:
             targets=[target]
         expanded=[]
-        for drug in targets:
-            expanded.extend(regional_candidates(
-                db,question,drug,
-                limit=min(10 if comparison_medicines else 32,max_rows)))
+        if category_question:
+            # SQL FIRST: tutte le note con centro richiesto, poi
+            # preselezione lessicale con indicazione e pagine citabili.
+            expanded,sql_plan=retrieve_category_sql_first(
+                db,question,max_rows=max_rows)
+            if not sql_plan.get("applicabile"):
+                expanded=regional_candidates(
+                    db,question,"",limit=max_rows)
+        else:
+            for drug in targets:
+                expanded.extend(regional_candidates(
+                    db,question,drug,
+                    limit=min(10 if comparison_medicines else 32,max_rows)))
         if expanded:
             for item in expanded:
                 put(item["tipo"],item["chiave"],item["testo"],item["fonte"],
@@ -544,6 +555,14 @@ def evidence_candidates(db,question,max_rows=18):
                     passages=item.get("passaggi_sintesi"),
                     document_count=item.get("copertura_documenti"),
                     documents_truncated=item.get("documenti_troncati",False))
+            if category_question:
+                # Informazione di provenienza SQL per la tracciabilita'.
+                index={x["chiave"]:x for x in expanded}
+                for item in rows:
+                    source=index.get(item["chiave"],{})
+                    if "note_sql_esaminate" in source:
+                        item["note_sql_esaminate"]=source["note_sql_esaminate"]
+                        item["pagine_centro_sql"]=source["pagine_centro_sql"]
             return
         if comparison_medicines and kind=="CENTRI":
             return
@@ -627,6 +646,7 @@ def ask(model,system,payload,*,timeout=40,max_tokens=None):
              "timeout":timeout,"num_retries":0}
     if max_tokens is not None:
         request["max_tokens"]=max_tokens
+    direct_attempt()
     result=_in_phase("connessione LLM",completion,**request)
     usage=getattr(result,"usage",None)
     data={
@@ -686,7 +706,7 @@ def tag(db,question,model):
         question.casefold()))
     region_request=category_question or complete_request or _question_kind(question)=="CENTRI"
     comparison_medicines=_comparison_medicines(db,question)
-    rows=evidence_candidates(db,question,max_rows=32 if category_question else
+    rows=evidence_candidates(db,question,max_rows=180 if category_question else
                              (24 if region_request else 12))
     if not rows:
         return {"risposta":"Informazione non documentata nello snapshot consultato.",
@@ -701,6 +721,7 @@ def tag(db,question,model):
     # ridurre le richieste contemporanee evita burst inutili verso Gemini.
     lm=_in_phase("inizializzazione TAG",LM,model,
                  max_batch_size=2 if category_question else 4)
+    instrument_lotus(lm)
     _in_phase("inizializzazione TAG",lotus.settings.configure,lm=lm,enable_cache=False)
     frame=pd.DataFrame(planned)
     selected=_in_phase("selezione TAG",lambda: sem_filter_controlled(frame,
@@ -936,6 +957,11 @@ def tag(db,question,model):
             "costo_completo":full_cost is not None,
             "righe_sem_filter":len(planned),
             "righe_recuperate":len(rows),
+            "sql_first_note_con_centro":max(
+                (int(r.get("note_sql_esaminate") or 0) for r in rows),
+                default=0),
+            "sql_first_note_preselezionate":sum(
+                1 for r in rows if r.get("note_sql_esaminate") is not None),
             "righe_selezionate_lotus":len(selected_groups),
             "righe_evidenze_da_lotus":len(semantic),
             "modalita_selezione":mode,
@@ -1189,6 +1215,13 @@ def sql_method(db,question,model):
             "risultato_parziale":truncated,
             **total,"costo_completo":total["costo_usd"] is not None,
             **metadata}
+
+
+# Le due pipeline hanno un contatore isolato per interrogazione.
+# Le chiamate LLM dirette sono contate al momento dell'invio; i
+# messaggi LOTUS tramite la sua fase di invio non-cached.
+tag=measured_engine(tag)
+sql_method=measured_engine(sql_method)
 
 
 def main():
