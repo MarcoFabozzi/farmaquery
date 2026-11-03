@@ -18,7 +18,19 @@ CATEGORY_SQL_RULES = (
     "già verificate. Considera note e pagine della Regione Campania: "
     "nello stesso PDF la diagnosi può trovarsi in una pagina diversa dalla "
     "tabella del centro, e un PDF può avere PIÙ indicazioni con tabelle "
-    "differenti. Valuta con EXISTS su pagine della stessa nota sia termini "
+    "differenti. Per quesiti SOLO sulle note regionali, usa prima "
+    "note JOIN pagine, senza JOIN ad aifa_confezioni o ema_medicinali: "
+    "le confezioni AIFA moltiplicano le righe e non attestano i centri. "
+    "Non imporre che patologia e ospedale compaiano nella STESSA pagina: "
+    "filtra le NOTE con due EXISTS distinti, uno per la malattia e "
+    "uno per l'ospedale, e recupera le pagine utili a entrambe. "
+    "Per evitare di saturare LIMIT con una singola nota, usa "
+    "DISTINCT su nota_id e numero_pagina oppure una CTE che scelga "
+    "pagine significative per documento. Non usare p.testo AS patologia: "
+    "p.testo è il testo OCR dell'intera pagina, non una diagnosi. "
+    "Non filtrare nome_file o archivio_url sulla parola Campania: "
+    "la tabella note contiene già le note regionali dello snapshot. "
+    "Valuta con EXISTS su pagine della stessa nota sia termini "
     "di patologia sia il centro richiesto; recupera le pagine testuali "
     "rilevanti per entrambe le condizioni e includi nota_id, numero_pagina, "
     "nome_file, farmaco_candidato e testo per permettere verifica e citazioni. "
@@ -28,6 +40,26 @@ CATEGORY_SQL_RULES = (
     "interpretare la sezione corretta. Usa una sola SELECT di sola lettura "
     "e preferisci una query che recuperi prove piuttosto che conclusioni."
 )
+
+CATEGORY_DIVERSITY_RETRY_RULES = (
+    "La prima SELECT regionale ha prodotto righe ripetute, un risultato "
+    "dominato da pochissime note o un taglio dei risultati. "
+    "Genera una SECONDA SELECT SQLite di sola lettura, autonoma e valida "
+    "che migliori la COPERTURA DOCUMENTALE; non riutilizzare una JOIN "
+    "con aifa_confezioni o altre relazioni uno-a-molti non necessarie. "
+    "Usa note n JOIN pagine p ON p.nota_id=n.id. "
+    "Per verificare una categoria implicita, usa due EXISTS sulla "
+    "stessa n.id, uno per indizi di patologia e uno per la struttura. "
+    "NON aggiungere entrambi questi filtri al WHERE della stessa "
+    "pagina p: la diagnosi e il centro possono essere su pagine diverse. "
+    "Restituisci nota_id, numero_pagina, nome_file, farmaco_candidato "
+    "e testo originale delle pagine citabili; evita duplicati e porta "
+    "evidenze da più note invece di ripetere confezioni di una sola. "
+    "Non dichiarare alcuna autorizzazione nel SQL. "
+    "Una SELECT sola, senza Markdown, LIMIT massimo 80. "
+    "Non copiare l'elenco dei medicinali atteso e non usare fonti esterne."
+)
+
 
 SQL_SYNTAX_REPAIR_RULES = (
     "La query SELECT generata in precedenza NON è stata eseguita: "

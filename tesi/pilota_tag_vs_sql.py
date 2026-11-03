@@ -22,7 +22,8 @@ from tesi.contesto_integrale import contesto_integrale,richiede_sezione_completa
 from tesi.verifica_completezza_tag import revise_if_needed,enumeration_warning
 from tesi.sql_category_support import (category_sql_context,
                                       select_generation_guidance,CATEGORY_RETRY_RULES,
-                                      SQL_SYNTAX_REPAIR_RULES)
+                                      SQL_SYNTAX_REPAIR_RULES,
+                                      CATEGORY_DIVERSITY_RETRY_RULES)
 from tesi.tag_budget import (selection_mode,semantic_plan,expand_selected,
                              sem_filter_controlled,preserve_category_recall)
 from tesi.sintesi_tag import (CATEGORY_SYSTEM, compact_category_evidence,
@@ -874,14 +875,72 @@ def _sql_context(raw):
     return output,cut
 
 
-def _execute_generated_select(db,sql):
+def _balanced_category_rows(records):
+    """Riduce la moltiplicazione dovuta a JOIN 1:N e alterna le note.
+
+    Per una domanda sulle note regionali l'unità documentale è la pagina
+    (nota_id, numero_pagina), non la confezione AIFA. Nessun nome di
+    medicinale o autorizzazione viene dedotto durante questa operazione.
+    """
+    groups={}
+    seen=set()
+    duplicates=0
+    for item in records:
+        row=dict(item)
+        note=str(row.get("nota_id") or row.get("nome_file") or
+                 row.get("medicinale") or "NON_IDENTIFICATA")
+        page=row.get("numero_pagina")
+        if row.get("nota_id") is not None and page is not None:
+            key=("REGIONE",str(row["nota_id"]),str(page))
+        else:
+            key=("RIGA",json.dumps(row,sort_keys=True,ensure_ascii=False,
+                                   default=str))
+        if key in seen:
+            duplicates+=1
+            continue
+        seen.add(key)
+        groups.setdefault(note,[]).append(row)
+    balanced=[]
+    while any(groups.values()):
+        for group in groups.values():
+            if group:
+                balanced.append(group.pop(0))
+    return balanced,duplicates
+
+
+def _category_note_count(rows):
+    return len({str(row.get("nota_id") or row.get("nome_file") or
+                    row.get("medicinale") or "")
+                for row in rows if row})
+
+
+def _needs_category_coverage_retry(sql,rows,truncated):
+    if not rows:
+        return False
+    docs=_category_note_count(rows)
+    # Una ricerca dominata da una singola nota non può essere
+    # considerata esaustiva se ha esaurito il limite o usa una JOIN
+    # che moltiplica le confezioni. Non forziamo sempre il retry.
+    repeated_join=bool(re.search(
+        r"\bJOIN\s+aifa_confezioni\b",sql,re.I))
+    return docs<=2 and (truncated or repeated_join)
+
+
+def _combine_category_context(first,second):
+    combined,_=_balanced_category_rows([*first,*second])
+    return _sql_context(combined)
+
+
+def _execute_generated_select(db,sql,category=False):
     """Esegue una SELECT validata con gli stessi limiti per tutti i tentativi."""
     start=time.monotonic()
     db.set_progress_handler(lambda:1 if time.monotonic()-start>12 else 0,10000)
     try:
         raw=_in_phase("esecuzione SQL",
                       lambda:db.execute(sql).fetchmany(SQL_ROW_LIMIT+1))
-        rows,context_cut=_sql_context(raw[:SQL_ROW_LIMIT])
+        selected=( _balanced_category_rows(raw[:SQL_ROW_LIMIT])[0]
+                   if category else raw[:SQL_ROW_LIMIT])
+        rows,context_cut=_sql_context(selected)
         query_limit=_limit_from_sql(sql)
         truncated=(len(raw)>SQL_ROW_LIMIT or context_cut or
                    (query_limit is not None and len(raw)>=query_limit))
@@ -921,7 +980,7 @@ def sql_method(db,question,model):
         syntax_repair=True
 
     first_sql=sql
-    rows,truncated=_execute_generated_select(db,sql)
+    rows,truncated=_execute_generated_select(db,sql,category=bool(category_context))
     zero_row_retry=False
 
     if category_context and not rows:
@@ -941,12 +1000,65 @@ def sql_method(db,question,model):
         zero_row_retry=True
         first=_accumulate(first,retry_usage)
         sql=revised
-        rows,truncated=_execute_generated_select(db,sql)
+        rows,truncated=_execute_generated_select(db,sql,category=bool(category_context))
+
+    # Un risultato non vuoto può essere comunque dominato da ripetizioni
+    # di una sola nota; una seconda SELECT, sempre generata dal modello,
+    # cerca una maggiore varietà documentale. Le evidenze restano distinte.
+    coverage_retry=False
+    coverage_retry_status="non_necessario"
+    sql_evidence_queries=[sql]
+    if (category_context and rows and
+            _needs_category_coverage_retry(sql,rows,truncated)):
+        coverage_retry=True
+        previous_sql=sql
+        retry_payload={
+            "schema":SCHEMA,
+            "domanda":question,
+            "contesto_categoria":category_context,
+            "query_precedente_con_copertura_limitata":previous_sql,
+            "note_distinte_prima_riprova":_category_note_count(rows),
+            "risultato_troncato":truncated
+        }
+        try:
+            alternative_sql_raw,extra_usage=_in_phase(
+                "miglioramento copertura SQL",ask,model,
+                CATEGORY_DIVERSITY_RETRY_RULES,retry_payload)
+            attempts+=1
+            first=_accumulate(first,extra_usage)
+            alternative_sql=_in_phase(
+                "validazione SQL",validate_sql,alternative_sql_raw)
+            other_rows,other_cut=_execute_generated_select(
+                db,alternative_sql,category=True)
+            sql_evidence_queries.append(alternative_sql)
+            if other_rows:
+                previous_count=_category_note_count(rows)
+                merged,merge_cut=_combine_category_context(rows,other_rows)
+                rows=merged
+                # Anche la prima SELECT può essere stata troncata: non
+                # nascondere il limite dopo aver unito più query.
+                truncated=truncated or other_cut or merge_cut
+                sql=alternative_sql
+                coverage_retry_status=(
+                    "nuove_note" if _category_note_count(rows)>previous_count
+                    else "nessuna_nuova_nota")
+            else:
+                coverage_retry_status="seconda_query_senza_righe"
+        except EnginePhaseError as exc:
+            # La seconda query è facoltativa: se il modello fallisce o
+            # genera SQL vietato, conserva la prima SELECT già validata.
+            coverage_retry_status="rifiutata_o_non_eseguibile"
+            if exc.phase=="miglioramento copertura SQL":
+                attempts+=1
 
     citations=_sql_sources(db,rows)
     metadata={"sql_tentativi":attempts,
-              "sql_iniziale":first_sql if zero_row_retry else None,
+              "sql_iniziale":first_sql if zero_row_retry or coverage_retry else None,
               "sql_correzione_sintassi":syntax_repair,
+              "sql_riprova_copertura":coverage_retry,
+              "sql_esito_riprova_copertura":coverage_retry_status,
+              "sql_query_fonti":sql_evidence_queries,
+              "note_distinte_sql":_category_note_count(rows) if category_context else None,
               "categoria_implicita":bool(category_context)}
     if not rows:
         # Zero righe NON equivale ad assenza documentale: può essere un
@@ -975,9 +1087,13 @@ def sql_method(db,question,model):
         "non certifica l'autorizzazione. "
         "Se mancano dati o evidenze, scrivi 'non documentato nello snapshot'. "
         "Non inventare citazioni; se i risultati sono parziali "
-        "non dichiarare una lista completa.",
+        "non dichiarare una lista completa. Se più SELECT concorrono "
+        "alle evidenze, esamina tutte le note senza considerare i "
+        "candidati automaticamente autorizzati.",
         {"domanda":question,"righe_sql":rows,"fonti_recuperate":citations,
-         "righe_limite":SQL_ROW_LIMIT,"risultati_parziali":truncated})
+         "righe_limite":SQL_ROW_LIMIT,"risultati_parziali":truncated,
+         "note_distinte":metadata["note_distinte_sql"],
+         "query_eseguite":sql_evidence_queries})
     total=_accumulate(first,second)
     if truncated:
         answer+=("\n\nAvvertenza: risultati SQL parziali per limite di "
