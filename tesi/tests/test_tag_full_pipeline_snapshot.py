@@ -66,6 +66,26 @@ class TagFullPipelineSnapshotTests(unittest.TestCase):
                 result=engine.tag(db,question,"mock-model")
         return result,captured
 
+
+    def test_diagnosi_copertura_neuromuscolari(self):
+        from tesi.sintesi_tag import compact_category_evidence
+        question=("Quali medicinali citati nelle note regionali della "
+                  "Campania per malattie neuromuscolari prevedono la "
+                  "prescrizione presso l'AOU Federico II? Per ciascuno "
+                  "indica medicinale, patologia, indicazione e pagina "
+                  "della nota.")
+        with closing(sqlite3.connect(self.dbfile)) as db:
+            db.row_factory=sqlite3.Row
+            rows=engine.evidence_candidates(db,question,max_rows=22)
+        print("CATEGORY-DIAG NUM",len(rows),flush=True)
+        compact=compact_category_evidence(rows)
+        for r,c in zip(rows,compact):
+            print("CATEGORY-DIAG",r["chiave"],
+                  [p["pagina"] for p in c["passaggi"]],
+                  str(r.get("testo"))[:115].replace("\\n"," "),
+                  flush=True)
+            if "ULTOMIRIS" in str(r.get("testo","")).upper():
+                print("CATEGORY-ULTOMIRIS-EVIDENCE",str(c)[:3000],flush=True)
     def test_wegovy_non_pubblica_cinque_come_elenco_completo(self):
         question=("Quante confezioni di WEGOVY sono presenti nell'articolo 1 "
                   "della determina 23A02767? Riporta tutti gli AIC, "
