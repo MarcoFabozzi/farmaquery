@@ -30,6 +30,16 @@ class DiagnoseCoverage(unittest.TestCase):
                     print("DIAGNOSI_TERM",term,
                           [i+1 for i,c in enumerate(all_found) if term.casefold() in c["testo"].casefold()],
                           [i+1 for i,c in enumerate(normal) if term.casefold() in c["testo"].casefold()])
+                for fname in ("HYQVIA CIDP.pdf","GAMTEN.pdf"):
+                    source=db.execute("SELECT id FROM note WHERE nome_file=?",(fname,)).fetchone()
+                    if source is None:
+                        print("DIAGNOSI_PDF_ASSENTE",fname)
+                        continue
+                    for p in db.execute("SELECT numero_pagina,testo FROM pagine "
+                                        "WHERE nota_id=? ORDER BY numero_pagina",
+                                        (source["id"],)):
+                        print("DIAGNOSI_DOC_PAGINA",fname,p["numero_pagina"],
+                              " ".join((p["testo"] or "").split())[:5500])
                 self.assertTrue(normal)
 
 if __name__ == "__main__":
