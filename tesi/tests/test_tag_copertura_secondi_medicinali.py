@@ -15,7 +15,7 @@ from tesi.pilota_tag_vs_sql import evidence_candidates
 from tesi.sintesi_tag import (
     compact_category_evidence,secondary_medicine_candidates,
     missing_category_candidates,expand_review_pages,
-    _candidate_short_name,
+    revise_category_if_needed,_candidate_short_name,
 )
 from tesi.revisione_categoria import verified_additions
 
@@ -78,6 +78,36 @@ class CandidateReviewOnSnapshot(unittest.TestCase):
         result=missing_category_candidates(
             "Medicinale: HYQVIA\n- Patologia: CIDP",secondary)
         self.assertIn("HIZENTRA",{_candidate_short_name(d) for d in result})
+
+    def test_review_queue_covers_missing_primary_and_secondary(self):
+        """Una risposta iniziale con gli 11 nomi non salta l'ultima nota."""
+        answer="\n".join("Medicinale: "+name for name in (
+            "KIOVIG","SOLIRIS","HYQVIA","EVRYSDI","AGAMREE",
+            "DUVYZAT","ZILBRYSQ","ULTOMIRIS","VYVGART",
+            "AMVUTTRA","WAINZUA"))
+        with closing(sqlite3.connect(self.sqlite)) as db:
+            db.row_factory=sqlite3.Row
+            docs=self._documents(db)
+            expanded=expand_review_pages(db,QUESTION,answer,docs,
+                                         max_docs=8)
+            expanded.extend(secondary_medicine_candidates(db,QUESTION,docs))
+            missing=missing_category_candidates(answer,expanded)
+        names=[_candidate_short_name(doc) for doc in missing]
+        self.assertIn("HIZENTRA",names)
+        self.assertIn("GAMTEN",names)
+        calls=[]
+        def fake_llm(model,prompt,payload,**kwargs):
+            candidate=payload["documenti_candidati_non_elencati"][0]
+            calls.append(candidate["medicinale_candidato"])
+            return '{"nuove_voci":[]}',{
+                "token_input":10,"token_output":5,"costo_usd":0.0}
+        answer2,usage,changed,missed=revise_category_if_needed(
+            "mock",QUESTION,answer,expanded,fake_llm,max_checks=6)
+        self.assertIn("HIZENTRA",calls)
+        self.assertIn("GAMTEN",calls)
+        self.assertEqual(calls[0],"HIZENTRA")
+        self.assertFalse(changed, "Una proposta LLM vuota non aggiunge fatti")
+        self.assertEqual(answer2,answer)
 
     def test_verified_positive_examples_use_exact_source_pages(self):
         with closing(sqlite3.connect(self.sqlite)) as db:
