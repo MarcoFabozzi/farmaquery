@@ -106,8 +106,9 @@ class CandidateReviewOnSnapshot(unittest.TestCase):
         self.assertIn("HIZENTRA",calls)
         self.assertIn("GAMTEN",calls)
         self.assertEqual(calls[0],"HIZENTRA")
-        self.assertFalse(changed, "Una proposta LLM vuota non aggiunge fatti")
-        self.assertEqual(answer2,answer)
+        self.assertTrue(changed, "Il flag segnala che il riesame è stato eseguito")
+        self.assertEqual(answer2,answer,
+                         "Una proposta LLM vuota non aggiunge fatti")
 
     def test_verified_positive_examples_use_exact_source_pages(self):
         with closing(sqlite3.connect(self.sqlite)) as db:
