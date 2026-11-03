@@ -1,0 +1,5 @@
+id;categoria;domanda;stato_validazione
+D01;SEMPLICE;Secondo la nota regionale PLUVICTO del 18 aprile 2025, quali centri risultano individuati per la prescrizione o somministrazione? Indica i requisiti e le pagine.;DA_VERIFICARE
+D02;SEMANTICA;Quali medicinali citati nelle note regionali della Campania per patologie neuromuscolari risultano collegati all'AOU Federico II? Indica il farmaco, la patologia e la fonte con pagina.;DA_VERIFICARE
+D03;RIMANDI;Nella nota CAMZYOS Prot. N.0641382/2025 quale nota viene annullata e sostituita e quale nota e soltanto richiamata? Distingui esplicitamente i due rapporti e le pagine.;DA_VERIFICARE
+D04;NEGATIVA;Nello snapshot del 2 novembre 2026 la nota PLUVICTO documenta la data di effettiva attivazione su SINFONIA per ciascuno dei cinque centri? Se non e documentata, non inventare date.;DA_VERIFICARE
