@@ -142,6 +142,7 @@ class StandardSqlTests(unittest.TestCase):
                 sql_method(self.db,"Quali note?","mock")
         self.assertEqual(llm.call_count,1)
         self.assertEqual(err.exception.phase,"esecuzione SQL")
+        self.assertEqual(err.exception.sql,"SELECT colonna_assente FROM note")
 
 
 if __name__=="__main__":
