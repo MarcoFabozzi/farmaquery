@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from contextlib import closing
 from hashlib import sha256
+import gzip
+import shutil
 import sqlite3
 import json
 import os
@@ -44,33 +46,67 @@ CACHE_CODE_SOURCES=(
 )
 
 
-def _static_paths(environ=None):
-    """Modalita' fissa: due file espliciti, senza fallback sugli aggiornamenti."""
+def _static_paths(environ=None,root=ROOT):
+    """Prima snapshot fisso esplicito, poi copia distribuita con il codice."""
     environ=os.environ if environ is None else environ
     db=str(environ.get("FARMAQUERY_STATIC_DB_PATH") or "").strip()
     manifest=str(environ.get("FARMAQUERY_STATIC_MANIFEST_PATH") or "").strip()
     if bool(db)!=bool(manifest):
         raise ValueError("Imposta sia FARMAQUERY_STATIC_DB_PATH sia "
                          "FARMAQUERY_STATIC_MANIFEST_PATH")
-    return (Path(db).expanduser().resolve(),
-            Path(manifest).expanduser().resolve()) if db else None
+    if db:
+        return Path(db).expanduser().resolve(),Path(manifest).expanduser().resolve()
+    # Evita che i test con un root temporaneo ereditino la copia pubblica.
+    if Path(root).resolve()!=ROOT.resolve():
+        return None
+    fixed=ROOT/"risultati"/"tesi_statico_v2.sqlite.gz"
+    info=ROOT/"risultati"/"tesi_statico_v2.json"
+    if fixed.exists()!=info.exists():
+        raise ValueError("Fotografia statica incompleta: manca SQLite o manifesto")
+    return (fixed,info) if fixed.is_file() and info.is_file() else None
 
 
-def _verified_static_snapshot(db,manifest):
-    """Verifica la copia statica prima di offrirla a entrambi i motori."""
-    if not db.is_file() or not manifest.is_file():
+def _file_digest(path):
+    digest=sha256()
+    with Path(path).open("rb") as stream:
+        for block in iter(lambda:stream.read(1024*1024),b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _verified_static_snapshot(source,manifest):
+    """Non usa fonti online: verifica hash del binario, schema ed integrita."""
+    if not source.is_file() or not manifest.is_file():
         raise FileNotFoundError("Snapshot statico o relativo manifesto assenti")
     meta=json.loads(manifest.read_text(encoding="utf-8"))
     expected=meta.get("sha256_sqlite")
     if not expected:
         raise ValueError("Manifesto statico senza sha256_sqlite")
-    h=sha256()
-    with db.open("rb") as reader:
-        for block in iter(lambda:reader.read(1024*1024),b""):
-            h.update(block)
-    if h.hexdigest()!=expected:
-        raise ValueError("Snapshot statico diverso dal manifesto; nessuna "
-                         "ricostruzione automatica dalle fonti online")
+    if source.suffix.lower()==".gz":
+        packed_sha=meta.get("sha256_gzip")
+        if not packed_sha or _file_digest(source)!=packed_sha:
+            raise ValueError("Archivio compresso statico diverso dal manifesto")
+        folder=Path(tempfile.mkdtemp(prefix="farmaquery_static_"))
+        db=folder/"fotografia_statica.sqlite"
+        try:
+            total=0
+            digest=sha256()
+            with gzip.open(source,"rb") as packed,db.open("wb") as out:
+                while block:=packed.read(1024*1024):
+                    total+=len(block)
+                    if total>90_000_000:
+                        raise ValueError("Snapshot SQLite statico troppo grande")
+                    out.write(block)
+                    digest.update(block)
+            if digest.hexdigest()!=expected:
+                raise ValueError("SQLite statico diverso dal manifesto")
+        except Exception:
+            db.unlink(missing_ok=True)
+            raise
+    else:
+        db=source
+        if _file_digest(db)!=expected:
+            raise ValueError("Snapshot statico diverso dal manifesto")
     with sqlite3.connect(db.as_uri()+"?mode=ro",uri=True) as con:
         con.execute("PRAGMA query_only=ON")
         if con.execute("PRAGMA integrity_check").fetchone()[0]!="ok":
@@ -81,63 +117,26 @@ def _verified_static_snapshot(db,manifest):
             "SELECT name FROM sqlite_master WHERE type='table'")}
         if not necessary<=found:
             raise ValueError("Database statico privo di tabelle richieste")
-    return meta
-
-
-def _bundled_static(root):
-    """Se il manifesto è presente, vieta ogni fallback su fonti aggiornate."""
-    archive,manifest=(Path(root)/name for name in BUNDLED_STATIC)
-    if not archive.exists() and not manifest.exists():
-        return None
-    if not archive.is_file() or not manifest.is_file():
-        raise FileNotFoundError("Bundle statico della tesi incompleto")
-    return archive,manifest
+    return db,meta
 
 
 def snapshot_version(root=ROOT):
-    """La cache usa la fotografia fissa; non mescola versioni dei dati."""
-    paths=_static_paths()
+    """La cache usa la fotografia statica se presente, senza sorgenti online."""
+    paths=_static_paths(root=root)
     if paths is not None:
         return tuple((str(path),path.stat().st_mtime_ns,path.stat().st_size)
                      for path in paths)
-    frozen=_bundled_static(root)
-    if frozen is not None:
-        return tuple((str(path),path.stat().st_mtime_ns,path.stat().st_size)
-                     for path in frozen+CACHE_CODE_SOURCES_PATHS(root))
     base=Path(root)
     relevant=REQUIRED+CACHE_CODE_SOURCES
     return tuple((name,(base/name).stat().st_mtime_ns,
                   (base/name).stat().st_size) for name in relevant)
 
 
-def CACHE_CODE_SOURCES_PATHS(root):
-    return tuple(Path(root)/name for name in CACHE_CODE_SOURCES)
-
-
 def prepare_snapshot(root=ROOT):
-    """Preferisce SQLite statico incluso nella demo, verificando SHA-256."""
-    paths=_static_paths()
+    """Sceglie la copia congelata se presente; altrimenti retrocompatibilità."""
+    paths=_static_paths(root=root)
     if paths is not None:
-        database,manifest=paths
-        return database,_verified_static_snapshot(database,manifest)
-    frozen=_bundled_static(root)
-    if frozen is not None:
-        import gzip
-        archive,manifest=frozen
-        folder=Path(tempfile.mkdtemp(prefix="farmaquery_tesi_fissa_"))
-        db=folder/"tesi_statico_20261102.sqlite"
-        try:
-            total=0
-            with gzip.open(archive,"rb") as source,db.open("wb") as dest:
-                while block:=source.read(1024*1024):
-                    total+=len(block)
-                    if total>100_000_000:
-                        raise ValueError("Snapshot tesi oltre limite")
-                    dest.write(block)
-            return db,_verified_static_snapshot(db,manifest)
-        except Exception:
-            db.unlink(missing_ok=True)
-            raise
+        return _verified_static_snapshot(*paths)
     from tesi.prepara_snapshot_online import build_snapshot
     folder=Path(tempfile.mkdtemp(prefix="farmaquery_chat_"))
     db=folder/"esperimento_online.sqlite"
