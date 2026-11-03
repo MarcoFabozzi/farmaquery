@@ -37,6 +37,13 @@ CATEGORY_SYSTEM = (
     "finestre estratte, non prove automatiche: verifica il collegamento "
     "nel contenuto originale. Non escludere un medicinale solo perché "
     "una sua altra indicazione non soddisfa la domanda. "
+    "Prima di scrivere la risposta, controlla ogni documento candidato " 
+    "uno per uno, anche il primo, e verifica separatamente la pagina " 
+    "con la specifica indicazione e la riga del centro. " 
+    "Ogni caso positivo deve avere una propria voce che inizi con " 
+    "'Medicinale: NOME', seguita da indicazione e fonte/pagina. " 
+    "Una semplice menzione del farmaco in una nota finale non equivale " 
+    "a includerlo tra i risultati verificati. " 
     "Un elenco fondato su documenti candidati non è necessariamente "
     "esaustivo; segnala la copertura parziale. "
     "Se nessun caso è dimostrabile, scrivi che la relazione "
@@ -95,3 +102,91 @@ def compact_category_evidence(rows, per_page_chars=790, per_doc_chars=2370):
             "documenti_troncati":bool(row.get("documenti_troncati",False))
         })
     return out
+
+
+# Il controllo di copertura considera i nomi indicati dai DOCUMENTI dello
+# snapshot, non una lista gold. I nomi sono CANDIDATI: il LLM deve ancora
+# stabilire se l'indicazione e il centro siano davvero collegati.
+def _candidate_short_name(doc):
+    header=str(doc.get("documento_e_medicinale_candidato") or "")
+    match=re.search(r"farmaco candidato:\s*([^;]+)",header,re.I)
+    if not match:
+        return ""
+    pieces=re.findall(r"[A-Za-zÀ-ÿ0-9][A-Za-zÀ-ÿ0-9_-]*",match.group(1))
+    if not pieces:
+        return ""
+    name=pieces[0]
+    if len(name)<4 or name.casefold() in ("farmaco","medicinale","nessuno"):
+        return ""
+    return name
+
+
+def _candidate_listed(answer,name):
+    """Il nome nelle note a margine NON è una voce positiva dell'elenco."""
+    pattern=(r"(?im)^\\s*(?:[-*]\\s*)?(?:\\d+[.)]\\s*)?"
+             r"(?:\\*\\*)?(?:medicinale\\s*:\\s*)?(?:\\*\\*)?"
+             +re.escape(name)+r"\\b")
+    return bool(re.search(pattern,str(answer)))
+
+
+def missing_category_candidates(answer,compact):
+    """Candidati non elencati: indizi per revisione, non errori certi."""
+    misses=[]
+    seen=set()
+    for doc in compact:
+        name=_candidate_short_name(doc)
+        if not name or name.casefold() in seen:
+            continue
+        seen.add(name.casefold())
+        if not _candidate_listed(answer,name):
+            misses.append(doc)
+    return misses
+
+
+def revise_category_if_needed(model,question,answer,compact,ask_fn):
+    """Riesamina i documenti omessi senza promuovere candidati a risultati.
+
+    Esegue al massimo UNA chiamata supplementare; nessun nome, patologia o
+    autorizzazione è precodificato come fatto. Una seconda risposta non deve
+    perdere i medicinali già elencati nella prima.
+    """
+    missing=missing_category_candidates(answer,compact)
+    if not missing:
+        return answer,None,False,[]
+    originally_listed={_candidate_short_name(doc).casefold()
+                       for doc in compact
+                       if _candidate_short_name(doc) and
+                       _candidate_listed(answer,_candidate_short_name(doc))}
+    context={
+        "domanda":question,
+        "prima_risposta_da_ricontrollare":answer,
+        "documenti_candidati_non_elencati":missing,
+        "documenti_gia_considerati":compact,
+        "avviso":"Documenti candidati NON equivalgono a prescrizioni provate. "
+                 "Si devono verificare indicazione, centro e pagina insieme.",
+    }
+    revised,usage=ask_fn(
+        model,
+        "Rileggi OGNI documento candidato non elencato nella prima "
+        "risposta. La sua presenza è solo un indizio di recupero, non "
+        "dimostra che il medicinale sia pertinente. Per ciascuno verifica "
+        "se una specifica sezione per la patologia richiesta individua "
+        "esplicitamente il centro richiesto, distinguendo altre indicazioni "
+        "e tabelle. Non trasferire centri fra indicazioni e non aggiungere "
+        "voci incerte. Se una nuova associazione è dimostrata, integra "
+        "l'elenco, citando la pagina pertinente. Conserva le voci della "
+        "prima risposta già fondate sulle fonti. Riformula la risposta "
+        "INTERA in italiano: ogni caso positivo deve iniziare su una nuova "
+        "riga con 'Medicinale: NOME'. Se non emergono casi aggiuntivi, "
+        "mantieni la risposta senza presentarli come positivi. "
+        "Non usare fonti esterne o risposte gold.",
+        context,timeout=CATEGORY_RESPONSE_TIMEOUT_SECONDS,max_tokens=1900
+    )
+    names_after={_candidate_short_name(doc).casefold()
+                 for doc in compact
+                 if _candidate_short_name(doc) and
+                 _candidate_listed(revised,_candidate_short_name(doc))}
+    if revised and originally_listed.issubset(names_after) and (
+        names_after-originally_listed):
+        answer=revised
+    return answer,usage,True,[ _candidate_short_name(d) for d in missing ]
