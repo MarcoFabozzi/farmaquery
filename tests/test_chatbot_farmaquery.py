@@ -2,6 +2,9 @@
 import os
 from pathlib import Path
 import tempfile
+import json
+import hashlib
+import sqlite3
 import unittest
 from unittest.mock import patch
 
@@ -46,6 +49,60 @@ class ChatbotTests(unittest.TestCase):
             (root/"tesi/sintesi_tag.py").write_text(
                 "new version",encoding="utf-8")
             self.assertNotEqual(version2,chat.snapshot_version(root))
+
+    def test_snapshot_statico_usato_per_entrambe_le_tecniche(self):
+        with tempfile.TemporaryDirectory() as td:
+            folder=Path(td)
+            db=folder/"statico.sqlite"
+            manifest=folder/"manifest.json"
+            with sqlite3.connect(db) as con:
+                for table in ("note","pagine","aifa_confezioni",
+                              "ema_medicinali","strutture_registri",
+                              "nota_centro_documentato"):
+                    con.execute(f"CREATE TABLE {table}(id INTEGER)")
+            digest=hashlib.sha256(db.read_bytes()).hexdigest()
+            manifest.write_text(json.dumps({"sha256_sqlite":digest}),
+                                encoding="utf-8")
+            config={"FARMAQUERY_STATIC_DB_PATH":str(db),
+                    "FARMAQUERY_STATIC_MANIFEST_PATH":str(manifest)}
+            with patch.dict(os.environ,config), \
+                 patch("tesi.pilota_tag_vs_sql.tag",
+                       return_value={"risposta":"TAG"}) as tag, \
+                 patch("tesi.pilota_tag_vs_sql.sql_method",
+                       return_value={"risposta":"SQL"}) as sql:
+                selected,meta=chat.prepare_snapshot()
+                self.assertEqual(selected,db.resolve())
+                self.assertEqual(meta["sha256_sqlite"],digest)
+                version=chat.snapshot_version()
+                self.assertTrue(version)
+                self.assertEqual(chat.answer_question(selected,"Domanda",
+                                 "TAG","mock")["risposta"],"TAG")
+                self.assertEqual(chat.answer_question(selected,"Domanda",
+                                 "Text-to-SQL","mock")["risposta"],"SQL")
+                tag.assert_called_once()
+                sql.assert_called_once()
+                # Nessun motore altera lo SQLite.
+                self.assertEqual(hashlib.sha256(db.read_bytes()).hexdigest(),digest)
+
+    def test_snapshot_statico_non_fa_fallback_su_hash_errato(self):
+        with tempfile.TemporaryDirectory() as td:
+            folder=Path(td)
+            db=folder/"statico.sqlite"
+            manifest=folder/"manifest.json"
+            db.write_bytes(b"non coincide")
+            manifest.write_text(json.dumps({"sha256_sqlite":"a"*64}),
+                                encoding="utf-8")
+            with patch.dict(os.environ,{
+                "FARMAQUERY_STATIC_DB_PATH":str(db),
+                "FARMAQUERY_STATIC_MANIFEST_PATH":str(manifest)}):
+                with self.assertRaisesRegex(ValueError,"diverso"):
+                    chat.prepare_snapshot()
+
+    def test_modalita_statica_richiede_entrambi_i_percorsi(self):
+        with patch.dict(os.environ,{"FARMAQUERY_STATIC_DB_PATH":"file.sqlite",
+                                     "FARMAQUERY_STATIC_MANIFEST_PATH":""}):
+            with self.assertRaisesRegex(ValueError,"sia"):
+                chat.prepare_snapshot()
 
     def test_model_and_secret_from_server_only(self):
         model=chat.model_from_settings(

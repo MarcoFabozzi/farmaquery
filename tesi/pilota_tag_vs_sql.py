@@ -51,10 +51,33 @@ nota_id e numero_pagina per le note (con join su pagine).
 Per GU includi gu_codice (alias del codice) o documento_id. I testi GU
 possono essere parziali e richiedono validazione documentale."""
 
+STATIC_SCHEMA_EXTRA = """Tabelle aggiuntive presenti SOLO nello snapshot statico:
+nota_metadati_revisionati(nota_id, protocollo, data_nota, determina_aifa, principio_attivo, indicazione, pagina_evidenza, stato, metodo) -- dati verificati/estratti, distinguere stato
+nota_centro_documentato(id, nota_id, centro, indicazione, numero_pagina, ancora_testuale, fonte_percorso_zip, stato) -- solo le note revisionate
+nota_aifa_corrispondenze(nota_id, aic, principio_attivo_aifa, tipo, stato) -- match nominali candidati o AIC espliciti
+nota_struttura_aifa_corrispondenze(nota_centro_id, struttura_registro_id, stato, spiegazione) -- NON prova abilitazione
+nota_rimando_revisionato(nota_id, numero_pagina, protocollo_richiamato, rapporto, frase, stato)
+revisione_relazioni_manuale_v2(relazione_id, nota_id, pagina, estratto_evidenza, richiamo_autorizzativo, esito, metodo, osservazioni)
+revisione_collegamenti_aifa_v2(relazione_id, stato, nota)
+Le corrispondenze nominali con AIFA non certificano un'autorizzazione vigente.
+La verifica su TESTO estratto non equivale a verifica visiva del PDF."""
+
+def _sql_schema(db):
+    """Descrive solo tabelle esistenti, senza suggerimenti semantici o query."""
+    rows={r[0] for r in db.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'")}
+    return SCHEMA+("\n"+STATIC_SCHEMA_EXTRA if
+                   {"nota_centro_documentato",
+                    "revisione_relazioni_manuale_v2"}<=rows else "")
+
 ALLOWED = {"aifa_confezioni","ema_medicinali","note","pagine",
            "strutture_registri","centri_candidati","rimandi_candidati",
            "fonti_snapshot","pagine_fts","gu_atti","gu_documenti",
-           "gu_segmenti","gu_segmenti_fts"}
+           "gu_segmenti","gu_segmenti_fts",
+           "nota_metadati_revisionati","nota_centro_documentato",
+           "nota_aifa_corrispondenze","nota_struttura_aifa_corrispondenze",
+           "nota_rimando_revisionato","revisione_relazioni_manuale_v2",
+           "revisione_collegamenti_aifa_v2"}
 STOP = {"quali","quale","quali","della","delle","nelle","degli","sono",
         "questa","questo","regione","campania","farmaco","farmaci",
         "medicinale","medicinali","centri","centro","prescrive",
@@ -927,7 +950,7 @@ def sql_method(db,question,model):
     """
     generated,first=_in_phase(
         "generazione SQL",ask,model,SQL_GENERATION_PROMPT,
-        {"schema":SCHEMA,"domanda":question})
+        {"schema":_sql_schema(db),"domanda":question})
     sql=_in_phase("validazione SQL",validate_sql,generated)
     rows,truncated=_execute_generated_select(db,sql)
     citations=_sql_sources(db,rows)
