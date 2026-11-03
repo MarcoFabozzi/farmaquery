@@ -184,6 +184,38 @@ class TagFullPipelineSnapshotTests(unittest.TestCase):
         self.assertEqual(audit[-1]["esito"],"accettato_con_ancore")
         self.assertIn("pagina 3",additions[0])
 
+    def test_sql_note_regionali_reali_non_conclude_assenza_da_limit(self):
+        # Regressione sullo snapshot di FarmaQuery (non gold di farmaci).
+        # La query è un caso di test del Text-to-SQL: l'app continua a
+        # generare le SELECT soltanto tramite il suo modello.
+        question=("Quali medicinali citati nelle note della Campania "
+                  "per malattie neuromuscolari sono prescrivibili "
+                  "presso l'AOU Federico II?")
+        query=(
+            "SELECT DISTINCT n.id AS nota_id,p.numero_pagina,"
+            "n.nome_file,n.farmaco_candidato AS medicinale,p.testo "
+            "FROM note AS n JOIN pagine AS p ON p.nota_id=n.id "
+            "WHERE EXISTS(SELECT 1 FROM pagine AS i "
+            "WHERE i.nota_id=n.id AND "
+            "(i.testo LIKE '%miastenia%' OR i.testo LIKE '%spinale%' "
+            "OR i.testo LIKE '%distrofia%' OR i.testo LIKE '%muscolare%')) "
+            "AND EXISTS(SELECT 1 FROM pagine AS c "
+            "WHERE c.nota_id=n.id AND c.testo LIKE '%Federico II%') "
+            "LIMIT 80"
+        )
+        with closing(sqlite3.connect(self.dbfile)) as db:
+            db.row_factory=sqlite3.Row
+            validated=engine.validate_sql(query)
+            rows,truncated=engine._execute_generated_select(
+                db,validated,category=True,question=question)
+        self.assertTrue(rows)
+        self.assertTrue(truncated)
+        self.assertGreater(engine._category_note_count(rows),0)
+        self.assertTrue(engine._needs_category_coverage_retry(
+            validated,rows,truncated))
+        self.assertTrue(engine._absolute_negative_on_partial_sql(
+            "Non sono presenti medicinali.",rows,truncated,True))
+
     def test_wegovy_non_pubblica_cinque_come_elenco_completo(self):
         question=("Quante confezioni di WEGOVY sono presenti nell'articolo 1 "
                   "della determina 23A02767? Riporta tutti gli AIC, "
