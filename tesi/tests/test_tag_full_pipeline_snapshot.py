@@ -147,6 +147,43 @@ class TagFullPipelineSnapshotTests(unittest.TestCase):
         self.assertTrue(any("ULTOMIRIS" in c for c in
                             result["candidati_categoria_da_ricontrollare"]))
 
+    def test_ultomiris_stesso_snapshot_ancora_centro_esteso(self):
+        # Il PDF originale usa una denominazione ospedaliera estesa:
+        # una citazione abbreviata del LLM non equivale a fonte assente.
+        from tesi.sintesi_tag import (
+            compact_category_evidence,expand_review_pages,_candidate_short_name)
+        from tesi.revisione_categoria import verified_additions
+        q=("Quali medicinali per malattie neuromuscolari prevedono "
+           "la prescrizione presso l'AOU Federico II?")
+        with closing(sqlite3.connect(self.dbfile)) as db:
+            db.row_factory=sqlite3.Row
+            docs=compact_category_evidence(
+                engine.evidence_candidates(db,q,max_rows=22))
+            expanded=expand_review_pages(db,q,"Nessun elenco.",docs)
+        note=next(d for d in expanded
+                  if _candidate_short_name(d)=="ULTOMIRIS")
+        page3=next(p["estratto"] for p in note["passaggi"]
+                   if p["pagina"]==3)
+        self.assertIn("FEDERICO II",page3.upper())
+        self.assertIn("MIASTENIA",page3.upper())
+        proposal={"nuove_voci":[{
+            "confermato":True,
+            "medicinale":"ULTOMIRIS",
+            "patologia":"Miastenia gravis",
+            "indicazione":"Miastenia gravis generalizzata refrattaria",
+            "pagina_indicazione":3,"pagina_centro":3,
+            "citazione_indicazione":
+                "Trattamento della miastenia gravis generalizzata",
+            "citazione_centro":"AOU Federico II, Napoli"
+        }]}
+        audit=[]
+        additions=verified_additions(
+            json.dumps(proposal,ensure_ascii=False),[note],q,
+            _candidate_short_name,diagnostics=audit)
+        self.assertEqual(len(additions),1,audit)
+        self.assertEqual(audit[-1]["esito"],"accettato_con_ancore")
+        self.assertIn("pagina 3",additions[0])
+
     def test_wegovy_non_pubblica_cinque_come_elenco_completo(self):
         question=("Quante confezioni di WEGOVY sono presenti nell'articolo 1 "
                   "della determina 23A02767? Riporta tutti gli AIC, "

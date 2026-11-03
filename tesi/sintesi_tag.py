@@ -268,7 +268,11 @@ def revise_category_if_needed(model,question,answer,compact,ask_fn,
             "Le citazioni DEVONO essere frasi LETTERALI CONTIGUE presenti "
             "nelle pagine fornite, non parafrasi o frasi concatenate. "
             "La citazione del centro deve contenere il nome del centro "
-            "richiesto. Se l'appartenenza all'indicazione non è "
+            "richiesto. Se il nome dell'ospedale è esteso nel PDF, "
+            "COPIA LA RIGA ORIGINALE senza abbreviarla e conserva "
+            "l'ordine delle parole. Scegli sempre l'indicazione "
+            "nella SEZIONE della tabella contenente il centro. "
+            "Se l'appartenenza all'indicazione non è "
             "dimostrabile, restituisci JSON con 'nuove_voci':[]. "
             "Non usare fonti esterne, risposte gold né altri medicinali.",
             context,timeout=CATEGORY_RESPONSE_TIMEOUT_SECONDS,
@@ -283,9 +287,21 @@ def revise_category_if_needed(model,question,answer,compact,ask_fn,
                      if (usage_total.get(key) is not None and
                          usage.get(key) is not None) else None)
                 for key in ("token_input","token_output","costo_usd")}
-        accepted.extend(verified_additions(
+        local_checks=[]
+        new_items=verified_additions(
             reviewed,[doc],question,_candidate_short_name,
-            diagnostics=audit))
+            diagnostics=local_checks)
+        accepted.extend(new_items)
+        if audit is not None:
+            # Più proposte dello stesso medicinale contano come UNA
+            # decisione diagnostica. Preferire l'esito positivo se
+            # almeno una proposta supera i controlli sulle fonti.
+            positive=[x for x in local_checks
+                      if x.get("esito","").startswith("accettato")]
+            chosen=(positive[-1] if positive else
+                    local_checks[-1] if local_checks else
+                    {"medicinale":name,"esito":"nessun_esito"})
+            audit.append({**chosen,"proposte_esaminate":len(local_checks)})
 
     if audit is not None:
         for doc in missing[max_checks:]:

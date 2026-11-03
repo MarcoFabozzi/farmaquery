@@ -220,8 +220,15 @@ def assistant_dialog():
                                     "dello snapshot; non costituiscono "
                                     "una valutazione clinica indipendente.")
                                 for check in item.get("diagnostica_revisione_categoria",[]):
-                                    st.write(str(check.get("medicinale","?"))+
-                                             ": "+str(check.get("esito","n.d.")))
+                                    label=(str(check.get("medicinale","?"))+
+                                           ": "+str(check.get("esito","n.d.")))
+                                    if check.get("proposte_esaminate",0)>1:
+                                        label+=(" ("+str(check["proposte_esaminate"])+
+                                                " proposte valutate)")
+                                    st.write(label)
+                                    if check.get("citazione_proposta"):
+                                        st.caption("Citazione da verificare: "+
+                                                   str(check["citazione_proposta"])[:180])
 
     # Non usare st.popover o st.chat_input: un normale text_area in st.dialog
     # è interattivo e non dipende dalle dimensioni/coordinate della bolla.
