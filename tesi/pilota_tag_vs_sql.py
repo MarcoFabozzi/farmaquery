@@ -25,7 +25,8 @@ from tesi.sql_category_support import (category_sql_context,
 from tesi.tag_budget import (selection_mode,semantic_plan,expand_selected,
                              sem_filter_controlled,preserve_category_recall)
 from tesi.sintesi_tag import (CATEGORY_SYSTEM, compact_category_evidence,
-                              CATEGORY_RESPONSE_TIMEOUT_SECONDS)
+                              CATEGORY_RESPONSE_TIMEOUT_SECONDS,
+                              revise_category_if_needed)
 
 
 SCHEMA = """Tabelle disponibili (SQLite, SOLA LETTURA):
@@ -673,12 +674,15 @@ def tag(db,question,model):
         if not integral_complete:
             payload["avviso"]="Fonte più lunga del contesto: elenco NON esaustivo"
 
+    category_revised=False
+    category_missing=[]
     if category_question:
-        # LOTUS ha già selezionato. Per la sintesi usiamo passaggi brevi
-        # con riferimenti alla pagina e un prompt dedicato alla categoria.
+        # LOTUS seleziona; la sintesi riesamina tutti i documenti candidati.
+        # La verifica successiva NON promuove automaticamente candidati a fatti.
         system_tag=CATEGORY_SYSTEM
+        compact=compact_category_evidence(evidence)
         payload={"domanda":question,
-                 "evidenze":compact_category_evidence(evidence),
+                 "evidenze":compact,
                  "copertura_documentale":(
                      "Documenti recuperati: "+str(len(rows))+
                      "; documenti aggiuntivi rispetto a LOTUS: "+
@@ -689,7 +693,11 @@ def tag(db,question,model):
                                           for r in evidence)}
         answer,usage=ask(model,system_tag,payload,
                          timeout=CATEGORY_RESPONSE_TIMEOUT_SECONDS,
-                         max_tokens=1100)
+                         max_tokens=1400)
+        answer,extra_category_usage,category_revised,category_missing=(
+            revise_category_if_needed(model,question,answer,compact,ask))
+        if extra_category_usage is not None:
+            usage=_accumulate(usage,extra_category_usage)
     else:
         answer,usage=ask(model,system_tag,payload)
     answer,extra_usage,revised,validation=revise_if_needed(
@@ -734,7 +742,9 @@ def tag(db,question,model):
             "contesto_integrale_completo":bool(integral and integral_complete),
             "aic_mancanti_rispetto_al_testo":missing_aic,
             "aic_nel_testo_integrale":validation["aic_nel_testo"],
-            "revisione_completezza_llm":revised,
+            "revisione_completezza_llm":revised or category_revised,
+            "revisione_categoria_llm":category_revised,
+            "candidati_categoria_da_ricontrollare":category_missing,
             "fallback_pagina_integrale":fallback_pagina_integrale,
             "verifica_contesto":(
                 "integrale" if integral and integral_complete else
@@ -749,7 +759,7 @@ def tag(db,question,model):
             "righe_evidenze_da_lotus":len(semantic),
             "modalita_selezione":mode,
             "chiamate_semantiche_stimate":len(planned),
-            "chiamate_llm_stimate":len(planned)+1+int(revised),
+            "chiamate_llm_stimate":len(planned)+1+int(revised)+int(category_revised),
             "fonti_recuperate":sorted({r["tipo"] for r in rows}),
             "fonti_usate":sorted({r["tipo"] for r in evidence}),
             "fonti_mancanti":sorted(_facets(question)-{r["tipo"] for r in evidence})}
