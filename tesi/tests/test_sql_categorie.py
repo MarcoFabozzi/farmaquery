@@ -111,7 +111,10 @@ class StandardSqlTests(unittest.TestCase):
                 sql_method(self.db,"Qual è il principio attivo di PLUVICTO?","mock")
         self.assertEqual(llm.call_count,1)
         self.assertEqual(error.exception.phase,"esecuzione SQL")
-        self.assertEqual(error.exception.sql,sql)
+        # validate_sql normalizza la spaziatura della SELECT ricevuta.
+        self.assertIn("UNION SELECT",error.exception.sql)
+        self.assertIn("farmaco_candidato",error.exception.sql)
+        self.assertIn("nota_metadati_revisionati",error.exception.sql)
 
     def test_zero_righe_non_riprova_ne_sintetizza(self):
         query="SELECT nome FROM ema_medicinali WHERE nome='INESISTENTE'"
