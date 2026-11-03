@@ -59,6 +59,11 @@ nota_struttura_aifa_corrispondenze(nota_centro_id, struttura_registro_id, stato,
 nota_rimando_revisionato(nota_id, numero_pagina, protocollo_richiamato, rapporto, frase, stato)
 revisione_relazioni_manuale_v2(relazione_id, nota_id, pagina, estratto_evidenza, richiamo_autorizzativo, esito, metodo, osservazioni)
 revisione_collegamenti_aifa_v2(relazione_id, stato, nota)
+Chiavi di relazione: note.id = nota_metadati_revisionati.nota_id;
+note.id = nota_centro_documentato.nota_id.
+La colonna farmaco_candidato appartiene ESCLUSIVAMENTE a note, non a
+nota_metadati_revisionati. Per filtrare i metadati per nome commerciale
+servirebbe una JOIN con note.
 Le corrispondenze nominali con AIFA non certificano un'autorizzazione vigente.
 La verifica su TESTO estratto non equivale a verifica visiva del PDF."""
 
@@ -923,6 +928,14 @@ SQL_GENERATION_PROMPT=(
     "Utilizza esclusivamente le tabelle e colonne elencate nello schema. "
     "Per il confronto testuale dei nomi dei medicinali usa COLLATE NOCASE: "
     "SQLite distingue normalmente lettere maiuscole e minuscole. "
+    "Preferisci la SELECT più semplice che risponda alla domanda: "
+    "per un singolo attributo di un medicinale cerca nella tabella "
+    "strutturata pertinente, senza unire fonti non richieste. "
+    "Usa UNION solo quando il confronto o l'unione di fonti è necessario "
+    "per la domanda, e JOIN solo quando servono relazioni fra tabelle. "
+    "Per ogni riferimento a colonna verifica che sia elencato fra "
+    "le colonne della tabella corrispondente nello schema; "
+    "non attribuire a una tabella colonne appartenenti ad altre. "
     "Non utilizzare PRAGMA, modifiche al database o più istruzioni. "
     "Includi aic, ema_id, oppure nota_id e numero_pagina quando "
     "disponibili, in modo da poter citare i dati trovati. "
