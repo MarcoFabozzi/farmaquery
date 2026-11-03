@@ -1027,35 +1027,38 @@ def _absolute_negative_on_partial_sql(answer,rows,truncated,category):
 
 
 def _sql_note_hints(db,question,limit=6):
-    """Metadati candidati da leggere nello stesso SQLite per un retry.
+    """Metadati candidati dallo stesso SQLite, senza usare risposte gold.
 
-    Non incorpora risposte gold e non prova alcuna autorizzazione clinica.
+    Privilegia la coincidenza con PIÙ parole del nome commerciale, anziché
+    ritornare prematuramente la prima nota che contiene una parola generica.
     """
     available={r[0] for r in db.execute(
         "SELECT name FROM sqlite_master WHERE type='table'")}
     if "note" not in available:
         return []
     upper_tokens=list(dict.fromkeys(
-        re.findall(r"(?<!\w)[A-Z][A-Z0-9-]{4,}(?!\w)",str(question))))
-    seen=set()
-    candidates=[]
-    for token in upper_tokens[:8]:
-        if token in {"SINFONIA","CAMPANIA","EGFR","ATTR-CM","FIGO",
-                     "RNRL","FILE","MEDICINA","LOTUS"}:
-            continue
+        re.findall(r"(?<!\w)[A-Z][A-Z0-9-]{3,}(?!\w)",str(question))))
+    tokens=[token for token in upper_tokens if token not in {
+        "SINFONIA","CAMPANIA","EGFR","ATTR-CM","FIGO",
+        "RNRL","FILE","MEDICINA","LOTUS"}]
+    found={}
+    for token in tokens[:8]:
         pattern=_like(token)
         for row in db.execute(
-            "SELECT id,nome_file,anno,protocollo_candidato,percorso_zip "
-            "FROM note WHERE farmaco_candidato LIKE ? ESCAPE '\\' "
-            "COLLATE NOCASE OR nome_file LIKE ? ESCAPE '\\' "
-            "COLLATE NOCASE ORDER BY anno DESC LIMIT ?",
-            (pattern,pattern,limit)):
-            if row["id"] not in seen:
-                seen.add(row["id"])
-                candidates.append(dict(row))
-            if len(candidates)>=limit:
-                return candidates
-    return candidates
+            "SELECT id,nome_file,anno,farmaco_candidato,"
+            "protocollo_candidato,percorso_zip FROM note "
+            "WHERE farmaco_candidato LIKE ? ESCAPE '\\' COLLATE NOCASE "
+            "OR nome_file LIKE ? ESCAPE '\\' COLLATE NOCASE "
+            "ORDER BY anno DESC LIMIT ?",
+            (pattern,pattern,limit*3)):
+            found[row["id"]]=dict(row)
+    def rank(row):
+        name=(str(row.get("farmaco_candidato") or "")+" "+
+              str(row.get("nome_file") or "")).upper()
+        overlap=sum(1 for token in tokens if token in name)
+        return (-overlap,-int(row.get("anno") or 0),str(row["id"]))
+    return sorted(found.values(),key=rank)[:limit]
+
 
 
 def sql_method(db,question,model):
