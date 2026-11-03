@@ -20,11 +20,11 @@ def richiede_sezione_completa(question):
     # richiede indicazioni e combinazioni usa l'intero documento, non
     # soltanto l'estratto scelto da LOTUS. Non usa risposte gold.
     nota_nominata=bool(
-        re.search(r"\\bnota\\b",q) and
-        re.search(r"\\b(?:20\\d{2}|prot\\.?|indicazion\\w*|"
-                  r"associazion\\w*|combinazion\\w*|richiam\\w*|"
-                  r"rimand\\w*|sostitui\\w*|condizion\\w*|"
-                  r"requisit\\w*)\\b",q)
+        re.search(r"\bnota\b",q) and
+        re.search(r"\b(?:20\d{2}|prot\.?|indicazion\w*|"
+                  r"associazion\w*|combinazion\w*|richiam\w*|"
+                  r"rimand\w*|sostitui\w*|condizion\w*|"
+                  r"requisit\w*)\b",q)
     )
     return nota_nominata or bool(re.search(
         r"\b(tutti|tutte|complet[oaie]|"
