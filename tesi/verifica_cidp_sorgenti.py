@@ -115,7 +115,7 @@ def main():
     # Verifica di copertura: conta le note del corpus che possono
     # soddisfare i criteri della domanda. È un pool di CANDIDATI,
     # non una risposta gold né una prova di autorizzazione.
-    from tesi.recupero_regionale import ESPANSIONI
+    from recupero_regionale import ESPANSIONI
     terms=ESPANSIONI["neuromuscolar"]+("cidp","nervoso")
     source_rows=db.execute(
         "SELECT d.nome,d.anno,d.path_zip,d.sha256_pdf,"
