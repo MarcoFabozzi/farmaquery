@@ -89,6 +89,46 @@ CATEGORY_RETRY_RULES = (
 )
 
 
+# Secondo tentativo quando una SELECT regolarmente eseguita restituisce
+# zero righe per un documento che potrebbe essere presente nello snapshot.
+# Non include elenchi di risposte, protocolli o farmaci di benchmark.
+DOCUMENT_SQL_RETRY_RULES = (
+    "La SELECT precedente ha restituito ZERO RIGHE: non significa "
+    "che la fonte o il fatto siano assenti. Genera una NUOVA singola "
+    "SELECT SQLite di sola lettura, non una risposta in linguaggio naturale. "
+    "Esamina i metadati reali delle note candidate forniti nel contesto. "
+    "Per una domanda su una nota regionale identificata dal medicinale, "
+    "filtra prima note per farmaco_candidato o nome_file, poi JOIN pagine "
+    "per leggere il testo originale e associare la pagina corretta. "
+    "NON imporre INNER JOIN con centri_candidati o rimandi_candidati: "
+    "sono estrazioni candidate e possono non contenere tutte le righe. "
+    "Non cercare parole come Campania nel percorso_zip: la tabella note "
+    "è già il corpus regionale. Il protocollo nel nome_file può usare "
+    "un TRATTINO dove il testo usa una BARRA: preferisci il nome del "
+    "medicinale o la porzione numerica del protocollo. "
+    "Un anno della nota RICHIAMATA non è necessariamente l'anno della "
+    "nota citante: privilegia il documento oggetto della domanda. "
+    "Per indicazioni multiple recupera tutte le pagine della nota, "
+    "senza filtri sulle singole patologie che potrebbero comparire "
+    "soltanto nelle intestazioni di altre pagine. "
+    "Se non trovi una nota, NON inventarla. Includi "
+    "nota_id, numero_pagina, nome_file e testo per citare le prove. "
+    "Solo una SELECT, senza markdown, LIMIT massimo 80."
+)
+
+SQL_EXECUTION_REPAIR_RULES = (
+    "La precedente SELECT è stata validata come sola lettura, ma SQLite "
+    "ha restituito un errore operativo. Genera UNA NUOVA SELECT SQLite "
+    "semplice e autonoma che usi soltanto colonne e tabelle dello schema. "
+    "Usa i metadati reali delle fonti candidate se disponibili. "
+    "Per note regionali preferisci note JOIN pagine senza join "
+    "a estrazioni candidate e includi nota_id, numero_pagina, testo. "
+    "Non riutilizzare riferimenti a colonne o alias inesistenti, "
+    "non utilizzare PRAGMA, DML o più istruzioni e non inventare fatti. "
+    "Restituisci soltanto la SELECT, LIMIT massimo 80."
+)
+
+
 def category_sql_context(question):
     """Indizi condivisi a priori con TAG, senza medicine/centri gold."""
     name, terms=categoria(question)
@@ -110,6 +150,20 @@ def select_generation_guidance(question):
         "aic, ema_id oppure nota_id e numero_pagina nel risultato, "
         "e per GU codice AS gu_codice o documento_id, "
         "e archivio_url o fonte_url quando pertinenti. "
+        "Per domande basate su NOTE regionali usa note JOIN pagine "
+        "per recuperare il TESTO ORIGINALE; centri_candidati e "
+        "rimandi_candidati sono solo estrazioni candidate, quindi "
+        "non usarle come INNER JOIN obbligatorie. "
+        "Non filtrare percorso_zip o nome_file sulla parola Campania. "
+        "Per ricercare un protocollo nel nome_file considera che la "
+        "notazione usa spesso trattini al posto delle barre: cerca "
+        "il numero o il nome commerciale, non il protocollo completo "
+        "con punteggiatura non verificata. "
+        "Distinguere ANNO della nota consultata da anno della nota "
+        "precedente solo richiamata nel testo. "
+        "Per più indicazioni della stessa nota NON imporre che "
+        "ogni indicazione compaia nei campi menzione/stato dei centri "
+        "o su ogni pagina: recupera le pagine della nota. "
         "Per le classi usa: CASE WHEN classe_a_h_snapshot IN ('A','H') "
         "THEN classe_a_h_snapshot ELSE 'C (dedotta per esclusione)' END "
         "AS classe. Includi anche classe_a_h_snapshot e classe_a_h_data "
