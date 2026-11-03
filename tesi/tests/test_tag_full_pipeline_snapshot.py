@@ -104,7 +104,7 @@ class TagFullPipelineSnapshotTests(unittest.TestCase):
             page3=next(p["estratto"] for p in note["passaggi"]
                        if p["pagina"]==3)
             indication=re.search(r"miastenia gravis.{0,35}",page3,re.I)
-            center=re.search(r"NAPOLI FEDERICO II.{0,20}",page3,re.I)
+            center=re.search(r"FEDERICO\s+II.{0,20}",page3,re.I|re.S)
             self.assertIsNotNone(indication)
             self.assertIsNotNone(center)
             return json.dumps({"nuove_voci":[{
@@ -124,6 +124,12 @@ class TagFullPipelineSnapshotTests(unittest.TestCase):
         ])
         self.assertEqual(len(calls),2)
         self.assertTrue(result["revisione_categoria_llm"])
+        review_doc=next(d for d in calls[1]["documenti_candidati_non_elencati"]
+                        if d["medicinale_candidato"]=="ULTOMIRIS")
+        page3=next(p["estratto"] for p in review_doc["passaggi"]
+                   if p["pagina"]==3)
+        self.assertGreater(len(page3),900)
+        self.assertIn("FEDERICO",page3.upper())
         self.assertEqual(result["chiamate_llm_stimate"],6)
         self.assertIn("Medicinale: ULTOMIRIS",result["risposta"])
         self.assertIn("Medicinale: SOLIRIS",result["risposta"])
