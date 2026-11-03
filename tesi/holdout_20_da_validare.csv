@@ -1,0 +1,21 @@
+id;categoria;domanda;risposta_gold;fonti_gold;stato_validazione;note_revisore;elementi_gold;snapshot_sha256
+D01;DIRETTE;Qual è il principio attivo del medicinale BEYONTTRA?;;;DA_VERIFICARE;;;f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742
+D02;DIRETTE;Quali sono lo stato autorizzativo EMA e la data di decisione UE per MYALEPTA nello snapshot?;;;DA_VERIFICARE;;;f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742
+D03;DIRETTE;Qual è il principio attivo del medicinale VABYSMO?;;;DA_VERIFICARE;;;f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742
+D04;DIRETTE;Qual è la data della decisione UE riportata da EMA per ELREXFIO?;;;DA_VERIFICARE;;;f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742
+D05;DIRETTE;Quale principio attivo viene indicato nel database EMA per ALHEMO?;;;DA_VERIFICARE;;;f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742
+R01;RELAZIONALI;Quali AIC e classi risultano per le confezioni del medicinale BRUKINSA nello snapshot AIFA?;;;DA_VERIFICARE;;;f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742
+R02;RELAZIONALI;Quante confezioni di NINLARO risultano nel database AIFA? Indica per ciascuna AIC e descrizione.;;;DA_VERIFICARE;;;f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742
+R03;RELAZIONALI;Per LUMYKRAS collega la data di decisione UE EMA alle confezioni AIFA e alle relative classi, citando le due fonti.;;;DA_VERIFICARE;;;f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742
+R04;RELAZIONALI;Quali note regionali della Campania menzionano KEYTRUDA? Indica anno e identificativo del documento.;;;DA_VERIFICARE;;;f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742
+R05;RELAZIONALI;Quali confezioni di KAFTRIO sono presenti nello snapshot e quali classi A/H riportano?;;;DA_VERIFICARE;;;f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742
+S01;SEMANTICHE;Nella nota regionale BEYONTTRA, come vengono individuati i centri già abilitati per il trattamento e quali condizioni sono dichiarate? Cita le pagine.;;;DA_VERIFICARE;;;f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742
+S02;SEMANTICHE;Nella nota regionale ALHEMO, quali indicazioni e quali strutture sono esplicitamente collegate? Riporta le pagine a supporto.;;;DA_VERIFICARE;;;f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742
+S03;SEMANTICHE;Nelle note regionali TRODELVY del 2022 e 2025, quali differenze sono effettivamente documentate sulle indicazioni o sui centri? Distingui cambiamenti e semplici richiami.;;;DA_VERIFICARE;;;f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742
+S04;SEMANTICHE;Confrontando le note regionali RYBREVANT del 2023 e 2026, quali aggiornamenti delle indicazioni o dei centri sono espressamente dichiarati?;;;DA_VERIFICARE;;;f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742
+S05;SEMANTICHE;Nella nota regionale VABYSMO quali condizioni di prescrizione e quali presidi sono indicati? Riporta il riferimento alla pagina.;;;DA_VERIFICARE;;;f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742
+A01;ASSENZA_DOCUMENTALE;In quale data ciascun centro regionale individuato per BEYONTTRA ha iniziato effettivamente a prescrivere il medicinale?;;;DA_VERIFICARE;;;f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742
+A02;ASSENZA_DOCUMENTALE;Quanti pazienti sono stati realmente trattati con ALHEMO al Santobono nel 2026?;;;DA_VERIFICARE;;;f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742
+A03;ASSENZA_DOCUMENTALE;Quante somministrazioni di MYALEPTA sono state effettuate negli ospedali campani nel 2025?;;;DA_VERIFICARE;;;f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742
+A04;ASSENZA_DOCUMENTALE;Quale fatturato trimestrale è stato prodotto da RYBREVANT in ciascun ospedale della Campania nel 2026?;;;DA_VERIFICARE;;;f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742
+A05;ASSENZA_DOCUMENTALE;Qual è la data esatta della prima somministrazione effettiva di TRODELVY per ogni centro campano?;;;DA_VERIFICARE;;;f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742
