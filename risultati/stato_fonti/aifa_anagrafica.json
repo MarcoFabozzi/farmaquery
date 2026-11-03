@@ -1,14 +1,14 @@
 {
   "fonte": "aifa_anagrafica",
   "esito": "OK",
-  "ultimo_successo_utc": "2026-11-02T09:37:00+00:00",
-  "precedente_successo_utc": "2026-11-01T12:27:02+00:00",
+  "ultimo_successo_utc": "2026-11-03T05:20:16+00:00",
+  "precedente_successo_utc": "2026-11-02T09:37:00+00:00",
   "statistiche": {
-    "confezioni_file": 160314,
-    "principi_attivi_righe_file": 339390,
+    "confezioni_file": 160274,
+    "principi_attivi_righe_file": 339418,
     "copertura_principi_attivi": {
-      "aic_con_principio": 160258,
-      "aic_totali": 160314,
+      "aic_con_principio": 160218,
+      "aic_totali": 160274,
       "percentuale_copertura": 99.97
     },
     "audit_principi_attivi": {
@@ -90,27 +90,27 @@
       "nota_quarantena": "AIC con oltre 20 sostanze distinte: esclusa solo questa associazione dalla sorgente PA_confezioni; richiede controllo manuale."
     },
     "archivio_completo": {
-      "confezioni_totali": 160314,
-      "bytes_compressi": 5039368,
-      "sha256_archivio": "6ef29613e1ee8749052c09d000b1e660b83b05786586a6f2c54ced12ea1d44d7",
+      "confezioni_totali": 160274,
+      "bytes_compressi": 5041139,
+      "sha256_archivio": "07c8242179bcdfb7102dbfb34c585ef0d69b6eb3c812ccd857c8b71ffc1fb72d",
       "file_archivio": "aifa_confezioni_complete.sqlite.gz"
     },
-    "confezioni_pertinenti": 10606,
-    "nuove_confezioni": 0,
-    "nuovi_match_candidati": 0,
-    "aic_precedenti_non_nel_file": 0,
+    "confezioni_pertinenti": 10603,
+    "nuove_confezioni": 1,
+    "nuovi_match_candidati": 1,
+    "aic_precedenti_non_nel_file": 4,
     "nota": "L anagrafica non prova la classe vigente; le AIC assenti restano storiche"
   },
   "fonti": {
     "aifa": {
       "url": "https://drive.aifa.gov.it/farmaci/confezioni_fornitura.csv",
-      "bytes": 82660538,
-      "sha256": "2ef15487effc1e32c48dfcad54a4d475a0fa8d23d2ddf05d4b7b24c70d23325b"
+      "bytes": 82641178,
+      "sha256": "74026026fe11244345a09a2262e4b98b685dec4d2a8ca5c870f6eb89d39dc0bc"
     },
     "aifa_principi_attivi": {
       "url": "https://drive.aifa.gov.it/farmaci/PA_confezioni.csv",
-      "bytes": 11581270,
-      "sha256": "79f88bc4c74ff4b6c18f91187bc9ecc156ceb1344632ad2dc964d8f32da9f1f7"
+      "bytes": 11581998,
+      "sha256": "314d80792b55622767fa0a14761010593db43b05f426f16e2297253d1141e26a"
     }
   },
   "nota": "Controllo della fonte completato, non certificazione di stato regolatorio corrente"
