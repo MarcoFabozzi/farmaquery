@@ -7,6 +7,7 @@ from tesi.sintesi_tag import (compact_category_evidence,CATEGORY_SYSTEM,
                               missing_category_candidates,
                               revise_category_if_needed)
 from tesi.pilota_tag_vs_sql import ask
+from tesi.revisione_categoria import verified_additions
 from unittest.mock import patch
 
 
@@ -89,6 +90,41 @@ class CompactTagSynthesisTests(unittest.TestCase):
         self.assertFalse(revised)
         self.assertIsNone(usage)
         self.assertEqual(output,answer)
+
+    def test_revisione_rifiuta_fonti_inventate_e_pagine_errate(self):
+        docs=[{
+            "documento_e_medicinale_candidato":
+                "Documento: TERAPIA X.pdf; farmaco candidato: TERAPIA X;",
+            "passaggi":[{"pagina":3,"estratto":
+                "Indicazione miastenia gravis generalizzata; "
+                "Presidio AOU Federico II, Napoli."}],
+            "fonti":["2024/TERAPIA X.pdf#p3 | archivio: esempio"]
+        }]
+        question="Quali farmaci neuromuscolari presso l'AOU Federico II?"
+        valid={"nuove_voci":[{
+            "confermato":True,"medicinale":"TERAPIA",
+            "patologia":"Miastenia gravis",
+            "indicazione":"Trattamento della miastenia",
+            "pagina_indicazione":3,"pagina_centro":3,
+            "citazione_indicazione":"Indicazione miastenia gravis generalizzata",
+            "citazione_centro":"Presidio AOU Federico II, Napoli"
+        }]}
+        from tesi.sintesi_tag import _candidate_short_name
+        additions=verified_additions(json.dumps(valid),docs,question,
+                                     _candidate_short_name)
+        self.assertEqual(len(additions),1)
+        self.assertIn("pagina 3",additions[0])
+        invalid=json.loads(json.dumps(valid))
+        invalid["nuove_voci"][0]["pagina_centro"]=9
+        self.assertEqual(verified_additions(
+            json.dumps(invalid),docs,question,_candidate_short_name),[])
+        invalid["nuove_voci"][0]["pagina_centro"]=3
+        invalid["nuove_voci"][0]["citazione_centro"]="Centro non presente nello snapshot"
+        self.assertEqual(verified_additions(
+            json.dumps(invalid),docs,question,_candidate_short_name),[])
+        invalid["nuove_voci"][0]["medicinale"]="MEDICINALE INVENTATO"
+        self.assertEqual(verified_additions(
+            json.dumps(invalid),docs,question,_candidate_short_name),[])
 
     def test_ask_timeout_e_limite_risposta_separati(self):
         class Usage:
