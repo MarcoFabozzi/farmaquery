@@ -35,7 +35,8 @@ class BenchmarkRelatoreTests(unittest.TestCase):
 
     def test_non_accepta_risposta_gold_non_verificata(self):
         rows = load_benchmark(BENCHMARK)
-        rows[0]["risposta_gold"] = "Risposta non verificata"
+        pending=next(x for x in rows if x["stato_validazione"]=="DA_VERIFICARE")
+        pending["risposta_gold"] = "Risposta non verificata"
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "invalid.csv"
             with path.open("w", encoding="utf-8", newline="") as out:
