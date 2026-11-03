@@ -300,6 +300,109 @@ def _target_db(db, question):
     return _target(question)
 
 
+def _comparison_medicines(db,question,max_names=3):
+    """Riconosce piu' medicinali citati per confronto, senza nomi hardcoded.
+
+    Usa solamente i nomi esatti nelle note e nel catalogo EMA dello snapshot.
+    Non converte semplici co-occorrenze in relazioni regolatorie.
+    """
+    q=str(question)
+    low=q.casefold()
+    if (len(re.findall(r"\bsia\b",low))<2 and
+        not re.search(r"\b(?:entramb\w*|comun\w*|confront\w*|"
+                      r"intersezion\w*)\b",low)):
+        return []
+    words=re.findall(r"[A-Za-zÀ-ÿ0-9]+(?:[-'][A-Za-zÀ-ÿ0-9]+)*",q)
+    phrases={}
+    for i in range(len(words)):
+        for n in range(1,min(5,len(words)-i)+1):
+            part=words[i:i+n]
+            if not any(len(w)>=4 and w.casefold() not in STOP for w in part):
+                continue
+            name=" ".join(part).casefold()
+            phrases.setdefault(name,(i,n))
+    if not phrases:
+        return []
+    tables={r[0] for r in db.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'")}
+    names=set()
+    params=tuple(phrases)
+    slots=",".join("?" for _ in params)
+    for table,column in (("note","farmaco_candidato"),
+                         ("ema_medicinali","nome")):
+        if table not in tables:
+            continue
+        cols={r[1] for r in db.execute("PRAGMA table_info("+table+")")}
+        if column not in cols:
+            continue
+        for item in db.execute(
+            f"SELECT DISTINCT {column} FROM {table} "
+            f"WHERE {column} COLLATE NOCASE IN ({slots})",params):
+            candidate=str(item[0] or "").casefold()
+            if candidate in phrases:
+                names.add(candidate)
+    ordered=sorted(names,key=lambda name:(phrases[name][0],
+                                          -phrases[name][1]))
+    result=[]
+    for name in ordered:
+        # Preferire i nomi composti rispetto a sottostringhe del medesimo.
+        if any(re.search(r"(?<!\w)"+re.escape(name)+r"(?!\w)",full)
+               for full in result):
+            continue
+        result.append(name)
+    return result[:max_names] if len(result)>=2 else []
+
+
+def _common_centres(db,medicines,limit=12):
+    """Intersezione documentata delle relazioni nota-centro revisionate.
+
+    E' un'operazione tabellare sui dati dello snapshot, non una risposta gold:
+    mantiene la fonte distinta di ciascun medicinale e non prova attivazioni.
+    """
+    tables={r[0] for r in db.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'")}
+    if len(medicines)!=2 or not {"note","nota_centro_documentato"}<=tables:
+        return []
+    columns={r[1] for r in db.execute("PRAGMA table_info(note)")}
+    if not {"id","farmaco_candidato","percorso_zip","archivio_url"}<=columns:
+        return []
+    rows=db.execute(
+        """SELECT DISTINCT a.centro AS centro,
+                  a.numero_pagina AS pagina_a, b.numero_pagina AS pagina_b,
+                  n1.percorso_zip AS percorso_a,n2.percorso_zip AS percorso_b,
+                  n1.archivio_url AS archivio_a,n2.archivio_url AS archivio_b
+           FROM nota_centro_documentato a
+           JOIN note n1 ON a.nota_id=n1.id
+           JOIN nota_centro_documentato b
+             ON trim(a.centro)=trim(b.centro) COLLATE NOCASE
+           JOIN note n2 ON b.nota_id=n2.id
+           WHERE n1.farmaco_candidato=? COLLATE NOCASE
+             AND n2.farmaco_candidato=? COLLATE NOCASE
+           ORDER BY a.centro LIMIT ?""",
+        (medicines[0],medicines[1],limit)).fetchall()
+    result=[]
+    for index,item in enumerate(rows):
+        row=dict(item)
+        source_a=(str(row["percorso_a"])+"#p"+str(row["pagina_a"])+
+                  " | archivio: "+str(row["archivio_a"]))
+        source_b=(str(row["percorso_b"])+"#p"+str(row["pagina_b"])+
+                  " | archivio: "+str(row["archivio_b"]))
+        text=("INTERSEZIONE DELLE RELAZIONI NOTA-CENTRO REVISIONATE "
+              "(non attestazione dell'attivazione operativa). "
+              "Medicinali confrontati: "+medicines[0]+", "+medicines[1]+
+              "; struttura comune: "+str(row["centro"])+
+              "; prima nota/pagina: "+str(row["percorso_a"])+
+              " p. "+str(row["pagina_a"])+
+              "; seconda nota/pagina: "+str(row["percorso_b"])+
+              " p. "+str(row["pagina_b"]))
+        result.append({"tipo":"REGIONE",
+                       "chiave":"REGIONE:INTERSEZIONE:"+str(index)+":"+
+                                medicines[0]+":"+medicines[1],
+                       "testo":text,"testo_selezione":text,
+                       "fonte":source_a,"fonti":[source_a,source_b]})
+    return result
+
+
 def _search_aifa(db,target,limit=6):
     """Prima marchio esatto, poi prefisso; sostanza come ripiego.
 
@@ -359,6 +462,7 @@ def evidence_candidates(db,question,max_rows=18):
     NON deve prevalere sul nome esatto del medicinale chiesto.
     """
     target=_target_db(db, question)
+    comparison_medicines=_comparison_medicines(db,question)
     category_question=bool(categoria(question)[0])
     if not target and not category_question:
         return []
@@ -418,7 +522,20 @@ def evidence_candidates(db,question,max_rows=18):
         # leggibili (entro limiti controllati) e gli eventuali protocolli
         # richiamati. Per categorie implicite interroga più note e LOTUS
         # deciderà semanticamente, non una tabella di risposte predefinite.
-        expanded=regional_candidates(db,question,target,limit=min(22,max_rows))
+        if comparison_medicines and kind=="CENTRI":
+            # Conserva entrambi i lati del confronto e la loro relazione.
+            for item in _common_centres(db,comparison_medicines):
+                put(item["tipo"],item["chiave"],item["testo"],item["fonte"],
+                    sources=item.get("fonti"),
+                    selection_text=item.get("testo_selezione"))
+            targets=comparison_medicines
+        else:
+            targets=[target]
+        expanded=[]
+        for drug in targets:
+            expanded.extend(regional_candidates(
+                db,question,drug,
+                limit=min(10 if comparison_medicines else 32,max_rows)))
         if expanded:
             for item in expanded:
                 put(item["tipo"],item["chiave"],item["testo"],item["fonte"],
@@ -427,6 +544,8 @@ def evidence_candidates(db,question,max_rows=18):
                     passages=item.get("passaggi_sintesi"),
                     document_count=item.get("copertura_documenti"),
                     documents_truncated=item.get("documenti_troncati",False))
+            return
+        if comparison_medicines and kind=="CENTRI":
             return
         # Compatibilità con fixture minime e con vecchie sorgenti.
         for item in candidates(db,target,limit=5 if kind=="CENTRI" else 3):
@@ -566,7 +685,9 @@ def tag(db,question,model):
         r"\b(?:tutti|tutte|elenco completo|lista completa|quali farmaci|quali centri|quali strutture|quante confezioni|quanti aic)\b",
         question.casefold()))
     region_request=category_question or complete_request or _question_kind(question)=="CENTRI"
-    rows=evidence_candidates(db,question,max_rows=22 if region_request else 12)
+    comparison_medicines=_comparison_medicines(db,question)
+    rows=evidence_candidates(db,question,max_rows=32 if category_question else
+                             (24 if region_request else 12))
     if not rows:
         return {"risposta":"Informazione non documentata nello snapshot consultato.",
                 "fonti":[],"stato":"NESSUNA_EVIDENZA","token_input":0,
@@ -605,7 +726,12 @@ def tag(db,question,model):
     semantic=expand_selected(selected_groups,members)
     ids={r["chiave"] for r in rows}
     semantic=[r for r in semantic if r.get("chiave") in ids]
-    if complete_request and _question_kind(question)=="GU":
+    if comparison_medicines:
+        # Entrambi i medicinali (e le eventuali relazioni documentate)
+        # devono raggiungere la sintesi: LOTUS ordina, ma non esclude
+        # automaticamente l'altro lato del confronto.
+        evidence=preserve_category_recall(rows,semantic)
+    elif complete_request and _question_kind(question)=="GU":
         evidence=preserve_category_recall(rows,semantic)
     elif category_question:
         # sem_filter valuta e ORDINA i documenti, ma un gruppo escluso
@@ -629,8 +755,10 @@ def tag(db,question,model):
     # esplicitamente richiesta esiste e risulta leggibile nello SQLite.
     # Recupero documentale diretto: non sostituisce il filtro, ma impedisce
     # che la sua astensione diventi una falsa assenza di fonti.
-    integral,integral_complete=contesto_integrale(
-        db,question,_target_db(db,question))
+    # Il recupero integrale di una singola nota non deve rimpiazzare
+    # le evidenze di entrambi i medicinali in una domanda di confronto.
+    integral,integral_complete=([],True) if comparison_medicines else (
+        contesto_integrale(db,question,_target_db(db,question)))
     fallback_pagina_integrale=bool(
         not evidence and integral and not category_question)
     if fallback_pagina_integrale:
@@ -734,12 +862,14 @@ def tag(db,question,model):
                                           for r in evidence)}
         answer,usage=ask(model,system_tag,payload,
                          timeout=CATEGORY_RESPONSE_TIMEOUT_SECONDS,
-                         max_tokens=1400)
-        review_context=expand_review_pages(db,question,answer,compact)
+                         max_tokens=2400)
+        review_context=expand_review_pages(db,question,answer,compact,
+                                           max_docs=8)
         answer,extra_category_usage,category_revised,category_missing=(
             revise_category_if_needed(
                 model,question,answer,review_context,ask,
-                audit=category_audit,stats=category_review_stats))
+                audit=category_audit,stats=category_review_stats,
+                max_checks=6))
         if extra_category_usage is not None:
             usage=_accumulate(usage,extra_category_usage)
     else:
@@ -831,6 +961,29 @@ def validate_sql(text):
         ctes={c.alias for c in root.find_all(exp.CTE)}
         if (table.name not in ALLOWED|ctes or table.db or table.catalog):
             raise ValueError("Tabella o schema non consentito: "+table.name)
+    # Una JOIN non correlata a una tabella precedente può espandere
+    # enormemente le righe; la baseline NON la rigenera e NON la esegue.
+    # Sono ammessi USING e le JOIN con riferimenti alle due parti.
+    for select in root.find_all(exp.Select):
+        frm=select.args.get("from_") or select.args.get("from")
+        source=frm.this if frm is not None else None
+        known={str(source.alias_or_name).casefold()} if source is not None else set()
+        for join in select.args.get("joins") or []:
+            current=join.this
+            alias=str(getattr(current,"alias_or_name","") or "").casefold()
+            if join.args.get("using"):
+                if alias:
+                    known.add(alias)
+                continue
+            on=join.args.get("on")
+            if on is None:
+                raise ValueError("JOIN senza condizione di collegamento")
+            refs={str(col.table).casefold() for col in on.find_all(exp.Column)
+                  if col.table}
+            if alias and known and (alias not in refs or not (refs & known)):
+                raise ValueError("JOIN senza collegamento fra le tabelle")
+            if alias:
+                known.add(alias)
     deny_names={"load_extension","readfile","writefile","fts5_tokenize",
                 "sqlite_compileoption_get","sqlite_compileoption_used"}
     for item in root.find_all(exp.Func):
@@ -951,6 +1104,11 @@ SQL_GENERATION_PROMPT=(
     "Nei collegamenti tra note e centri seleziona i nomi delle colonne "
     "dalla tabella corretta e verifica il formato di eventuali date: "
     "un confronto fra stringhe con formati diversi non e' affidabile. "
+    "Ogni JOIN deve collegare la nuova tabella a una precedente tramite "
+    "una condizione sulle rispettive colonne; evita JOIN con ON che "
+    "filtra soltanto la nuova tabella, causando prodotti cartesiani "
+    "molto grandi. Per ricerche testuali evita incroci non selettivi "
+    "di piu' tabelle contenenti pagine e testi lunghi. "
     "Non utilizzare PRAGMA, modifiche al database o più istruzioni. "
     "Includi aic, ema_id, oppure nota_id e numero_pagina quando "
     "disponibili, in modo da poter citare i dati trovati. "

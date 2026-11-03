@@ -123,10 +123,20 @@ class TagFullPipelineSnapshotTests(unittest.TestCase):
                 "citazione_centro":center.group(),
             }]},ensure_ascii=False)
 
-        result,calls=self._run(question,[
-            lambda payload:first,
-            confirmed_omission
-        ])
+        # Questa regressione isola la revisione di UN documento omesso.
+        # Il richiamo ampliato del corpus non deve aggiungere chiamate
+        # al mock di questo scenario puntuale.
+        expected={"ULTOMIRIS","EVRYSDI","AGAMREE","DUVYZAT",
+                  "ZILBRYSQ","VYVGART","SOLIRIS"}
+        subset=[row for row in candidates if any(
+            "farmaco candidato: "+name.casefold() in row["testo"].casefold()
+            for name in expected)]
+        self.assertEqual(len(subset),7)
+        with patch.object(engine,"evidence_candidates",return_value=subset):
+            result,calls=self._run(question,[
+                lambda payload:first,
+                confirmed_omission
+            ])
         self.assertEqual(len(calls),2)
         self.assertTrue(result["revisione_categoria_llm"])
         review_doc=next(d for d in calls[1]["documenti_candidati_non_elencati"]

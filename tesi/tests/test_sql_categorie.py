@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 
 from errori_chatbot import EnginePhaseError
-from tesi.pilota_tag_vs_sql import sql_method, SQL_GENERATION_PROMPT, _sql_schema
+from tesi.pilota_tag_vs_sql import sql_method, SQL_GENERATION_PROMPT, _sql_schema, validate_sql
 
 
 class StandardSqlTests(unittest.TestCase):
@@ -194,6 +194,29 @@ class StandardSqlTests(unittest.TestCase):
         self.assertEqual(answer["stato"],"OK")
         self.assertTrue(any("FARMACO X.pdf#p2" in x
                             for x in answer["fonti"]))
+
+    def test_blocca_join_non_correlata_senza_esecuzione(self):
+        wrong=("SELECT n.farmaco_candidato,sr.patologia FROM note AS n "
+               "JOIN strutture_registri AS sr "
+               "ON sr.struttura LIKE '%Federico II%'")
+        with self.assertRaisesRegex(ValueError,"JOIN senza collegamento"):
+            validate_sql(wrong)
+        with patch("tesi.pilota_tag_vs_sql.ask",
+                   return_value=(wrong,self.usage)) as llm:
+            with self.assertRaises(EnginePhaseError) as error:
+                sql_method(self.db,"Quali malattie e centri?","mock")
+        self.assertEqual(llm.call_count,1)
+        self.assertEqual(error.exception.phase,"validazione SQL")
+
+    def test_accetta_join_relazionale_valida(self):
+        sql=("SELECT n.id,p.numero_pagina FROM note AS n "
+             "JOIN pagine AS p ON p.nota_id=n.id")
+        self.assertIn("JOIN pagine",validate_sql(sql))
+        with_using=("SELECT n.id,p.numero_pagina FROM note AS n "
+                    "JOIN pagine AS p USING (nota_id)")
+        # USING non e' valido sullo schema di questo fixture, ma e'
+        # sintatticamente legittimo e non viene eseguito in questo test.
+        self.assertIn("USING",validate_sql(with_using))
 
     def test_sql_non_valido_non_si_rigenera(self):
         with patch("tesi.pilota_tag_vs_sql.ask",
