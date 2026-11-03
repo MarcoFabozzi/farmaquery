@@ -30,21 +30,38 @@ def _requested_center(question):
 
 
 def _window(body, keywords, max_chars=1450):
-    """Estratto con contesto, mai prova autonoma di autorizzazione."""
+    """Accosta due estratti citabili: indicazione e struttura.
+
+    Il centro puo' trovarsi molto lontano dalla patologia in una tabella
+    OCR: non tagliare l'ultima riga solo perche' l'incipit e' lungo.
+    Le finestre sono esplicitamente separate, non una citazione continua.
+    """
     clean=" ".join(str(body or "").split())
     lower=clean.casefold()
-    hits=[]
-    for key in keywords:
-        if not key:
-            continue
-        m=re.search(re.escape(key.casefold()),lower)
-        if m:
-            hits.append(m.start())
-    if not hits:
+    center=str(keywords[0] if keywords else "").casefold()
+    center_hits=([m.start() for m in re.finditer(re.escape(center),lower)]
+                 if center else [])
+    disease_hits=[]
+    for key in keywords[1:]:
+        if key:
+            disease_hits.extend(
+                m.start() for m in list(re.finditer(re.escape(key.casefold()),lower))[:4])
+    if not center_hits and not disease_hits:
         return clean[:max_chars]
-    at=min(hits)
-    left=max(0,at-220)
-    return clean[left:left+max_chars]
+    disease_at=(min(disease_hits,key=lambda n:min(abs(n-c) for c in center_hits))
+                if center_hits and disease_hits else
+                disease_hits[0] if disease_hits else None)
+    center_at=(min(center_hits,key=lambda n:abs(n-disease_at))
+               if disease_at is not None and center_hits else
+               center_hits[-1] if center_hits else None)
+    chunks=[]
+    if disease_at is not None:
+        chunks.append("INDICAZIONE NELLA PAGINA (DA VERIFICARE): "+
+                      clean[max(0,disease_at-145):disease_at+205])
+    if center_at is not None:
+        chunks.append("RIGA DEL CENTRO (DA VERIFICARE): "+
+                      clean[max(0,center_at-215):center_at+215])
+    return " [...] ".join(chunks)[:max_chars]
 
 
 def retrieve_category_sql_first(db,question,max_rows=180):
