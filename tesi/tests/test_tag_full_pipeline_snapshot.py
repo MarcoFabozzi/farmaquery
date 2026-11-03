@@ -67,25 +67,50 @@ class TagFullPipelineSnapshotTests(unittest.TestCase):
         return result,captured
 
 
-    def test_diagnosi_copertura_neuromuscolari(self):
-        from tesi.sintesi_tag import compact_category_evidence
+
+    def test_categorie_ultomiris_raggiunge_risposta_verificata(self):
+        # Verifica il caso reale: la fonte e il centro sono nell'evidenza,
+        # ma la prima sintesi può dimenticare il documento.
         question=("Quali medicinali citati nelle note regionali della "
                   "Campania per malattie neuromuscolari prevedono la "
                   "prescrizione presso l'AOU Federico II? Per ciascuno "
                   "indica medicinale, patologia, indicazione e pagina "
                   "della nota.")
+        from tesi.sintesi_tag import (compact_category_evidence,
+                                      missing_category_candidates)
         with closing(sqlite3.connect(self.dbfile)) as db:
             db.row_factory=sqlite3.Row
-            rows=engine.evidence_candidates(db,question,max_rows=22)
-        print("CATEGORY-DIAG NUM",len(rows),flush=True)
-        compact=compact_category_evidence(rows)
-        for r,c in zip(rows,compact):
-            print("CATEGORY-DIAG",r["chiave"],
-                  [p["pagina"] for p in c["passaggi"]],
-                  str(r.get("testo"))[:115].replace("\\n"," "),
-                  flush=True)
-            if "ULTOMIRIS" in str(r.get("testo","")).upper():
-                print("CATEGORY-ULTOMIRIS-EVIDENCE",str(c)[:3000],flush=True)
+            candidates=engine.evidence_candidates(db,question,max_rows=22)
+        compact=compact_category_evidence(candidates)
+        source=[c for c in compact if "ULTOMIRIS" in
+                c["documento_e_medicinale_candidato"].upper()]
+        self.assertEqual(len(source),1)
+        self.assertTrue(any(p["pagina"]==3 and "miastenia" in
+                            p["estratto"].casefold() and "federico" in
+                            p["estratto"].casefold()
+                            for p in source[0]["passaggi"]))
+        first=("Medicinale: SOLIRIS — miastenia gravis, "
+               "Federico II, p.4.\\nNota: ULTOMIRIS va verificato.")
+        missing=missing_category_candidates(first,compact)
+        self.assertTrue(any("ULTOMIRIS" in
+                            c["documento_e_medicinale_candidato"]
+                            for c in missing))
+        result,calls=self._run(question,[
+            lambda payload:first,
+            lambda payload:("Medicinale: SOLIRIS — miastenia gravis, "
+                            "Federico II, p.4.\\n"
+                            "Medicinale: ULTOMIRIS — miastenia gravis "
+                            "generalizzata refrattaria, Federico II, "
+                            "pagina 3, nota PG/2024/0427490.")
+        ])
+        self.assertEqual(len(calls),2)
+        self.assertTrue(result["revisione_categoria_llm"])
+        self.assertEqual(result["chiamate_llm_stimate"],6)
+        self.assertIn("Medicinale: ULTOMIRIS",result["risposta"])
+        self.assertIn("Medicinale: SOLIRIS",result["risposta"])
+        self.assertTrue(any("ULTOMIRIS" in c for c in
+                            result["candidati_categoria_da_ricontrollare"]))
+
     def test_wegovy_non_pubblica_cinque_come_elenco_completo(self):
         question=("Quante confezioni di WEGOVY sono presenti nell'articolo 1 "
                   "della determina 23A02767? Riporta tutti gli AIC, "
