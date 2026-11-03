@@ -1,0 +1,27 @@
+name: Audit primario PDF CIDP della Campania
+
+on:
+  pull_request:
+    paths:
+      - "tesi/verifica_cidp_sorgenti.py"
+      - ".github/workflows/tesi-verifica-cidp.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verifica-cidp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Dipendenza estrazione e resa pagine PDF
+        run: python -m pip install --disable-pip-version-check "PyMuPDF>=1.24,<1.27"
+      - name: Audit ZIP regionali, SHA PDF e testi pagina
+        env:
+          AUDIT_IMAGES: "1"
+        run: python -u tesi/verifica_cidp_sorgenti.py
