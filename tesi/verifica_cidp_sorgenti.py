@@ -142,6 +142,33 @@ def main():
         "note_con_indizi_di_categoria_e_centro":len(doc_candidates),
         "note_totali":len(by_doc),"distinzione":"solo candidati, non gold"})
 
+    # Allarga il controllo ai documenti candidati individuati nel
+    # corpus, più le note note da precedenti prove che possono avere
+    # testo OCR del centro non intercettato dall'espressione semplice.
+    verify_paths={d["path_zip"] for d in selected}
+    for possible in doc_candidates:
+        verify_paths.add(possible["pdf"])
+    for keyword in ("SOLIRIS","VYVGART"):
+        for row in db.execute(
+            "SELECT path_zip FROM documenti WHERE upper(nome) LIKE ?",
+            ("%"+keyword+"%",)):
+            verify_paths.add(row["path_zip"])
+    already={d["path_zip"] for d in selected}
+    for path in sorted(verify_paths-already):
+        row=db.execute(
+            "SELECT id,nome,anno,path_zip,zip_url,sha256_pdf,nome_farmaco "
+            "FROM documenti WHERE path_zip=?",(path,)).fetchone()
+        if row is None:
+            continue
+        doc=dict(row)
+        selected.append(doc)
+        println("DOCUMENTO_CANDIDATO_ORIGINALE",doc)
+        for p in db.execute(
+            "SELECT pagina,testo,metodo FROM pagine "
+            "WHERE documento_id=? ORDER BY pagina",(doc["id"],)):
+            println("PAGINA_SNAPSHOT",{
+                "nome":doc["nome"],"pagina":p["pagina"],
+                "metodo":p["metodo"],"testo":p["testo"][:14000]})
     if not selected:
         raise RuntimeError("Nessuna nota originale KIOVIG/HYQVIA nello snapshot")
     println("DOCUMENTI_TROVATI",{"numero":len(selected)})
@@ -176,7 +203,12 @@ def main():
                         for no,page in enumerate(original,1):
                             log_page(doc["nome"],no,page,
                                      show_image=(no<=4 and
-                                                 os.getenv("AUDIT_IMAGES")=="1"))
+                                       os.getenv("AUDIT_IMAGES")=="1" and
+                                       any(name in doc["nome"].upper()
+                                       for name in (
+                                         "GAMTEN","SKYCLARYS","WAINZUA",
+                                         "AMVUTTRA","SOLIRIS","VYVGART",
+                                         "KIOVIG","HYQVIA"))))
         except Exception as exc:
             failures.append("Anno "+str(year)+": "+str(exc))
             println("ARCHIVIO_NON_VERIFICATO",{"anno":year,"errore":str(exc)})
