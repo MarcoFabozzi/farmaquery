@@ -1,15 +1,15 @@
 {
   "esito": "OK",
   "statistiche": {
-    "note": 380,
+    "note": 393,
     "duplicati": 10,
-    "pagine": 942,
+    "pagine": 973,
     "pagine_ocr": 446,
     "pagine_da_ocr": 0,
     "righe_totali": 161453,
     "righe_campania": 10527,
-    "centri_candidati": 3072,
-    "rimandi_candidati": 265,
+    "centri_candidati": 3162,
+    "rimandi_candidati": 279,
     "strutture_registri": 10527
   },
   "fonti": [
@@ -39,9 +39,9 @@
     },
     {
       "anno": 2026,
-      "url": "https://www.regione.campania.it/sites/default/files/2026-09/note-regionali-2026%2022.09.2026.zip",
-      "sha256": "92e64fd5c897cf794f8c4e7f125542151dfef7bc9c1a9058f969dea855268097",
-      "pdf": 65
+      "url": "https://www.regione.campania.it/sites/default/files/2026-11/note-regionali-2026%2004.11.2026.zip",
+      "sha256": "c1e1f9cae15fa0d04903922a49e1e20270a80d34a820581798c98f7dca67be29",
+      "pdf": 78
     }
   ],
   "strutture": {
@@ -49,6 +49,6 @@
     "sha256": "f4b1ec6f3123b441e240080867b37dd4ba19f2b54cd5b37b82fb869bffa155da",
     "data_riferimento": "2026-09-14"
   },
-  "archivio_compresso_sha256": "d43df8796f75f19dbaeb3be08dacd11e907475fd0eeb11b6a90693f0e6c51a50",
+  "archivio_compresso_sha256": "3d93041cb7feffa124b6a559d083735279b75a7122dcb9ac1df7193e89d72d0f",
   "nota": "Centri individuati in PDF come candidati DA_VERIFICARE. La presenza nella lista registri non prova di per se' ogni indicazione regionale."
 }
