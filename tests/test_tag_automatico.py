@@ -182,6 +182,9 @@ class TAGAutomaticoTests(unittest.TestCase):
         self.assertIn("VERO ema_id", auto.SQL_PROMPT)
         self.assertIn("fonte_origine", auto.SQL_PROMPT)
         self.assertIn("NON richiedere numeri", auto.TABULAR_ANSWER_PROMPT)
+        self.assertIn("differenza di denominazione", auto.TABULAR_ANSWER_PROMPT)
+        self.assertIn("senza evidenze", auto.TABULAR_ANSWER_PROMPT)
+        self.assertNotIn("BEYONTTRA", auto.TABULAR_ANSWER_PROMPT)
         self.assertIn("Cita nome del documento e pagina", auto.ANSWER_PROMPT)
 
 
