@@ -41,7 +41,12 @@ SQL_PROMPT = (
     "anche la denominazione del medicinale (nome), la colonna richiesta "
     "dalla domanda e gli identificativi disponibili (aic, ema_id o "
     "documento_id). Non restituire solo un valore privo del suo soggetto. "
+    "Per confronti ESATTI sul nome dei medicinali usa COLLATE NOCASE "
+    "(esempio: nome = 'Farmaco' COLLATE NOCASE); non usare confronti "
+    "sensibili alle maiuscole. "
     "Se usi UNION, allinea esplicitamente gli alias delle colonne e "
+    "non collocare aic ed ema_id nella stessa posizione con il medesimo "
+    "alias: sono identificativi di fonti diverse. "
     "mantieni il nome del medicinale in ogni ramo. Per combinare AIFA ed EMA "
     "usa preferibilmente UNION ALL e una colonna fonte_origine con i valori "
     "AIFA o EMA. Non eliminare righe di fonti differenti. Non sostituire "
@@ -107,6 +112,67 @@ TABULAR_ANSWER_PROMPT = (
     "Evita 'p. non specificata' e non inventare pagine o identificativi. "
     "Se mancano dati sufficienti, dichiaralo."
 )
+
+
+_NOME_UGUALE_RE = re.compile(
+    r"""(?<![\w])(?P<col>(?:[A-Za-z_]\w*\.)?"?nome"?)\s*=\s*"""
+    r"""(?P<value>'(?:''|[^'])*')(?!\s+COLLATE\s+\w+)""",
+    re.IGNORECASE,
+)
+
+
+def _normalize_exact_name_comparisons(sql):
+    """Confronti nome = stringa non sensibili al case, senza query aggiuntive.
+
+    Normalizzazione SQL generale e riproducibile, prima di rieseguire il
+    validatore read-only. Non inserisce nomi di medicinali o sinonimi clinici.
+    """
+    return _NOME_UGUALE_RE.sub(
+        lambda m: m.group("col") + " = " + m.group("value") +
+        " COLLATE NOCASE", sql
+    )
+
+
+def _canonicalize_tabular_identifier(db, row):
+    """Riconcilia identificativi disallineati dalle UNION per POSIZIONE.
+
+    SQLite usa i nomi delle colonne della prima SELECT anche nelle righe
+    successive. Verifichiamo l'ID contro lo schema e il nome del medicinale:
+    non aggiungiamo contenuti né nuovi candidati e non usiamo parole cliniche.
+    """
+    data = dict(row)
+    name = str(data.get("nome") or "").strip()
+    if not name:
+        return data, False
+    aic = str(data.get("aic") or "").strip()
+    ema = str(data.get("ema_id") or "").strip()
+    if aic and not ema:
+        src_ema = db.execute(
+            "SELECT 1 FROM ema_medicinali WHERE ema_id=? "
+            "AND nome=? COLLATE NOCASE LIMIT 1", (aic, name)
+        ).fetchone()
+        if src_ema:
+            src_aifa = db.execute(
+                "SELECT 1 FROM aifa_confezioni WHERE aic=? LIMIT 1", (aic,)
+            ).fetchone()
+            if not src_aifa:
+                data["ema_id"], data["aic"] = aic, None
+                data["fonte_origine"] = "EMA"
+                return data, True
+    if ema and not aic:
+        src_aifa = db.execute(
+            "SELECT 1 FROM aifa_confezioni WHERE aic=? "
+            "AND nome=? COLLATE NOCASE LIMIT 1", (ema, name)
+        ).fetchone()
+        if src_aifa:
+            src_ema = db.execute(
+                "SELECT 1 FROM ema_medicinali WHERE ema_id=? LIMIT 1", (ema,)
+            ).fetchone()
+            if not src_ema:
+                data["aic"], data["ema_id"] = ema, None
+                data["fonte_origine"] = "AIFA"
+                return data, True
+    return data, False
 
 
 def _run_generated_select(db, sql):
@@ -183,13 +249,15 @@ def _tabular_candidates(db, records):
     """Righe SQL senza regole per patologie, con identificativi e fonti."""
     candidates = []
     for idx, row in enumerate(records):
-        source = _sql_sources(db, [row])
+        corrected, normalized = _canonicalize_tabular_identifier(db, row)
+        source = _sql_sources(db, [corrected])
         if not source:
-            source = _verify_tabular_identifiers(db, row)
+            source = _verify_tabular_identifiers(db, corrected)
         candidates.append({"chiave": "SQL:"+str(idx), "tipo": "SQL",
-                           "testo": json.dumps(row, ensure_ascii=False, default=str)[:3600],
+                           "testo": json.dumps(corrected, ensure_ascii=False, default=str)[:3600],
                            "fonte": source[0] if source else "Riga SQL "+str(idx+1),
-                           "fonti": source})
+                           "fonti": source,
+                           "provenienza_sql_riconciliata": normalized})
     return candidates
 
 
@@ -264,6 +332,10 @@ def automatic_tag(db, question, model):
         {"schema": _sql_schema(db), "domanda": question}
     )
     sql = _in_phase("validazione SQL TAG automatico", validate_sql, generated)
+    sql = _in_phase(
+        "normalizzazione SQL TAG automatico", validate_sql,
+        _normalize_exact_name_comparisons(sql)
+    )
     records, sql_partial = _in_phase(
         "esecuzione SQL TAG automatico", _run_generated_select, db, sql
     )
@@ -279,6 +351,9 @@ def automatic_tag(db, question, model):
     else:
         candidates = _tabular_candidates(db, records)
         page_partial = False
+    base["identificativi_sql_riconciliati"] = sum(
+        bool(item.get("provenienza_sql_riconciliata")) for item in candidates
+    )
     if not candidates:
         return {**base, "risposta":"La SELECT ha trovato identificativi, "
                 "ma non sono disponibili testi consultabili per il filtro LOTUS.",
