@@ -188,5 +188,67 @@ class TAGAutomaticoTests(unittest.TestCase):
         self.assertIn("Cita nome del documento e pagina", auto.ANSWER_PROMPT)
 
 
+    def test_union_different_identifiers_not_mislabelled_as_aic(self):
+        """D03: UNION ALL deve conservare l'identità EMA, non un falso AIC."""
+        self.db.execute("PRAGMA query_only=OFF")
+        self.db.executescript("""
+            CREATE TABLE aifa_confezioni (
+                aic TEXT, nome TEXT, principio_attivo TEXT
+            );
+            CREATE TABLE ema_medicinali (
+                ema_id TEXT, nome TEXT, principio_attivo TEXT, url_ema TEXT
+            );
+            INSERT INTO aifa_confezioni VALUES
+              ('050231012','VABYSMO','FARICIMAB'),
+              ('050231024','VABYSMO','FARICIMAB');
+            INSERT INTO ema_medicinali VALUES
+              ('EMEA/H/C/005642','Vabysmo','Faricimab',
+               'https://example.org/vabysmo');
+        """)
+        self.db.execute("PRAGMA query_only=ON")
+        generated = (
+            "SELECT aic, nome, principio_attivo FROM aifa_confezioni "
+            "WHERE nome LIKE '%VABYSMO%' UNION ALL "
+            "SELECT ema_id, nome, principio_attivo FROM ema_medicinali "
+            "WHERE nome LIKE '%VABYSMO%'"
+        )
+        rows, partial = auto._run_generated_select(self.db, generated)
+        self.assertFalse(partial)
+        self.assertEqual(len(rows),3)
+        candidates = auto._tabular_candidates(self.db,rows)
+        self.assertEqual(sum(bool(x["provenienza_sql_riconciliata"]) for x in candidates),1)
+        ema_row = next(x for x in candidates if "EMEA/H/C/005642" in x["testo"])
+        self.assertIn('"aic": null',ema_row["testo"])
+        self.assertIn('"ema_id": "EMEA/H/C/005642"',ema_row["testo"])
+        self.assertEqual(ema_row["fonti"],[
+            "EMA EMEA/H/C/005642 | https://example.org/vabysmo"
+        ])
+        self.assertFalse(any("AIFA AIC EMEA" in src
+                             for item in candidates for src in item["fonti"]))
+
+    def test_elrexfio_exact_name_case_insensitive(self):
+        """D04: non considerare assente un medicinale per le maiuscole."""
+        self.db.execute("PRAGMA query_only=OFF")
+        self.db.executescript("""
+            CREATE TABLE ema_medicinali (
+                ema_id TEXT, nome TEXT, data_decisione_ue TEXT
+            );
+            INSERT INTO ema_medicinali VALUES
+              ('EMEA/H/C/005908','Elrexfio','2023-12-07');
+        """)
+        self.db.execute("PRAGMA query_only=ON")
+        generated = ("SELECT ema_id,nome,data_decisione_ue "
+                     "FROM ema_medicinali WHERE nome = 'ELREXFIO'")
+        original, _ = auto._run_generated_select(self.db,generated)
+        self.assertEqual(original,[])
+        fixed = auto._normalize_exact_name_comparisons(generated)
+        self.assertIn("COLLATE NOCASE",fixed)
+        self.assertEqual(fixed,auto._normalize_exact_name_comparisons(fixed))
+        records, partial = auto._run_generated_select(self.db,fixed)
+        self.assertEqual(len(records),1)
+        self.assertFalse(partial)
+        self.assertEqual(records[0]["data_decisione_ue"],"2023-12-07")
+
+
 if __name__ == "__main__":
     unittest.main()
