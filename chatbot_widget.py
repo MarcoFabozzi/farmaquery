@@ -233,10 +233,19 @@ def assistant_dialog():
                                     ref,instance_key=method+"_"+str(msg_index)+
                                     "_"+str(ref_index))
                     if item.get("evidenze_fonti"):
-                        with st.expander("Passaggi del testo consultato"):
-                            st.caption("Testo originale estratto dalle fonti, "
-                                       "non evidenziazione nel PDF e non "
-                                       "verifica normativa indipendente.")
+                        tabular_auto=(method=="TAG automatico" and all(
+                            src.get("tipo")=="SQL" for src in item["evidenze_fonti"]))
+                        with st.expander(
+                            "Righe strutturate consultate" if tabular_auto
+                            else "Passaggi del testo consultato"):
+                            if tabular_auto:
+                                st.caption("Record dello snapshot SQLite: "
+                                           "per queste fonti non sono previsti "
+                                           "numeri di pagina PDF.")
+                            else:
+                                st.caption("Testo originale estratto dalle fonti, "
+                                           "non evidenziazione nel PDF e non "
+                                           "verifica normativa indipendente.")
                             for source in item["evidenze_fonti"]:
                                 st.caption(str(source.get("fonte") or "")[:200])
                                 _show_excerpt(source)
