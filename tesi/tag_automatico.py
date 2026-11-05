@@ -22,6 +22,7 @@ MAX_NOTE_PAGES = 1200
 MAX_LOTUS_GROUPS = 12
 MAX_ANSWER_DOCUMENTS = 55
 MAX_ANSWER_CHARS = 44000
+TAG_AUTO_REVISION = "2026-11-05-r2-case-provenienza"
 
 SQL_PROMPT = (
     "Genera UNA sola query SQLite SELECT che recuperi candidati da far "
@@ -331,15 +332,20 @@ def automatic_tag(db, question, model):
         "generazione SQL TAG automatico", ask, model, SQL_PROMPT,
         {"schema": _sql_schema(db), "domanda": question}
     )
-    sql = _in_phase("validazione SQL TAG automatico", validate_sql, generated)
+    sql_originale_llm = _in_phase(
+        "validazione SQL TAG automatico", validate_sql, generated
+    )
     sql = _in_phase(
         "normalizzazione SQL TAG automatico", validate_sql,
-        _normalize_exact_name_comparisons(sql)
+        _normalize_exact_name_comparisons(sql_originale_llm)
     )
     records, sql_partial = _in_phase(
         "esecuzione SQL TAG automatico", _run_generated_select, db, sql
     )
-    base = {"sql":sql, "versione_tag":"automatico-v1",
+    base = {"sql":sql, "sql_originale_llm":sql_originale_llm,
+            "sql_normalizzato_nome":sql != sql_originale_llm,
+            "tag_auto_revision":TAG_AUTO_REVISION,
+            "versione_tag":"automatico-v1",
             "recupero":"LLM-SQL", "sql_tentativi":1, "righe_sql":len(records)}
     if not records:
         return {**base, "risposta":"La query SQL non ha restituito righe. "
