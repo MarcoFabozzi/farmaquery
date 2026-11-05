@@ -42,7 +42,12 @@ SQL_PROMPT = (
     "dalla domanda e gli identificativi disponibili (aic, ema_id o "
     "documento_id). Non restituire solo un valore privo del suo soggetto. "
     "Se usi UNION, allinea esplicitamente gli alias delle colonne e "
-    "mantieni il nome del medicinale in ogni ramo. "
+    "mantieni il nome del medicinale in ogni ramo. Per combinare AIFA ed EMA "
+    "usa preferibilmente UNION ALL e una colonna fonte_origine con i valori "
+    "AIFA o EMA. Non eliminare righe di fonti differenti. Non sostituire "
+    "con NULL un identificativo esistente nella tabella di provenienza: "
+    "AIFA deve riportare il VERO aic e EMA il VERO ema_id; usa NULL solo "
+    "per la colonna inesistente nell\u0027altro ramo. "
     "Non usare SQL per inferire autorizzazioni dalla sola menzione di un centro. "
     "Nessuna PRAGMA, DML, DDL, istruzioni multiple o spiegazioni. "
     "Restituisci esclusivamente il testo SQL."
@@ -85,6 +90,18 @@ ANSWER_PROMPT = (
     "Cita nome del documento e pagina per le note; per EMA/AIFA cita "
     "l'identificativo. Non interpretare un'assenza nel database come "
     "l'assenza del fatto nel mondo reale."
+)
+
+
+TABULAR_ANSWER_PROMPT = (
+    "Rispondi in italiano esclusivamente in base alle righe SQL strutturate. "
+    "Per ogni attributo indica il medicinale. Se le fonti riportano "
+    "denominazioni diverse, distingui i valori senza inventare equivalenze "
+    "o contraddizioni non documentate. Per AIFA cita l'AIC, per EMA l'EMA ID, "
+    "ma solo se presenti nei riferimenti verificabili. NON richiedere numeri "
+    "di pagina: i dati EMA/AIFA provengono da tabelle, non da pagine PDF. "
+    "Evita 'p. non specificata' e non inventare pagine o identificativi. "
+    "Se mancano dati sufficienti, dichiaralo."
 )
 
 
@@ -163,11 +180,56 @@ def _tabular_candidates(db, records):
     candidates = []
     for idx, row in enumerate(records):
         source = _sql_sources(db, [row])
+        if not source:
+            source = _verify_tabular_identifiers(db, row)
         candidates.append({"chiave": "SQL:"+str(idx), "tipo": "SQL",
                            "testo": json.dumps(row, ensure_ascii=False, default=str)[:3600],
                            "fonte": source[0] if source else "Riga SQL "+str(idx+1),
                            "fonti": source})
     return candidates
+
+
+def _verify_tabular_identifiers(db, row):
+    """Trova esclusivamente riferimenti collegati a nome+valore esatti.
+
+    Passo deterministico di provenienza: non aggiunge nuovi candidati,
+    non usa categorie cliniche e non altera il recupero SQL generato.
+    """
+    name = str(row.get("nome") or "").strip()
+    active = str(row.get("principio_attivo") or "").strip()
+    if not name or not active:
+        return []
+    origin = str(row.get("fonte_origine") or "").strip().casefold()
+    if origin not in ("", "aifa", "ema"):
+        return []
+    found = []
+    if origin in ("", "aifa") and not row.get("aic") and not row.get("ema_id"):
+        entries = db.execute(
+            "SELECT DISTINCT aic FROM aifa_confezioni "
+            "WHERE nome = ? COLLATE NOCASE "
+            "AND principio_attivo = ? COLLATE NOCASE "
+            "AND aic IS NOT NULL ORDER BY aic LIMIT 21", (name, active)
+        ).fetchall()
+        # In caso di molte confezioni non affermare una provenienza esaustiva.
+        if 0 < len(entries) <= 20:
+            found.extend(
+                "AIFA AIC " + str(entry["aic"]) +
+                " | snapshot elenchi ufficiali A/H"
+                for entry in entries
+            )
+    if origin in ("", "ema") and not row.get("ema_id") and not row.get("aic"):
+        entries = db.execute(
+            "SELECT DISTINCT ema_id, url_ema FROM ema_medicinali "
+            "WHERE nome = ? COLLATE NOCASE "
+            "AND principio_attivo = ? COLLATE NOCASE "
+            "AND ema_id IS NOT NULL LIMIT 2", (name, active)
+        ).fetchall()
+        if len(entries) == 1:
+            entry = entries[0]
+            found.append("EMA " + str(entry["ema_id"]) +
+                         (" | " + str(entry["url_ema"])
+                          if entry["url_ema"] else ""))
+    return found
 
 
 def _lotus_plan(candidates):
@@ -258,8 +320,11 @@ def automatic_tag(db, question, model):
         chosen.append({"chiave":item["chiave"],"testo":text,
                        "fonti":item.get("fonti") or [item["fonte"]]})
     partial = sql_partial or page_partial or truncated_answer
+    answer_prompt = (ANSWER_PROMPT if any(
+        item.get("nota_id") is not None for item in candidates
+    ) else TABULAR_ANSWER_PROMPT)
     answer, answer_usage = _in_phase(
-        "sintesi TAG automatico", ask, model, ANSWER_PROMPT,
+        "sintesi TAG automatico", ask, model, answer_prompt,
         {"domanda":question,"evidenze":chosen,"risultati_parziali":partial},
         timeout=65, max_tokens=2400
     )
