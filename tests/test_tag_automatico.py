@@ -4,6 +4,7 @@ from __future__ import annotations
 import sqlite3
 import sys
 import types
+import pandas as pd  # Import prima delle patch ai moduli, evita reimport numpy nei test.
 import unittest
 from unittest.mock import patch
 
