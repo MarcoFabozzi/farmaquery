@@ -1227,7 +1227,7 @@ sql_method=measured_engine(sql_method)
 def main():
     p=argparse.ArgumentParser()
     p.add_argument("--db",type=Path,required=True)
-    p.add_argument("--method",choices=["TAG","Text-to-SQL"],required=True)
+    p.add_argument("--method",choices=["TAG","TAG automatico","Text-to-SQL"],required=True)
     p.add_argument("--model",required=True)
     p.add_argument("--question",required=True)
     p.add_argument("--out",type=Path)
@@ -1237,7 +1237,13 @@ def main():
         p.error("Le API LLM consumano quote: aggiungi --conferma-chiamate")
     start=time.monotonic()
     with closing(read_only(a.db)) as db:
-        result=tag(db,a.question,a.model) if a.method=="TAG" else sql_method(db,a.question,a.model)
+        if a.method=="TAG":
+            result=tag(db,a.question,a.model)
+        elif a.method=="TAG automatico":
+            from tesi.tag_automatico import automatic_tag
+            result=automatic_tag(db,a.question,a.model)
+        else:
+            result=sql_method(db,a.question,a.model)
     record={"metodo":a.method,"modello":a.model,"domanda":a.question,
             "secondi":round(time.monotonic()-start,3),**result}
     payload=json.dumps(record,ensure_ascii=False,indent=2)
