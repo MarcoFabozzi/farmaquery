@@ -37,22 +37,43 @@ SQL_PROMPT = (
     "Per una categoria clinica richiesta presso un ospedale, recupera "
     "tutte le note che menzionano l'ospedale, senza filtrare le patologie. "
     "Per un elenco di documenti NON usare LIMIT e NON aggregare le note "
-    "prima del filtro semantico. Per dati tabellari seleziona le righe "
-    "pertinenti e i relativi identificativi (aic, ema_id o documento_id). "
+    "prima del filtro semantico. Per dati tabellari restituisci SEMPRE "
+    "anche la denominazione del medicinale (nome), la colonna richiesta "
+    "dalla domanda e gli identificativi disponibili (aic, ema_id o "
+    "documento_id). Non restituire solo un valore privo del suo soggetto. "
+    "Se usi UNION, allinea esplicitamente gli alias delle colonne e "
+    "mantieni il nome del medicinale in ogni ramo. "
     "Non usare SQL per inferire autorizzazioni dalla sola menzione di un centro. "
     "Nessuna PRAGMA, DML, DDL, istruzioni multiple o spiegazioni. "
     "Restituisci esclusivamente il testo SQL."
 )
 
-SEMANTIC_PROMPT = (
-    "Il seguente documento o gruppo di righe {testo} contiene elementi "
-    "pertinenti alla domanda: {domanda}? Valuta il SIGNIFICATO clinico, "
-    "le relazioni tra centri, indicazioni e farmaci e le prove documentali. "
-    "Non assumere che la sola menzione di un ospedale sia un'autorizzazione. "
-    "Non applicare un elenco precostituito di patologie o sinonimi. "
-    "Se un gruppo contiene ALMENO una prova potenzialmente pertinente, "
-    "selezionalo; la sintesi finale deve verificare i singoli documenti."
+DOCUMENT_SEMANTIC_PROMPT = (
+    "Il seguente gruppo di documenti {testo} contiene informazioni "
+    "potenzialmente pertinenti alla domanda: {domanda}? Valuta il significato "
+    "clinico e le relazioni effettivamente documentate fra medicinali, "
+    "indicazioni e strutture. La mera menzione di un ospedale non prova "
+    "un'autorizzazione. Non usare elenchi precostituiti di patologie. "
+    "Se almeno un documento puo' essere pertinente, seleziona il gruppo: "
+    "la risposta finale esaminera' i documenti singolarmente."
 )
+
+TABULAR_SEMANTIC_PROMPT = (
+    "Questo gruppo di RISULTATI SQL STRUTTURATI {testo} contiene uno o piu' "
+    "valori utili a rispondere alla domanda: {domanda}? Il database ha "
+    "gia' applicato i filtri oggettivi della SELECT. Per una domanda su "
+    "un attributo (ad esempio principio attivo, stato, data, AIC o classe), "
+    "una riga con il nome della colonna richiesta e un valore non vuoto "
+    "e' pertinente, anche quando il nome del medicinale non viene ripetuto "
+    "nel risultato della query. Non richiedere prove cliniche, indicazioni "
+    "o autorizzazioni in una domanda puramente anagrafica. "
+    "Se ALMENO una riga contiene informazioni potenzialmente utili, "
+    "seleziona il gruppo; le eventuali ambiguita' saranno esaminate "
+    "nella risposta finale."
+)
+
+# Alias retrocompatibile per eventuali importazioni esterne.
+SEMANTIC_PROMPT = DOCUMENT_SEMANTIC_PROMPT
 
 ANSWER_PROMPT = (
     "Rispondi in italiano usando ESCLUSIVAMENTE le evidenze recuperate. "
@@ -202,9 +223,13 @@ def automatic_tag(db, question, model):
     _in_phase("inizializzazione TAG automatico", lotus.settings.configure,
               lm=lm, enable_cache=False)
     planned, members = _lotus_plan(candidates)
+    semantic_instruction = (DOCUMENT_SEMANTIC_PROMPT if any(
+        item.get("nota_id") is not None for item in candidates
+    ) else TABULAR_SEMANTIC_PROMPT)
     filtered = _in_phase("selezione LOTUS TAG automatico", sem_filter_controlled,
                          pd.DataFrame(planned),
-                         SEMANTIC_PROMPT.format(testo="{testo}",domanda=json.dumps(question,ensure_ascii=False)))
+                         semantic_instruction.format(
+                             testo="{testo}",domanda=json.dumps(question,ensure_ascii=False)))
     selected_groups = filtered[["chiave"]].to_dict("records")
     selected = expand_selected(selected_groups, members)
     if not selected:
