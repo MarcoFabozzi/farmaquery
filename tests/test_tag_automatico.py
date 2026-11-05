@@ -250,5 +250,95 @@ class TAGAutomaticoTests(unittest.TestCase):
         self.assertEqual(records[0]["data_decisione_ue"],"2023-12-07")
 
 
+    def test_full_pipeline_normalizes_exact_name_and_reports_revision(self):
+        """D04/D05: query prodotta senza NOCASE, recupero completo e audit."""
+        self.db.execute("PRAGMA query_only=OFF")
+        self.db.executescript("""
+            CREATE TABLE ema_medicinali(
+                ema_id TEXT,nome TEXT,data_decisione_ue TEXT,url_ema TEXT
+            );
+            INSERT INTO ema_medicinali VALUES
+              ('EMA-DEMO','Elrexfio','data-snapshot-demo','https://example.org/ema');
+        """)
+        self.db.execute("PRAGMA query_only=ON")
+        original = (
+            "SELECT ema_id,nome,data_decisione_ue "
+            "FROM ema_medicinali WHERE nome = 'ELREXFIO'"
+        )
+        seen = []
+        def mock_ask(model,system,payload,**kwargs):
+            seen.append(system)
+            if system == auto.SQL_PROMPT:
+                return original, {"token_input":1,"token_output":1,"costo_usd":0}
+            return "Data: data-snapshot-demo", {
+                "token_input":1,"token_output":1,"costo_usd":0
+            }
+        fake_lotus = types.ModuleType("lotus")
+        fake_lotus.settings = types.SimpleNamespace(configure=lambda **_:None)
+        fake_models = types.ModuleType("lotus.models")
+        fake_models.LM = lambda *_,**__:types.SimpleNamespace()
+        with patch.dict(sys.modules,{"lotus":fake_lotus,"lotus.models":fake_models}), \
+             patch.object(auto,"ask",side_effect=mock_ask), \
+             patch.object(auto,"sem_filter_controlled",
+                          side_effect=lambda frame,instruction:frame):
+            result=auto.automatic_tag(
+                self.db,"Data della decisione UE per ELREXFIO",
+                "modello-fittizio"
+            )
+        self.assertEqual(result["stato"],"OK")
+        self.assertEqual(result["righe_sql"],1)
+        self.assertIn("data-snapshot-demo",result["risposta"])
+        self.assertIn("COLLATE NOCASE",result["sql"])
+        self.assertNotIn("COLLATE NOCASE",result["sql_originale_llm"])
+        self.assertTrue(result["sql_normalizzato_nome"])
+        self.assertEqual(result["tag_auto_revision"],auto.TAG_AUTO_REVISION)
+        self.assertEqual(len(seen),2)
+
+    def test_full_pipeline_audits_misaligned_ema_id(self):
+        """D03: controlla che l'etichetta falsa AIC non passi a LOTUS."""
+        self.db.execute("PRAGMA query_only=OFF")
+        self.db.executescript("""
+            CREATE TABLE aifa_confezioni(
+                aic TEXT,nome TEXT,principio_attivo TEXT
+            );
+            CREATE TABLE ema_medicinali(
+                ema_id TEXT,nome TEXT,principio_attivo TEXT,url_ema TEXT
+            );
+            INSERT INTO aifa_confezioni VALUES
+              ('AIC-DEMO','Medicinale-X','Principio-A');
+            INSERT INTO ema_medicinali VALUES
+              ('EMA-DEMO','Medicinale-X','Principio-A','https://example.org/ema');
+        """)
+        self.db.execute("PRAGMA query_only=ON")
+        generated=(
+            "SELECT aic,nome,principio_attivo FROM aifa_confezioni "
+            "WHERE nome LIKE '%Medicinale-X%' UNION ALL "
+            "SELECT ema_id,nome,principio_attivo FROM ema_medicinali "
+            "WHERE nome LIKE '%Medicinale-X%'"
+        )
+        def mock_ask(model,system,payload,**kwargs):
+            if system == auto.SQL_PROMPT:
+                return generated,{"token_input":1,"token_output":1,"costo_usd":0}
+            return "Principio-A",{"token_input":1,"token_output":1,"costo_usd":0}
+        fake_lotus=types.ModuleType("lotus")
+        fake_lotus.settings=types.SimpleNamespace(configure=lambda **_:None)
+        fake_models=types.ModuleType("lotus.models")
+        fake_models.LM=lambda *_,**__:types.SimpleNamespace()
+        with patch.dict(sys.modules,{"lotus":fake_lotus,"lotus.models":fake_models}), \
+             patch.object(auto,"ask",side_effect=mock_ask), \
+             patch.object(auto,"sem_filter_controlled",
+                          side_effect=lambda frame,instruction:frame):
+            result=auto.automatic_tag(
+                self.db,"Principio attivo di Medicinale-X","modello-fittizio"
+            )
+        self.assertEqual(result["stato"],"OK")
+        self.assertEqual(result["identificativi_sql_riconciliati"],1)
+        self.assertEqual(result["righe_sql"],2)
+        self.assertTrue(any(src.startswith("EMA EMA-DEMO")
+                            for src in result["fonti"]))
+        self.assertFalse(any("AIFA AIC EMA-DEMO" in src
+                             for src in result["fonti"]))
+
+
 if __name__ == "__main__":
     unittest.main()
