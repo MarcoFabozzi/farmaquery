@@ -286,6 +286,12 @@ def assistant_dialog():
                             "Selezione TAG: "+str(item["modalita_selezione"])+
                             " · evidenze: "+str(item.get("righe_recuperate","?"))+
                             " · elementi LOTUS: "+str(item.get("righe_sem_filter","?")))
+                    if method=="TAG automatico" and item.get("identificativi_sql_riconciliati"):
+                        st.caption(
+                            "Provenienza identificativi riallineata dopo la SELECT: "+
+                            str(item["identificativi_sql_riconciliati"])+
+                            " riga/e, con verifica nello snapshot. "
+                            "La query originale rimane visibile per l'audit.")
                     if method=="TAG" and item.get("sql_first_note_con_centro"):
                         st.caption(
                             "SQL-first · note che menzionano la struttura: "+
@@ -346,6 +352,8 @@ def assistant_dialog():
                         "modalita_selezione":result.get("modalita_selezione"),
                         "righe_recuperate":result.get("righe_recuperate"),
                         "righe_sem_filter":result.get("righe_sem_filter"),
+                        "identificativi_sql_riconciliati":result.get(
+                            "identificativi_sql_riconciliati"),
                         "chiamate_llm_stimate":result.get("chiamate_llm_stimate"),
                         "chiamate_llm_effettive":result.get("chiamate_llm_effettive"),
                         "chiamate_llm_dirette":result.get("chiamate_llm_dirette"),
