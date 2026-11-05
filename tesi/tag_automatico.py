@@ -113,6 +113,8 @@ def _note_candidates(db, records):
         answer_parts = []
         for p in pages:
             raw = " ".join(str(p["testo"] or "").split())
+            if len(raw) > 4200:
+                partial = True
             # Conserva un campione di OGNI pagina, anche se la nota e' lunga.
             per_page = max(70, min(420, 1050 // max(1, len(pages))))
             if len(raw) > per_page:
@@ -157,7 +159,7 @@ def _lotus_plan(candidates):
     for idx, group in enumerate(bundles):
         uid = "GRUPPO:" + str(idx+1)
         content = "\n".join("["+r["chiave"]+"] " +
-                            str(r.get("testo_selezione") or r["testo"])[:1250]
+                            str(r.get("testo_selezione") or r["testo"])[:1600]
                             for r in group)
         frames.append({"chiave":uid,"testo":content})
         members[uid] = group
