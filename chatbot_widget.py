@@ -250,10 +250,26 @@ def assistant_dialog():
                                 st.caption(str(source.get("fonte") or "")[:200])
                                 _show_excerpt(source)
                     if method in ("Text-to-SQL","TAG automatico") and item.get("sql"):
-                        with st.expander("Query SQL generata dall\u0027LLM"):
-                            st.code(item["sql"],language="sql")
-                            st.caption("Text-to-SQL standard · una sola SELECT · nessuna correzione" if method=="Text-to-SQL"
-                                       else "TAG automatico · SQL generato dall\u0027LLM, poi LOTUS")
+                        with st.expander("SQL di recupero e tracciabilità" if method=="TAG automatico"
+                                         else "Query SQL generata dall'LLM"):
+                            original = item.get("sql_originale_llm")
+                            if method=="TAG automatico" and original:
+                                st.caption("SQL generato dall'LLM (prima dei controlli)")
+                                st.code(original,language="sql")
+                                if item.get("sql_normalizzato_nome"):
+                                    st.caption("SQL effettivamente eseguito dopo la normalizzazione "
+                                               "case-insensitive dei confronti sul nome")
+                                    st.code(item["sql"],language="sql")
+                                else:
+                                    st.caption("SQL eseguito senza modifiche al confronto del nome")
+                            else:
+                                st.code(item["sql"],language="sql")
+                            st.caption("Text-to-SQL standard · una sola SELECT · nessuna correzione"
+                                       if method=="Text-to-SQL"
+                                       else "TAG automatico · SQL validato, candidati SQLite, filtro LOTUS")
+                    if method=="TAG automatico" and item.get("tag_auto_revision"):
+                        st.caption("Revisione del motore in uso: "+
+                                   str(item["tag_auto_revision"]))
                     if item.get("secondi") is not None:
                         st.caption(f'{item["secondi"]:.1f} s · {method}')
                     if method=="TAG" and item.get("versione_tag"):
@@ -343,6 +359,9 @@ def assistant_dialog():
                         "fonti":result.get("fonti",[]),
                         "evidenze_fonti":result.get("evidenze_fonti",[]),
                         "sql":result.get("sql",""),
+                        "sql_originale_llm":result.get("sql_originale_llm"),
+                        "sql_normalizzato_nome":result.get("sql_normalizzato_nome"),
+                        "tag_auto_revision":result.get("tag_auto_revision"),
                         "secondi":round(time.monotonic()-start,2),
                         "versione_tag":result.get("versione_tag"),
                         "verifica_contesto":result.get("verifica_contesto"),
