@@ -84,5 +84,57 @@ class TAGAutomaticoTests(unittest.TestCase):
         self.assertTrue(any("#p2" in f for f in result["fonti"]))
 
 
+    def test_scalar_attribute_sql_is_selected_by_lotus(self):
+        """Regressione D01: il valore puo' essere senza nome nella SELECT."""
+        self.db.execute("PRAGMA query_only=OFF")
+        self.db.executescript("""
+            CREATE TABLE aifa_confezioni(aic TEXT, nome TEXT, principio_attivo TEXT);
+            CREATE TABLE ema_medicinali(ema_id TEXT, nome TEXT, principio_attivo TEXT);
+            INSERT INTO aifa_confezioni VALUES ('001','BEYONTTRA','sostanza-demo');
+            INSERT INTO ema_medicinali VALUES ('EM-01','BEYONTTRA','sostanza-demo');
+        """)
+        self.db.execute("PRAGMA query_only=ON")
+        sql = ("SELECT principio_attivo FROM aifa_confezioni "
+               "WHERE nome LIKE '%BEYONTTRA%' "
+               "UNION SELECT principio_attivo FROM ema_medicinali "
+               "WHERE nome LIKE '%BEYONTTRA%'")
+        seen = []
+        def mock_ask(model, system, payload, **kwargs):
+            if system == auto.SQL_PROMPT:
+                return sql, {"token_input":1,"token_output":1,"costo_usd":0}
+            return "Principio attivo: sostanza-demo.", {
+                "token_input":1,"token_output":1,"costo_usd":0
+            }
+        def fake_sem_filter(frame, instruction):
+            seen.append(instruction)
+            # Simula un filtro che passa i campi utili solo se trattati come
+            # attributi tabellari, anziche' richiedere prove cliniche.
+            if "RISULTATI SQL STRUTTURATI" in instruction and \
+                    "sostanza-demo" in frame.iloc[0]["testo"]:
+                return frame
+            return frame.iloc[0:0]
+        fake_lotus = types.ModuleType("lotus")
+        fake_lotus.settings = types.SimpleNamespace(configure=lambda **_:None)
+        fake_models = types.ModuleType("lotus.models")
+        fake_models.LM = lambda *_,**__:types.SimpleNamespace()
+        with patch.dict(sys.modules,{"lotus":fake_lotus,"lotus.models":fake_models}), \
+             patch.object(auto,"ask",side_effect=mock_ask), \
+             patch.object(auto,"sem_filter_controlled",side_effect=fake_sem_filter):
+            result=auto.automatic_tag(
+                self.db,"Qual e' il principio attivo del medicinale BEYONTTRA?",
+                "modello-fittizio"
+            )
+        self.assertEqual(result["stato"],"OK")
+        self.assertIn("sostanza-demo",result["risposta"])
+        self.assertEqual(result["righe_sql"],1)
+        self.assertEqual(result["righe_selezionate_lotus"],1)
+        self.assertIn("attributo",seen[0])
+
+    def test_tabular_prompt_preserves_llm_sql_retrieval(self):
+        self.assertIn("denominazione del medicinale (nome)",auto.SQL_PROMPT)
+        self.assertIn("valore non vuoto",auto.TABULAR_SEMANTIC_PROMPT)
+        self.assertNotIn("miastenia",auto.TABULAR_SEMANTIC_PROMPT.casefold())
+
+
 if __name__ == "__main__":
     unittest.main()
