@@ -100,7 +100,9 @@ class TAGAutomaticoTests(unittest.TestCase):
                "UNION SELECT principio_attivo FROM ema_medicinali "
                "WHERE nome LIKE '%BEYONTTRA%'")
         seen = []
+        called_system_prompts = []
         def mock_ask(model, system, payload, **kwargs):
+            called_system_prompts.append(system)
             if system == auto.SQL_PROMPT:
                 return sql, {"token_input":1,"token_output":1,"costo_usd":0}
             return "Principio attivo: sostanza-demo.", {
@@ -130,11 +132,57 @@ class TAGAutomaticoTests(unittest.TestCase):
         self.assertEqual(result["righe_sql"],1)
         self.assertEqual(result["righe_selezionate_lotus"],1)
         self.assertIn("attributo",seen[0])
+        self.assertEqual(called_system_prompts[-1],auto.TABULAR_ANSWER_PROMPT)
 
     def test_tabular_prompt_preserves_llm_sql_retrieval(self):
         self.assertIn("denominazione del medicinale (nome)",auto.SQL_PROMPT)
         self.assertIn("valore non vuoto",auto.TABULAR_SEMANTIC_PROMPT)
         self.assertNotIn("miastenia",auto.TABULAR_SEMANTIC_PROMPT.casefold())
+
+
+    def test_identifier_provenance_is_grounded(self):
+        """Il fallback trova solo codici realmente presenti nello SQLite."""
+        self.db.execute("PRAGMA query_only=OFF")
+        self.db.executescript("""
+            CREATE TABLE aifa_confezioni (
+                aic TEXT, nome TEXT, principio_attivo TEXT
+            );
+            CREATE TABLE ema_medicinali (
+                ema_id TEXT, nome TEXT, principio_attivo TEXT,
+                url_ema TEXT
+            );
+            INSERT INTO aifa_confezioni VALUES
+              ('050000111','BEYONTTRA','ACORAMIDIS'),
+              ('050000222','BEYONTTRA','ACORAMIDIS');
+            INSERT INTO ema_medicinali VALUES
+              ('EMEA/H/C/006333','Beyonttra',
+               'acoramidis hydrochloride','https://example.org/ema');
+        """)
+        self.db.execute("PRAGMA query_only=ON")
+        rows = [
+            {"nome":"BEYONTTRA","principio_attivo":"ACORAMIDIS",
+             "aic":None,"ema_id":None,"fonte_origine":"AIFA"},
+            {"nome":"Beyonttra","principio_attivo":"acoramidis hydrochloride",
+             "aic":None,"ema_id":"EMEA/H/C/006333","fonte_origine":"EMA"},
+        ]
+        result = auto._tabular_candidates(self.db,rows)
+        self.assertEqual(len(result),2)
+        self.assertTrue(any("050000111" in src for src in result[0]["fonti"]))
+        self.assertTrue(any("050000222" in src for src in result[0]["fonti"]))
+        self.assertFalse(any("EMEA/" in src for src in result[0]["fonti"]))
+        self.assertTrue(any("EMEA/H/C/006333" in src for src in result[1]["fonti"]))
+        unknown = auto._verify_tabular_identifiers(
+            self.db,{"nome":"BEYONTTRA",
+                     "principio_attivo":"sostanza non presente",
+                     "fonte_origine":"AIFA"})
+        self.assertEqual(unknown,[])
+
+    def test_sql_prompt_preserves_real_identifiers(self):
+        self.assertIn("VERO aic", auto.SQL_PROMPT)
+        self.assertIn("VERO ema_id", auto.SQL_PROMPT)
+        self.assertIn("fonte_origine", auto.SQL_PROMPT)
+        self.assertIn("NON richiedere numeri", auto.TABULAR_ANSWER_PROMPT)
+        self.assertIn("Cita nome del documento e pagina", auto.ANSWER_PROMPT)
 
 
 if __name__ == "__main__":
