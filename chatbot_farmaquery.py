@@ -44,6 +44,7 @@ CACHE_CODE_SOURCES=(
     "tesi/sintesi_tag.py",
     "tesi/revisione_categoria.py",
     "tesi/recupero_sql_first.py",
+    "tesi/tag_automatico.py",
     "tesi/contatore_llm.py",
 )
 
@@ -194,17 +195,20 @@ def enable_server_key(model,secrets=None,environ=None):
 
 
 def answer_question(db_file,question,method,model):
-    """Instrada realmente ai due motori: nessuna selezione fittizia."""
+    """Instrada realmente ai tre motori indipendenti."""
     from tesi import pilota_tag_vs_sql
-    if method not in ("Text-to-SQL","TAG"):
+    if method not in ("Text-to-SQL","TAG","TAG automatico"):
         raise ValueError("Metodo sconosciuto")
     question=question.strip()
     if not question or len(question)>700:
         raise ValueError("Inserisci una domanda di massimo 700 caratteri")
     with closing(pilota_tag_vs_sql.read_only(db_file)) as db:
-        return (pilota_tag_vs_sql.tag(db,question,model)
-                if method=="TAG"
-                else pilota_tag_vs_sql.sql_method(db,question,model))
+        if method=="TAG":
+            return pilota_tag_vs_sql.tag(db,question,model)
+        if method=="TAG automatico":
+            from tesi.tag_automatico import automatic_tag
+            return automatic_tag(db,question,model)
+        return pilota_tag_vs_sql.sql_method(db,question,model)
 
 
 
@@ -225,6 +229,7 @@ def verify_provider(model):
 
 
 def history_key(method):
-    if method not in ("Text-to-SQL","TAG"):
+    if method not in ("Text-to-SQL","TAG","TAG automatico"):
         raise ValueError("Metodo sconosciuto")
-    return "farmaquery_chat_"+("sql" if method=="Text-to-SQL" else "tag")
+    suffix={"Text-to-SQL":"sql","TAG":"tag","TAG automatico":"tag_auto"}[method]
+    return "farmaquery_chat_"+suffix
