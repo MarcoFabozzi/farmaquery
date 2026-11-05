@@ -24,7 +24,7 @@ MAX_QUESTIONS_PER_SESSION=12
 
 def start_new_conversation():
     """Pulisce entrambe le cronologie, senza azzerare la quota API."""
-    for method in ("Text-to-SQL", "TAG"):
+    for method in ("Text-to-SQL", "TAG", "TAG automatico"):
         st.session_state[history_key(method)]=[]
     st.session_state["farmaquery_chat_just_cleared"]=True
 
@@ -171,7 +171,8 @@ def assistant_dialog():
     """Una finestra nativa: il campo è esterno al CSS del pulsante flottante."""
     st.caption("Informazioni EMA, AIFA, Gazzetta Ufficiale e Regione Campania.")
     method=st.selectbox("Metodo di risposta",
-                        ("Text-to-SQL","TAG"),
+                        ("Text-to-SQL","TAG","TAG automatico"),
+                        format_func=lambda value: "TAG manuale" if value=="TAG" else value,
                         key="farmaquery_float_method")
     model,has_key=_server_config()
     history_id=history_key(method)
@@ -191,7 +192,7 @@ def assistant_dialog():
     st.button("Nuova conversazione",
               key="farmaquery_start_new_conversation",
               on_click=start_new_conversation,
-              help="Cancella le conversazioni TAG e Text-to-SQL; preserva il limite API.")
+              help="Cancella le conversazioni dei tre motori; preserva il limite API.")
     if st.session_state.pop("farmaquery_chat_just_cleared",False):
         st.success("Conversazioni cancellate.")
 
@@ -239,11 +240,11 @@ def assistant_dialog():
                             for source in item["evidenze_fonti"]:
                                 st.caption(str(source.get("fonte") or "")[:200])
                                 _show_excerpt(source)
-                    if method=="Text-to-SQL" and item.get("sql"):
-                        with st.expander("Query SQL"):
+                    if method in ("Text-to-SQL","TAG automatico") and item.get("sql"):
+                        with st.expander("Query SQL generata dall\u0027LLM"):
                             st.code(item["sql"],language="sql")
-                            st.caption("Text-to-SQL standard · una sola SELECT "
-                                       "· nessuna correzione o seconda ricerca")
+                            st.caption("Text-to-SQL standard · una sola SELECT · nessuna correzione" if method=="Text-to-SQL"
+                                       else "TAG automatico · SQL generato dall\u0027LLM, poi LOTUS")
                     if item.get("secondi") is not None:
                         st.caption(f'{item["secondi"]:.1f} s · {method}')
                     if method=="TAG" and item.get("versione_tag"):
@@ -271,7 +272,7 @@ def assistant_dialog():
                         st.caption(
                             "Chiamate LLM stimate (conteggio completo non disponibile): "+
                             str(item["chiamate_llm_stimate"]))
-                    if method=="TAG" and item.get("modalita_selezione"):
+                    if method in ("TAG","TAG automatico") and item.get("modalita_selezione"):
                         st.caption(
                             "Selezione TAG: "+str(item["modalita_selezione"])+
                             " · evidenze: "+str(item.get("righe_recuperate","?"))+
