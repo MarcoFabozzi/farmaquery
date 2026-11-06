@@ -561,5 +561,105 @@ class TAGAutomaticoTests(unittest.TestCase):
         self.assertEqual(len(responses),2)
 
 
+    def test_curated_inner_join_cannot_silently_remove_note_candidate(self):
+        """Una nota non revisionata deve restare consultabile sul PDF."""
+        self.db.execute("PRAGMA query_only=OFF")
+        self.db.execute(
+            "CREATE TABLE nota_centro_documentato("
+            "id TEXT,nota_id TEXT,centro TEXT,numero_pagina INTEGER)"
+        )
+        self.db.execute("PRAGMA query_only=ON")
+        original=(
+            "SELECT DISTINCT note.id AS nota_id, note.farmaco_candidato, "
+            "c.centro, c.numero_pagina FROM note "
+            "JOIN nota_centro_documentato AS c ON note.id=c.nota_id "
+            "WHERE note.farmaco_candidato='MED-A' COLLATE NOCASE"
+        )
+        empty,partial=auto._run_generated_select(
+            self.db,auto.validate_sql(original))
+        self.assertFalse(partial)
+        self.assertEqual(empty,[])
+        fixed,changed=auto._normalize_sparse_note_enrichment(
+            auto.validate_sql(original))
+        self.assertTrue(changed)
+        self.assertIn("LEFT JOIN",fixed)
+        rows,partial=auto._run_generated_select(self.db,auto.validate_sql(fixed))
+        self.assertFalse(partial)
+        self.assertEqual(len(rows),1)
+        self.assertEqual(rows[0]["nota_id"],"n1")
+        self.assertIsNone(rows[0]["centro"])
+        documents,_=auto._note_candidates(self.db,rows)
+        self.assertEqual(len(documents),1)
+        self.assertIn("nota1.pdf",documents[0]["testo"])
+        self.assertEqual(
+            fixed, auto._normalize_sparse_note_enrichment(fixed)[0])
+
+    def test_curated_join_preserves_explicit_restriction(self):
+        """Non allargare query che richiedono esplicitamente dati revisionati."""
+        variants=[
+            "SELECT note.id AS nota_id, c.centro FROM note "
+            "JOIN nota_centro_documentato c ON note.id=c.nota_id "
+            "WHERE c.centro LIKE '%Ospedale%'",
+            "SELECT c.centro FROM note "
+            "JOIN nota_centro_documentato c ON note.id=c.nota_id "
+            "WHERE note.farmaco_candidato='MED-A'",
+            "SELECT note.id AS nota_id FROM note "
+            "LEFT JOIN nota_centro_documentato c ON note.id=c.nota_id "
+            "WHERE note.farmaco_candidato='MED-A'",
+        ]
+        for raw in variants:
+            with self.subTest(sql=raw):
+                fixed,changed=auto._normalize_sparse_note_enrichment(
+                    auto.validate_sql(raw))
+                self.assertFalse(changed)
+                self.assertEqual(fixed,auto.validate_sql(raw))
+
+    def test_pipeline_can_read_note_without_curated_centers(self):
+        """S02 generico: SQL LLM con JOIN sparsa, poi note e LOTUS."""
+        self.db.execute("PRAGMA query_only=OFF")
+        self.db.execute(
+            "CREATE TABLE nota_centro_documentato("
+            "id TEXT,nota_id TEXT,centro TEXT,numero_pagina INTEGER)"
+        )
+        self.db.execute("PRAGMA query_only=ON")
+        raw=(
+            "SELECT DISTINCT note.id AS nota_id, "
+            "note.farmaco_candidato AS nome, c.centro "
+            "FROM note JOIN nota_centro_documentato AS c "
+            "ON note.id=c.nota_id "
+            "WHERE note.farmaco_candidato='MED-A' COLLATE NOCASE"
+        )
+        calls=[]
+        def mocked_ask(model,system,payload,**kwargs):
+            calls.append((system,payload))
+            if system==auto.SQL_PROMPT:
+                return raw,{"token_input":1,"token_output":1,"costo_usd":0}
+            return "Documento consultato con pagina.",{
+                "token_input":1,"token_output":1,"costo_usd":0
+            }
+        fake_lotus=types.ModuleType("lotus")
+        fake_lotus.settings=types.SimpleNamespace(configure=lambda **_:None)
+        fake_models=types.ModuleType("lotus.models")
+        fake_models.LM=lambda *_,**__:types.SimpleNamespace()
+        with patch.dict(sys.modules,{"lotus":fake_lotus,"lotus.models":fake_models}), \
+             patch.object(auto,"ask",side_effect=mocked_ask), \
+             patch.object(auto,"sem_filter_controlled",
+                          side_effect=lambda frame,instruction:frame):
+            result=auto.automatic_tag(
+                self.db,
+                "Nella nota MED-A quali indicazioni e strutture sono "
+                "esplicitamente collegate? Cita le pagine.",
+                "modello-fittizio")
+        self.assertEqual(result["stato"],"OK")
+        self.assertEqual(result["righe_sql"],1)
+        self.assertEqual(result["righe_recuperate"],1)
+        self.assertTrue(result["sql_normalizzato_join_documentali"])
+        self.assertIn("LEFT JOIN",result["sql"])
+        self.assertIn("JOIN nota_centro_documentato",result["sql_originale_llm"])
+        self.assertEqual(len(calls),2)
+        self.assertEqual(result["note_nel_contesto"],1)
+        self.assertIn("[pagina 2]",calls[1][1]["evidenze"][0]["testo"])
+
+
 if __name__ == "__main__":
     unittest.main()
