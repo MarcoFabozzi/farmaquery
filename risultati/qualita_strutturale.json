@@ -1,10 +1,11 @@
 {
-  "generato_utc": "2026-11-05T08:24:27+00:00",
+  "generato_utc": "2026-11-06T08:21:01+00:00",
   "stato": "OK",
   "controlli_bloccanti": [],
   "avvertenze": [
     "La percentuale di medicinali con link EU-AIC documentato è ancora bassa",
-    "ema: ultimo successo oltre 48 ore fa"
+    "ema: ultimo successo oltre 48 ore fa",
+    "gazzetta: ultimo successo oltre 48 ore fa"
   ],
   "metriche": {
     "errori_foreign_key": 0,
@@ -51,15 +52,15 @@
     },
     "aifa_anagrafica": {
       "stato": "OK",
-      "ultima_acquisizione_utc": "2026-11-05T05:25:15+00:00"
+      "ultima_acquisizione_utc": "2026-11-06T05:24:15+00:00"
     },
     "aifa_ah": {
       "stato": "OK",
-      "ultima_acquisizione_utc": "2026-11-05T05:39:59+00:00"
+      "ultima_acquisizione_utc": "2026-11-06T05:37:14+00:00"
     },
     "aifa_cnn": {
       "stato": "OK",
-      "ultima_acquisizione_utc": "2026-11-05T05:41:33+00:00"
+      "ultima_acquisizione_utc": "2026-11-06T05:41:35+00:00"
     },
     "gazzetta": {
       "stato": "OK",
