@@ -21,7 +21,12 @@ COLUMNS=("id","metodo","modello","snapshot_sha256","risposta","fonti",
          "valutazione_risposta","valutazione_citazioni","note_revisore",
          "chiamate_llm_effettive","elementi_predetti",
          "valutazione_astensione","errore_tecnico",
-         "citazioni_corrette_n","citazioni_verificate_n","codice_commit")
+         "citazioni_corrette_n","citazioni_verificate_n","codice_commit",
+         "stato_motore","sql_originale_llm","sql_eseguito","tag_auto_revision",
+         "sql_normalizzato_nome","sql_normalizzato_ambito_regione",
+         "sql_normalizzato_join_documentali","righe_sql","righe_recuperate",
+         "righe_sem_filter","righe_selezionate_lotus","risultato_parziale",
+         "chiamate_llm_dirette","chiamate_llm_lotus","conteggio_llm_completo")
 METHODS=("Text-to-SQL","TAG","TAG automatico")
 
 
@@ -95,6 +100,24 @@ def collect(gold_file,db_file,manifest_file,model,out,commit,answer_fn=answer_qu
                     "chiamate_llm_effettive":result.get("chiamate_llm_effettive"),
                     "errore_tecnico":int(error),
                     "codice_commit":commit,
+                    "stato_motore":result.get("stato"),
+                    "sql_originale_llm":result.get("sql_originale_llm"),
+                    "sql_eseguito":result.get("sql"),
+                    "tag_auto_revision":result.get("tag_auto_revision"),
+                    "sql_normalizzato_nome":result.get("sql_normalizzato_nome"),
+                    "sql_normalizzato_ambito_regione":result.get(
+                        "sql_normalizzato_ambito_regione"),
+                    "sql_normalizzato_join_documentali":result.get(
+                        "sql_normalizzato_join_documentali"),
+                    "righe_sql":result.get("righe_sql"),
+                    "righe_recuperate":result.get("righe_recuperate"),
+                    "righe_sem_filter":result.get("righe_sem_filter"),
+                    "righe_selezionate_lotus":result.get(
+                        "righe_selezionate_lotus"),
+                    "risultato_parziale":result.get("risultato_parziale"),
+                    "chiamate_llm_dirette":result.get("chiamate_llm_dirette"),
+                    "chiamate_llm_lotus":result.get("chiamate_llm_lotus"),
+                    "conteggio_llm_completo":result.get("conteggio_llm_completo"),
                     # Queste informazioni si compilano SOLO DOPO aver letto
                     # le risposte: non possono essere autoassegnate dal modello.
                     "valutazione_risposta":"","valutazione_citazioni":"",
