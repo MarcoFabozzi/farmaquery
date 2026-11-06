@@ -57,22 +57,51 @@ class HoldoutRunnerTests(unittest.TestCase):
                     answer_fn=lambda *a: called.append(a))
         self.assertEqual(called,[])
 
-    def test_unico_run_scrive_due_metodi_e_misure_reali(self):
+    def test_unico_run_scrive_tre_metodi_e_misure_reali(self):
         def answer(db,q,method,model):
             return {"risposta":"test","fonti":["test/f.pdf#p1"],
-                    "chiamate_llm_effettive":3 if method=="TAG" else 2,
+                    "chiamate_llm_effettive":(4 if method=="TAG automatico"
+                                              else 3 if method=="TAG" else 2),
                     "token_input":10,"token_output":7,"costo_usd":0.001}
         path=self.root/"ris.csv"
         collect(self.gold,self.db,self.manifest,"mock",path,"abcdef123",
                 answer_fn=answer)
         with path.open(encoding="utf-8-sig",newline="") as f:
             rows=list(csv.DictReader(f,delimiter=";"))
-        self.assertEqual({r["metodo"] for r in rows},{"TAG","Text-to-SQL"})
-        self.assertEqual({r["chiamate_llm_effettive"] for r in rows},{"2","3"})
+        self.assertEqual({r["metodo"] for r in rows},
+                         {"TAG","Text-to-SQL","TAG automatico"})
+        self.assertEqual({r["chiamate_llm_effettive"] for r in rows},
+                         {"2","3","4"})
         self.assertTrue(all(r["valutazione_risposta"]=="" for r in rows))
         with self.assertRaises(FileExistsError):
             collect(self.gold,self.db,self.manifest,"mock",path,"abcdef123",
                     answer_fn=answer)
+
+
+    def test_ordine_a_rotazione_senza_ripetizioni(self):
+        # Rotazione dei tre motori su tre domande valide con identica fonte.
+        for i in range(1,4):
+            row=dict(self.record,id=f"B0{i}",domanda=f"Domanda prova {i}")
+            if i==1:
+                with self.gold.open("w",newline="",encoding="utf-8") as fh:
+                    writer=csv.DictWriter(fh,fieldnames=self.header,delimiter=";")
+                    writer.writeheader()
+                    writer.writerow(row)
+            else:
+                with self.gold.open("a",newline="",encoding="utf-8") as fh:
+                    writer=csv.DictWriter(fh,fieldnames=self.header,delimiter=";")
+                    writer.writerow(row)
+        order=[]
+        def answer(db,q,method,model):
+            order.append((q,method))
+            return {"risposta":"test","fonti":["test/f.pdf#p1"]}
+        collect(self.gold,self.db,self.manifest,"mock",self.root/"tre.csv",
+                "abcdef123",answer_fn=answer)
+        actual=[x[1] for x in order]
+        self.assertEqual(actual[:3],["Text-to-SQL","TAG","TAG automatico"])
+        self.assertEqual(actual[3:6],["TAG","TAG automatico","Text-to-SQL"])
+        self.assertEqual(actual[6:9],["TAG automatico","Text-to-SQL","TAG"])
+        self.assertEqual(len(order),9)
 
 
 if __name__=="__main__":
