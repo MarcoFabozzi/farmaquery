@@ -22,7 +22,7 @@ MAX_NOTE_PAGES = 1200
 MAX_LOTUS_GROUPS = 12
 MAX_ANSWER_DOCUMENTS = 55
 MAX_ANSWER_CHARS = 44000
-TAG_AUTO_REVISION = "2026-11-06-r5-ambito-regionale"
+TAG_AUTO_REVISION = "2026-11-06-r6-join-documentali"
 
 SQL_PROMPT = (
     "Genera UNA sola query SQLite SELECT che recuperi candidati da far "
@@ -32,6 +32,17 @@ SQL_PROMPT = (
     "(e altri identificativi solo se utili). "
     "La JOIN deve collegare le chiavi: note.id = pagine.nota_id "
     "(o n.id = p.nota_id se usi alias). "
+    "Per domande su indicazioni e centri NELLE NOTE, prima individua "
+    "i documenti da note e pagine (seleziona note.id AS nota_id), "
+    "poi il motore recupererà i testi completi delle pagine. "
+    "Tabelle curate come nota_centro_documentato e "
+    "nota_metadati_revisionati sono parziali: includono solo note "
+    "già revisionate. NON usare INNER JOIN verso queste tabelle "
+    "come requisito per trovare il documento, perché una nota "
+    "senza relazione revisionata non deve scomparire. "
+    "Se ti servono valori aggiuntivi da tabelle curate e non vi "
+    "applichi filtri obbligatori, usa LEFT JOIN; in assenza di "
+    "relazione la nota resta candidata e il PDF fornisce l'evidenza. "
     "Per domande su quali NOTE MENZIONANO un medicinale, cerca il nome "
     "nel campo pagine.testo con LIKE e seleziona DISTINCT note.id AS nota_id; "
     "non limitarti a note.nome_file o note.farmaco_candidato, perché una nota "
@@ -203,6 +214,68 @@ def _normalize_regional_scope(sql, question):
             continue
         predicate.replace(exp.Boolean(this=True))
         changed = True
+    return (tree.sql(dialect="sqlite"), True) if changed else (sql, False)
+
+
+_SPARSE_NOTE_ENRICHMENT_TABLES = frozenset({
+    "nota_centro_documentato", "nota_metadati_revisionati",
+    "nota_aifa_corrispondenze", "nota_struttura_aifa_corrispondenze",
+    "nota_rimando_revisionato", "revisione_relazioni_manuale_v2",
+    "revisione_collegamenti_aifa_v2",
+})
+
+
+def _normalize_sparse_note_enrichment(sql):
+    """Non perdere note per INNER JOIN a relazioni revisionate incompletamente.
+
+    Regola generale di schema, non dipendente da farmaci o domande:
+    soltanto SELECT da note che restituiscono nota_id, JOIN di
+    arricchimento con ON e nessun filtro sull'alias curato nel WHERE/HAVING.
+    La JOIN rimane auditabile nello SQL originale e non vengono ricercate
+    note aggiuntive né fatte chiamate LLM.
+    """
+    from sqlglot import parse_one, exp
+    tree = parse_one(sql, read="sqlite")
+    changed = False
+    for select in tree.find_all(exp.Select):
+        source = select.args.get("from_") or select.args.get("from")
+        if not source or not isinstance(source.this, exp.Table):
+            continue
+        if str(source.this.name).casefold() != "note":
+            continue
+        has_note_id = any(
+            str(getattr(item, "alias_or_name", "") or "").casefold() == "nota_id"
+            for item in select.expressions
+        )
+        if not has_note_id:
+            continue
+        for join in select.args.get("joins") or []:
+            target = join.this
+            if not isinstance(target, exp.Table):
+                continue
+            if str(target.name).casefold() not in _SPARSE_NOTE_ENRICHMENT_TABLES:
+                continue
+            if (str(join.args.get("side") or "").upper() or
+                    str(join.args.get("kind") or "").upper()):
+                continue
+            if join.args.get("on") is None:
+                continue
+            alias = str(target.alias_or_name).casefold()
+            # Se la condizione WHERE/HAVING/QUALIFY filtra davvero su una
+            # tabella revisionata, NON ampliamo i risultati implicitamente.
+            filtered = False
+            for restriction in ("where", "having", "qualify"):
+                node = select.args.get(restriction)
+                if node and any(
+                    str(col.table).casefold() == alias
+                    for col in node.find_all(exp.Column)
+                ):
+                    filtered = True
+                    break
+            if filtered:
+                continue
+            join.set("side", "LEFT")
+            changed = True
     return (tree.sql(dialect="sqlite"), True) if changed else (sql, False)
 
 
@@ -470,8 +543,12 @@ def automatic_tag(db, question, model):
         "normalizzazione ambito regionale TAG automatico",
         _normalize_regional_scope, sql_with_name, question
     )
+    sql_with_joins, note_join_changed = _in_phase(
+        "normalizzazione JOIN documentali TAG automatico",
+        _normalize_sparse_note_enrichment, sql_with_scope
+    )
     sql = _in_phase(
-        "normalizzazione SQL TAG automatico", validate_sql, sql_with_scope
+        "normalizzazione SQL TAG automatico", validate_sql, sql_with_joins
     )
     records, sql_partial = _in_phase(
         "esecuzione SQL TAG automatico", _run_generated_select, db, sql
@@ -479,6 +556,7 @@ def automatic_tag(db, question, model):
     base = {"sql":sql, "sql_originale_llm":sql_originale_llm,
             "sql_normalizzato_nome":sql_with_name != sql_originale_llm,
             "sql_normalizzato_ambito_regione":scope_changed,
+            "sql_normalizzato_join_documentali":note_join_changed,
             "tag_auto_revision":TAG_AUTO_REVISION,
             "versione_tag":"automatico-v1",
             "recupero":"LLM-SQL", "sql_tentativi":1, "righe_sql":len(records)}
