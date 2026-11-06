@@ -18,7 +18,7 @@ import unicodedata
 
 from tesi.valida_gold import read
 
-METHODS=("TAG","Text-to-SQL")
+METHODS=("Text-to-SQL","TAG","TAG automatico")
 
 
 def _number(value,kind,default=None):
@@ -167,16 +167,20 @@ def evaluate(benchmark,results,manifest):
                          "categorie":{cat:stat([x for x in method_rows
                             if gold[x["id"]]["categoria"]==cat])
                             for cat in sorted({x["categoria"] for x in gold.values()})}}
-    complete=[key for key,pair in paired.items() if set(pair)==set(METHODS)]
+    complete_pair=[key for key,pair in paired.items()
+                   if {"TAG","Text-to-SQL"} <= set(pair)]
+    complete_three=[key for key,pair in paired.items()
+                    if set(METHODS) <= set(pair)]
     allcats=sorted({x["categoria"] for x in gold.values()})
-    # Una riga per categoria, colonne distinte per entrambi i motori.
+    # Una riga per categoria, colonne distinte per i tre motori.
     table=[]
     for cat in allcats:
         record={"categoria":cat,
                 "domande_gold":sum(x["categoria"]==cat for x in gold.values())}
         for method in METHODS:
             entry=methods[method]["categorie"][cat]
-            short="TAG" if method=="TAG" else "Text_to_SQL"
+            short={"Text-to-SQL":"Text_to_SQL","TAG":"TAG",
+                   "TAG automatico":"TAG_automatico"}[method]
             for source,dest in (
                 ("accuratezza_manuale","accuratezza"),
                 ("precision_micro","precision"),
@@ -193,7 +197,9 @@ def evaluate(benchmark,results,manifest):
             record[short+"_n_valutate"]=entry["risposte_valutate_manualmente"]
         table.append(record)
     return {"esito":"OK","snapshot_sha256":digest,"modello":next(iter(models),None),
-            "gold_validati":len(gold),"domande_con_entrambe_le_risposte":len(complete),
+            "gold_validati":len(gold),
+            "domande_con_entrambe_le_risposte":len(complete_pair),
+            "domande_con_tre_risposte":len(complete_three),
             "metodi":methods,"tabella_categorie":table,
             "nota":"Metriche cliniche/giuridiche soltanto da annotazioni manuali; "
                    "vuoto = non misurato. Precision/recall/F1 micro richiedono "
@@ -207,7 +213,7 @@ def main():
     p.add_argument("--risultati",required=True)
     p.add_argument("--manifest",required=True)
     p.add_argument("--out",required=True)
-    p.add_argument("--tabella-csv",help="Tabella righe=categorie; colonne=misure dei due metodi")
+    p.add_argument("--tabella-csv",help="Tabella righe=categorie; colonne=misure dei tre metodi")
     a=p.parse_args()
     report=evaluate(a.benchmark,a.risultati,a.manifest)
     Path(a.out).write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",
