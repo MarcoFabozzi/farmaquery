@@ -465,7 +465,7 @@ def automatic_tag(db, question, model):
                 "righe_selezionate_lotus":0, **generation_usage}
 
     chosen, truncated_answer = _balanced_answer_evidence(selected)
-    index_notes = _document_index(selected)
+    index_notes = _document_index(selected[:MAX_ANSWER_DOCUMENTS])
     partial = sql_partial or page_partial or truncated_answer
     answer_prompt = (ANSWER_PROMPT if any(
         item.get("nota_id") is not None for item in candidates
