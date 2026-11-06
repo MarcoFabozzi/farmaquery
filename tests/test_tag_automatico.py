@@ -340,5 +340,38 @@ class TAGAutomaticoTests(unittest.TestCase):
                              for src in result["fonti"]))
 
 
+    def test_document_mentions_are_not_limited_to_filename(self):
+        """La ricerca di menzioni include anche note con altri farmaci nel titolo."""
+        self.db.execute("PRAGMA query_only=OFF")
+        self.db.execute(
+            "UPDATE pagine SET testo='La nota cita il prodotto MED-C, "
+            "senza avere MED-C nel titolo.' "
+            "WHERE nota_id='n2'"
+        )
+        self.db.execute("PRAGMA query_only=ON")
+        sql = (
+            "SELECT DISTINCT n.id AS nota_id FROM note n "
+            "JOIN pagine p ON p.nota_id=n.id "
+            "WHERE p.testo LIKE '%MED-C%'"
+        )
+        valid = auto.validate_sql(sql)
+        rows, partial = auto._run_generated_select(self.db,valid)
+        self.assertFalse(partial)
+        self.assertEqual([r["nota_id"] for r in rows],["n2"])
+        documents, doc_partial = auto._note_candidates(self.db,rows)
+        self.assertFalse(doc_partial)
+        self.assertEqual(len(documents),1)
+        self.assertIn("MED-C",documents[0]["testo"])
+        self.assertIn("pagine.testo",auto.SQL_PROMPT)
+        self.assertIn("note.nome_file",auto.SQL_PROMPT)
+
+    def test_sql_prompt_avoids_reversed_duplicated_join(self):
+        """Una relazione uno-a-molti non necessita una UNION del JOIN inverso."""
+        self.assertIn("UNION ridondante", auto.SQL_PROMPT)
+        self.assertIn("JOIN soltanto sul principio attivo",auto.SQL_PROMPT)
+        self.assertNotIn("LUMYKRAS",auto.SQL_PROMPT)
+        self.assertNotIn("KEYTRUDA",auto.SQL_PROMPT)
+
+
 if __name__ == "__main__":
     unittest.main()
