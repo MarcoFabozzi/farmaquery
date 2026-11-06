@@ -661,5 +661,81 @@ class TAGAutomaticoTests(unittest.TestCase):
         self.assertIn("[pagina 2]",calls[1][1]["evidenze"][0]["testo"])
 
 
+    def test_absence_questions_retrieve_subject_context_not_missing_measure(self):
+        """Dati operativi assenti non vanno inventati nel WHERE o nelle JOIN."""
+        prompt=auto.SQL_PROMPT
+        self.assertIn("DATO OPERATIVO",prompt)
+        self.assertIn("STESSA pagina",prompt)
+        self.assertIn("note.anno",prompt)
+        self.assertIn("JOIN artificiali",prompt)
+        self.assertNotIn("ALHEMO",prompt)
+        self.assertNotIn("MYALEPTA",prompt)
+        self.assertIn("PERTINENZA",auto.DOCUMENT_SEMANTIC_PROMPT)
+        self.assertIn("non e' documentato NELLE FONTI CONSULTATE",
+                      auto.ANSWER_PROMPT)
+
+    def test_absence_answer_can_be_grounded_by_topically_relevant_notes(self):
+        """Pipeline: il documento conta come evidenza anche senza dati clinici reali."""
+        sql=("SELECT DISTINCT note.id AS nota_id FROM note "
+             "WHERE note.farmaco_candidato='MED-A' COLLATE NOCASE")
+        captured=[]
+        def mock_ask(model,system,payload,**kwargs):
+            if system==auto.SQL_PROMPT:
+                return sql,{"token_input":1,"token_output":1,"costo_usd":0}
+            captured.append((system,payload))
+            return ("Le fonti consultate non indicano la data effettiva "
+                    "del primo trattamento."),{
+                       "token_input":1,"token_output":1,"costo_usd":0
+                    }
+        def filter_context(frame,instruction):
+            self.assertIn("PERTINENZA",instruction)
+            self.assertIn("MED-A",frame.iloc[0]["testo"])
+            return frame
+        fake_lotus=types.ModuleType("lotus")
+        fake_lotus.settings=types.SimpleNamespace(configure=lambda **_:None)
+        fake_models=types.ModuleType("lotus.models")
+        fake_models.LM=lambda *_,**__:types.SimpleNamespace()
+        with patch.dict(sys.modules,{"lotus":fake_lotus,"lotus.models":fake_models}), \
+             patch.object(auto,"ask",side_effect=mock_ask), \
+             patch.object(auto,"sem_filter_controlled",
+                          side_effect=filter_context):
+            result=auto.automatic_tag(
+                self.db,"Qual e' la data effettiva del primo trattamento "
+                "del paziente con MED-A?","modello-fittizio")
+        self.assertEqual(result["stato"],"OK")
+        self.assertEqual(result["righe_sql"],1)
+        self.assertEqual(result["righe_recuperate"],1)
+        self.assertEqual(result["note_nel_contesto"],1)
+        self.assertIn("non indicano la data",result["risposta"])
+        self.assertEqual(len(captured),1)
+        self.assertEqual(captured[0][0],auto.ANSWER_PROMPT)
+        self.assertEqual(len(captured[0][1]["indice_documentale"]),1)
+        self.assertEqual(len(result["fonti"]),2)
+
+    def test_no_semantic_selection_does_not_claim_absence(self):
+        """LOTUS senza evidenze non autorizza un'asserzione di dato mancante."""
+        sql=("SELECT DISTINCT note.id AS nota_id FROM note "
+             "WHERE note.farmaco_candidato='MED-A' COLLATE NOCASE")
+        responses=[]
+        def mock_ask(model,system,payload,**kwargs):
+            responses.append(system)
+            return sql,{"token_input":1,"token_output":1,"costo_usd":0}
+        fake_lotus=types.ModuleType("lotus")
+        fake_lotus.settings=types.SimpleNamespace(configure=lambda **_:None)
+        fake_models=types.ModuleType("lotus.models")
+        fake_models.LM=lambda *_,**__:types.SimpleNamespace()
+        with patch.dict(sys.modules,{"lotus":fake_lotus,"lotus.models":fake_models}), \
+             patch.object(auto,"ask",side_effect=mock_ask), \
+             patch.object(auto,"sem_filter_controlled",
+                          side_effect=lambda frame,instruction:frame.iloc[:0]):
+            result=auto.automatic_tag(
+                self.db,"Quanto e' stato fatturato effettivamente per MED-A?",
+                "modello-fittizio")
+        self.assertEqual(result["stato"],"NESSUNA_SELEZIONE_SEMANTICA")
+        self.assertIn("LOTUS non ha selezionato",result["risposta"])
+        self.assertNotIn("non documentato",result["risposta"])
+        self.assertEqual(len(responses),1)
+
+
 if __name__ == "__main__":
     unittest.main()
