@@ -62,7 +62,9 @@ class HoldoutRunnerTests(unittest.TestCase):
             return {"risposta":"test","fonti":["test/f.pdf#p1"],
                     "chiamate_llm_effettive":(4 if method=="TAG automatico"
                                               else 3 if method=="TAG" else 2),
-                    "token_input":10,"token_output":7,"costo_usd":0.001}
+                    "token_input":10,"token_output":7,"costo_usd":0.001,
+                    "sql_originale_llm":"SELECT 1",
+                    "sql":"SELECT 1","tag_auto_revision":"test-r0"}
         path=self.root/"ris.csv"
         collect(self.gold,self.db,self.manifest,"mock",path,"abcdef123",
                 answer_fn=answer)
@@ -73,6 +75,9 @@ class HoldoutRunnerTests(unittest.TestCase):
         self.assertEqual({r["chiamate_llm_effettive"] for r in rows},
                          {"2","3","4"})
         self.assertTrue(all(r["valutazione_risposta"]=="" for r in rows))
+        self.assertTrue(all(r["sql_originale_llm"]=="SELECT 1" for r in rows))
+        self.assertTrue(all(r["sql_eseguito"]=="SELECT 1" for r in rows))
+        self.assertTrue(all(r["tag_auto_revision"]=="test-r0" for r in rows))
         with self.assertRaises(FileExistsError):
             collect(self.gold,self.db,self.manifest,"mock",path,"abcdef123",
                     answer_fn=answer)
