@@ -324,6 +324,14 @@ def assistant_dialog():
                             "Selezione TAG: "+str(item["modalita_selezione"])+
                             " · evidenze: "+str(item.get("righe_recuperate","?"))+
                             " · elementi LOTUS: "+str(item.get("righe_sem_filter","?")))
+                    if method=="TAG automatico" and item.get("note_nell_indice") is not None:
+                        st.caption(
+                            "Note documentali nel contesto di sintesi: "+
+                            str(item.get("note_nel_contesto","?"))+
+                            " · schede nell'indice: "+
+                            str(item["note_nell_indice"])+
+                            ". La presenza nel contesto non certifica che "
+                            "la risposta abbia elencato tutte le note.")
                     if method=="TAG automatico" and item.get("identificativi_sql_riconciliati"):
                         st.caption(
                             "Provenienza identificativi riallineata dopo la SELECT: "+
@@ -394,6 +402,8 @@ def assistant_dialog():
                         "modalita_selezione":result.get("modalita_selezione"),
                         "righe_recuperate":result.get("righe_recuperate"),
                         "righe_sem_filter":result.get("righe_sem_filter"),
+                        "note_nell_indice":result.get("note_nell_indice"),
+                        "note_nel_contesto":result.get("note_nel_contesto"),
                         "identificativi_sql_riconciliati":result.get(
                             "identificativi_sql_riconciliati"),
                         "chiamate_llm_stimate":result.get("chiamate_llm_stimate"),
