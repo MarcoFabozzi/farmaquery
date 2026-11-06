@@ -22,7 +22,7 @@ MAX_NOTE_PAGES = 1200
 MAX_LOTUS_GROUPS = 12
 MAX_ANSWER_DOCUMENTS = 55
 MAX_ANSWER_CHARS = 44000
-TAG_AUTO_REVISION = "2026-11-06-r3-relazioni-note"
+TAG_AUTO_REVISION = "2026-11-06-r4-contesto-bilanciato"
 
 SQL_PROMPT = (
     "Genera UNA sola query SQLite SELECT che recuperi candidati da far "
@@ -105,6 +105,14 @@ ANSWER_PROMPT = (
     "autorizzata. Distingui i fatti verificati dalle sole menzioni. "
     "Se mancano dati, l'evidenza non e' completa o le fonti sono troncate, "
     "segnala chiaramente la parzialita' e non inventare. "
+    "Per elenchi di note regionali, considera ogni scheda dell'indice "
+    "documentale e verifica la pertinenza con le evidenze disponibili; "
+    "non omettere note pertinenti solo perché il testo di alcune è lungo. "
+    "Indica sempre anno, nome file e protocollo REGIONALE soltanto se "
+    "documentato; non confondere il protocollo di una nota regionale "
+    "con il numero della determina AIFA richiamata nel testo. "
+    "I protocolli classificati come candidati richiedono verifica; "
+    "non inventare date o completare date OCR illeggibili. "
     "Cita nome del documento e pagina per le note; per EMA/AIFA cita "
     "l'identificativo. Non interpretare un'assenza nel database come "
     "l'assenza del fatto nel mondo reale."
@@ -212,7 +220,8 @@ def _note_candidates(db, records):
     partial = False
     for note_id in ids:
         note = db.execute(
-            "SELECT id,nome_file,farmaco_candidato,indicazione_candidata,"
+            "SELECT id,nome_file,anno,protocollo_candidato,data_candidata,"
+            "farmaco_candidato,indicazione_candidata,"
             "percorso_zip,archivio_url FROM note WHERE id=?", (note_id,)
         ).fetchone()
         if note is None:
@@ -246,7 +255,13 @@ def _note_candidates(db, records):
             selection_parts.append("[pagina " + str(p["numero_pagina"]) + "] " + preview)
             answer_parts.append("[pagina " + str(p["numero_pagina"]) + "] " + raw[:4200] +
                                 (" [TESTO PAGINA TRONCATO]" if len(raw) > 4200 else ""))
-        prefix = ("Documento: " + str(notes["nome_file"]) +
+        prefix = ("Identificativo interno nota: " + note_id +
+                  "; documento: " + str(notes["nome_file"]) +
+                  "; anno archivio: " + str(notes.get("anno") or "n.d.") +
+                  "; protocollo regionale candidato (NON verificato): " +
+                  str(notes.get("protocollo_candidato") or "non estratto") +
+                  "; data candidata (NON verificata): " +
+                  str(notes.get("data_candidata") or "non estratta") +
                   "; farmaco candidato: " + str(notes.get("farmaco_candidato") or "") +
                   "; indicazione candidata da verificare: " +
                   str(notes.get("indicazione_candidata") or ""))
@@ -254,7 +269,11 @@ def _note_candidates(db, records):
                      "testo": prefix + "\n" + "\n".join(answer_parts),
                      "testo_selezione": prefix + "\n" + "\n".join(selection_parts),
                      "fonte": sources[0] if sources else str(notes["percorso_zip"]),
-                     "fonti": sources, "nota_id": note_id})
+                     "fonti": sources, "nota_id": note_id,
+                     "nome_file": notes["nome_file"],
+                     "anno": notes.get("anno"),
+                     "protocollo_candidato": notes.get("protocollo_candidato"),
+                     "data_candidata": notes.get("data_candidata")})
     return rows, partial
 
 
@@ -334,6 +353,53 @@ def _lotus_plan(candidates):
     return frames, members
 
 
+def _balanced_answer_evidence(selected):
+    """Distribuisce il contesto su tutte le evidenze scelte, non solo sulle prime.
+
+    Il modello riceve un indice completo dei documenti ammessi nel budget.
+    LOTUS resta l'unico filtro semantico: qui non si cercano sinonimi né
+    si aggiungono o scartano note in base alla domanda.
+    """
+    eligible = list(selected[:MAX_ANSWER_DOCUMENTS])
+    truncated = len(selected) > len(eligible)
+    if not eligible:
+        return [], truncated
+
+    # Allocazione fair-share: i documenti brevi cedono il budget non usato
+    # ai successivi. Un documento lungo non puo' oscurare gli altri.
+    budget = MAX_ANSWER_CHARS
+    chosen = []
+    for index, item in enumerate(eligible):
+        still_to_consider = len(eligible) - index
+        allowance = max(0, budget // still_to_consider)
+        raw = str(item["testo"])
+        clipped = len(raw) > allowance
+        if clipped:
+            marker = " [EVIDENZA TRONCATA]"
+            keep = max(0, allowance - len(marker))
+            trimmed = raw[:keep] + marker[:max(0,allowance-keep)]
+        else:
+            trimmed = raw
+        truncated = truncated or clipped
+        budget -= len(trimmed)
+        chosen.append({"chiave": item["chiave"],
+                       "testo": trimmed,
+                       "fonti": item.get("fonti") or [item["fonte"]]})
+    return chosen, truncated
+
+
+def _document_index(selected):
+    """Indice delle note effettivamente selezionate, non prova di pertinenza."""
+    return [{
+        "nota_id": item["nota_id"],
+        "nome_file": item.get("nome_file"),
+        "anno_archivio": item.get("anno"),
+        "protocollo_candidato_da_verificare": item.get("protocollo_candidato"),
+        "data_candidata_da_verificare": item.get("data_candidata"),
+        "fonte": item.get("fonte"),
+    } for item in selected if item.get("nota_id") is not None]
+
+
 def automatic_tag(db, question, model):
     """LLM -> SQL -> DB -> LOTUS sem_filter -> LLM; niente dizionari clinici."""
     import pandas as pd
@@ -398,38 +464,29 @@ def automatic_tag(db, question, model):
                 "righe_recuperate":len(candidates), "righe_sem_filter":len(planned),
                 "righe_selezionate_lotus":0, **generation_usage}
 
-    chosen = []
-    used_chars = 0
-    truncated_answer = False
-    for item in selected:
-        if len(chosen) >= MAX_ANSWER_DOCUMENTS:
-            truncated_answer = True
-            break
-        text = str(item["testo"])
-        remaining = MAX_ANSWER_CHARS-used_chars
-        if remaining <= 0:
-            truncated_answer = True
-            break
-        if len(text)>remaining:
-            text=text[:remaining]+" [EVIDENZA TRONCATA]"
-            truncated_answer = True
-        used_chars += len(text)
-        chosen.append({"chiave":item["chiave"],"testo":text,
-                       "fonti":item.get("fonti") or [item["fonte"]]})
+    chosen, truncated_answer = _balanced_answer_evidence(selected)
+    index_notes = _document_index(selected)
     partial = sql_partial or page_partial or truncated_answer
     answer_prompt = (ANSWER_PROMPT if any(
         item.get("nota_id") is not None for item in candidates
     ) else TABULAR_ANSWER_PROMPT)
     answer, answer_usage = _in_phase(
         "sintesi TAG automatico", ask, model, answer_prompt,
-        {"domanda":question,"evidenze":chosen,"risultati_parziali":partial},
+        {"domanda":question,"evidenze":chosen,"indice_documentale":index_notes,
+         "risultati_parziali":partial},
         timeout=65, max_tokens=2400
     )
-    if partial:
-        answer += "\n\nAvvertenza: recupero o contesto parziale; l'elenco non e' esaustivo."
+    if sql_partial or page_partial or len(selected)>MAX_ANSWER_DOCUMENTS:
+        answer += ("\n\nAvvertenza: recupero di note o pagine non completo; "
+                   "l'elenco non e' garantito esaustivo.")
+    elif truncated_answer:
+        answer += ("\n\nAvvertenza: alcuni testi di pagina sono abbreviati "
+                   "per limiti di contesto; verificare i dettagli sui documenti originali.")
     sources = list(dict.fromkeys(src for item in chosen for src in item["fonti"]))
     return {**base, "risposta":answer, "fonti":sources[:80],
             "evidenze_fonti":_source_previews(selected),
+            "note_nell_indice":len(index_notes),
+            "note_nel_contesto":sum(1 for r in chosen if r["chiave"].startswith("NOTA:")),
             "stato":"RISULTATI_PARZIALI" if partial else "OK",
             "risultato_parziale":partial,
             "righe_recuperate":len(candidates),"righe_sem_filter":len(planned),
