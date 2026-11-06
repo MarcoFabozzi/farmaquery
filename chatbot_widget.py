@@ -278,12 +278,18 @@ def assistant_dialog():
                             if method=="TAG automatico" and original:
                                 st.caption("SQL generato dall'LLM (prima dei controlli)")
                                 st.code(original,language="sql")
-                                if item.get("sql_normalizzato_nome"):
-                                    st.caption("SQL effettivamente eseguito dopo la normalizzazione "
-                                               "case-insensitive dei confronti sul nome")
+                                if (item.get("sql_normalizzato_nome") or
+                                        item.get("sql_normalizzato_ambito_regione")):
+                                    if item.get("sql_normalizzato_nome"):
+                                        st.caption("Confronti dei nomi normalizzati: case-insensitive.")
+                                    if item.get("sql_normalizzato_ambito_regione"):
+                                        st.caption(
+                                            "Filtro regionale spurio sul percorso ZIP rimosso: "
+                                            "la tabella note contiene già le note della Campania.")
+                                    st.caption("SQL effettivamente eseguito dopo i controlli")
                                     st.code(item["sql"],language="sql")
                                 else:
-                                    st.caption("SQL eseguito senza modifiche al confronto del nome")
+                                    st.caption("SQL eseguito senza normalizzazioni")
                             else:
                                 st.code(item["sql"],language="sql")
                             st.caption("Text-to-SQL standard · una sola SELECT · nessuna correzione"
@@ -392,6 +398,8 @@ def assistant_dialog():
                         "diagnostica_sql":result.get("diagnostica_sql"),
                         "sql_originale_llm":result.get("sql_originale_llm"),
                         "sql_normalizzato_nome":result.get("sql_normalizzato_nome"),
+                        "sql_normalizzato_ambito_regione":result.get(
+                            "sql_normalizzato_ambito_regione"),
                         "tag_auto_revision":result.get("tag_auto_revision"),
                         "secondi":round(time.monotonic()-start,2),
                         "versione_tag":result.get("versione_tag"),
