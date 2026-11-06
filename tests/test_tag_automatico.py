@@ -18,6 +18,7 @@ class TAGAutomaticoTests(unittest.TestCase):
         self.db.executescript("""
             CREATE TABLE note(
                 id TEXT PRIMARY KEY, nome_file TEXT,
+                anno INTEGER, protocollo_candidato TEXT, data_candidata TEXT,
                 farmaco_candidato TEXT, indicazione_candidata TEXT,
                 percorso_zip TEXT, archivio_url TEXT
             );
@@ -25,8 +26,8 @@ class TAGAutomaticoTests(unittest.TestCase):
                 nota_id TEXT, numero_pagina INTEGER, testo TEXT, metodo TEXT
             );
             INSERT INTO note VALUES
-              ('n1','nota1.pdf','MED-A','categoria clinica A','nota1.pdf','https://example.org/a.zip'),
-              ('n2','nota2.pdf','MED-B','categoria clinica B','nota2.pdf','https://example.org/b.zip');
+              ('n1','nota1.pdf',2022,'PROT/01','02/01/2022','MED-A','categoria clinica A','nota1.pdf','https://example.org/a.zip'),
+              ('n2','nota2.pdf',2023,'PROT/02','03/02/2023','MED-B','categoria clinica B','nota2.pdf','https://example.org/b.zip');
             INSERT INTO pagine VALUES
               ('n1',1,'Menzione Federico II e descrizione documento A','TESTO'),
               ('n1',2,'Indicazione terapeutica del documento A','TESTO'),
@@ -374,6 +375,83 @@ class TAGAutomaticoTests(unittest.TestCase):
         self.assertIn("JOIN soltanto sul principio attivo",auto.SQL_PROMPT)
         self.assertNotIn("LUMYKRAS",auto.SQL_PROMPT)
         self.assertNotIn("KEYTRUDA",auto.SQL_PROMPT)
+
+
+    def test_all_seven_document_candidates_reach_synthesis_under_budget(self):
+        """Nessuna nota viene persa perche' quelle prima sono piu' lunghe."""
+        self.db.execute("PRAGMA query_only=OFF")
+        # Ogni pagina resta sotto il taglio di 4200 caratteri, ma la somma
+        # supera di molto il budget complessivo di 44000 caratteri.
+        for i in range(1, 8):
+            ident=f"nota-{i}"
+            self.db.execute(
+                "INSERT INTO note(id,nome_file,anno,protocollo_candidato,"
+                "data_candidata,farmaco_candidato,indicazione_candidata,"
+                "percorso_zip,archivio_url) VALUES (?,?,?,?,?,?,?,?,?)",
+                (ident,f"nota-{i}.pdf",2020+i,f"PROT-{i}",
+                 None,"Farmaco X",None,f"nota-{i}.pdf","https://example.org/regione.zip"))
+            for page in range(1,4):
+                self.db.execute(
+                    "INSERT INTO pagine VALUES (?,?,?,?)",
+                    (ident,page,f"Farmaco X e relazione documentata. "
+                     + "dettaglio " * 350,"TESTO"))
+        self.db.execute("PRAGMA query_only=ON")
+        sql=("SELECT DISTINCT n.id AS nota_id FROM note n "
+             "JOIN pagine p ON p.nota_id=n.id "
+             "WHERE p.testo LIKE '%Farmaco X%'")
+        captures=[]
+        def mock_ask(model,system,payload,**kwargs):
+            if system==auto.SQL_PROMPT:
+                return sql,{"token_input":1,"token_output":1,"costo_usd":0}
+            captures.append(payload)
+            return "Sette note esaminate",{
+                "token_input":1,"token_output":1,"costo_usd":0
+            }
+        fake_lotus=types.ModuleType("lotus")
+        fake_lotus.settings=types.SimpleNamespace(configure=lambda **_:None)
+        fake_models=types.ModuleType("lotus.models")
+        fake_models.LM=lambda *_,**__:types.SimpleNamespace()
+        with patch.dict(sys.modules,{"lotus":fake_lotus,"lotus.models":fake_models}), \
+             patch.object(auto,"ask",side_effect=mock_ask), \
+             patch.object(auto,"sem_filter_controlled",
+                          side_effect=lambda frame,instruction:frame):
+            result=auto.automatic_tag(
+                self.db,"Quali note menzionano Farmaco X? Indica anno e documento.",
+                "modello-fittizio")
+        self.assertEqual(result["righe_recuperate"],7)
+        self.assertEqual(result["note_nell_indice"],7)
+        self.assertEqual(result["note_nel_contesto"],7)
+        self.assertEqual(len(captures),1)
+        payload=captures[0]
+        self.assertEqual(len(payload["indice_documentale"]),7)
+        self.assertEqual(len(payload["evidenze"]),7)
+        self.assertTrue(payload["risultati_parziali"])
+        self.assertTrue(all(e["testo"].startswith("Identificativo interno nota:")
+                            for e in payload["evidenze"]))
+        self.assertLessEqual(sum(len(e["testo"]) for e in payload["evidenze"]),
+                             auto.MAX_ANSWER_CHARS)
+        for i in range(1,8):
+            self.assertIn(f"nota-{i}",[x["nota_id"] for x
+                                       in payload["indice_documentale"]])
+            self.assertIn(f"nota-{i}.pdf",
+                          "\n".join(x["testo"] for x in payload["evidenze"]))
+            self.assertEqual(
+                next(x["anno_archivio"] for x in payload["indice_documentale"]
+                     if x["nota_id"]==f"nota-{i}"),2020+i)
+        self.assertEqual(len(result["fonti"]),21)
+        self.assertIn("alcuni testi di pagina sono abbreviati",result["risposta"])
+
+    def test_balanced_context_does_not_drop_final_document(self):
+        docs=[
+            {"chiave":f"NOTA:{i}","testo":"ID "+str(i)+" "+("z"*20000),
+             "fonte":f"note{i}#p1","fonti":[f"note{i}#p1"]}
+            for i in range(7)
+        ]
+        chosen,partial=auto._balanced_answer_evidence(docs)
+        self.assertTrue(partial)
+        self.assertEqual(len(chosen),7)
+        self.assertTrue(chosen[-1]["testo"].startswith("ID 6"))
+        self.assertTrue(all(x["testo"] for x in chosen))
 
 
 if __name__ == "__main__":
