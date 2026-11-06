@@ -454,5 +454,112 @@ class TAGAutomaticoTests(unittest.TestCase):
         self.assertTrue(all(x["testo"] for x in chosen))
 
 
+    def test_regional_scope_normalizer_removes_only_spurious_path_filter(self):
+        """Un nome di archivio non certifica Campania: recupero preservato."""
+        self.db.execute("PRAGMA query_only=OFF")
+        self.db.execute("UPDATE pagine SET testo='MED-A citato nel testo' "
+                        "WHERE nota_id='n1'")
+        self.db.execute("UPDATE pagine SET testo='MED-B citato nel testo' "
+                        "WHERE nota_id='n2'")
+        self.db.execute("PRAGMA query_only=ON")
+        sql=(
+            "SELECT DISTINCT note.id AS nota_id FROM note "
+            "JOIN pagine ON note.id=pagine.nota_id "
+            "WHERE pagine.testo LIKE '%MED-A%' "
+            "AND note.percorso_zip LIKE '%Campania%'"
+        )
+        original_rows,_=auto._run_generated_select(self.db,auto.validate_sql(sql))
+        self.assertEqual(original_rows,[])
+        fixed,changed=auto._normalize_regional_scope(
+            auto.validate_sql(sql),
+            "Quali note regionali della Campania menzionano MED-A?")
+        self.assertTrue(changed)
+        self.assertNotIn("LIKE '%Campania%'",fixed)
+        self.assertIn("LIKE '%MED-A%'",fixed)
+        records,partial=auto._run_generated_select(self.db,auto.validate_sql(fixed))
+        self.assertFalse(partial)
+        self.assertEqual([x["nota_id"] for x in records],["n1"])
+        self.assertEqual(fixed,auto._normalize_regional_scope(
+            fixed,"Quali note della Campania menzionano MED-A?")[0])
+
+    def test_regional_scope_normalizer_handles_alias_and_or(self):
+        """La regione non dipende da prefissi testuali del percorso."""
+        sql=(
+            "SELECT DISTINCT n.id AS nota_id FROM note n "
+            "JOIN pagine p ON p.nota_id=n.id "
+            "WHERE p.testo LIKE '%MED-A%' "
+            "AND (n.percorso_zip LIKE '%Campania%' OR "
+            "p.testo LIKE '%Campania%')"
+        )
+        normalized,changed=auto._normalize_regional_scope(
+            auto.validate_sql(sql),
+            "Quali note regionali della Campania menzionano MED-A?")
+        self.assertTrue(changed)
+        self.assertIn("LIKE '%MED-A%'",normalized)
+        self.assertNotIn("n.percorso_zip LIKE '%Campania%'",normalized)
+        self.assertTrue(auto.validate_sql(normalized))
+        # Senza la regione nella domanda, il filtro viene lasciato invariato.
+        unchanged,changed=auto._normalize_regional_scope(
+            sql,"Quali note contengono MED-A?")
+        self.assertFalse(changed)
+        self.assertEqual(unchanged,sql)
+
+    def test_regional_scope_preserves_explicit_path_queries(self):
+        sql=(
+            "SELECT id AS nota_id FROM note "
+            "WHERE note.percorso_zip LIKE '%Campania%' "
+            "AND note.anno=2026"
+        )
+        normalized,changed=auto._normalize_regional_scope(
+            sql,"Quali percorsi archivio delle note Campania sono del 2026?")
+        self.assertFalse(changed)
+        self.assertEqual(normalized,sql)
+        other,changed=auto._normalize_regional_scope(
+            sql.replace("%Campania%","%2026%"),
+            "Quali note regionali della Campania appartengono al 2026?")
+        self.assertFalse(changed)
+        self.assertIn("'%2026%'",other)
+
+    def test_full_pipeline_audits_regional_scope_correction(self):
+        """Nessun retry LLM; query origine conservata e note davvero recuperate."""
+        self.db.execute("PRAGMA query_only=OFF")
+        self.db.execute("UPDATE pagine SET testo='MED-A indicato nel documento' "
+                        "WHERE nota_id='n1'")
+        self.db.execute("PRAGMA query_only=ON")
+        raw_sql=(
+            "SELECT DISTINCT n.id AS nota_id FROM note n "
+            "JOIN pagine p ON p.nota_id=n.id "
+            "WHERE p.testo LIKE '%MED-A%' "
+            "AND n.percorso_zip LIKE '%Campania%'"
+        )
+        responses=[]
+        def mock_ask(model,system,payload,**kwargs):
+            responses.append(system)
+            if system == auto.SQL_PROMPT:
+                return raw_sql,{"token_input":1,"token_output":1,"costo_usd":0}
+            return "Documento n1 verificato.",{
+                "token_input":1,"token_output":1,"costo_usd":0
+            }
+        fake_lotus=types.ModuleType("lotus")
+        fake_lotus.settings=types.SimpleNamespace(configure=lambda **_:None)
+        fake_models=types.ModuleType("lotus.models")
+        fake_models.LM=lambda *_,**__:types.SimpleNamespace()
+        with patch.dict(sys.modules,{"lotus":fake_lotus,"lotus.models":fake_models}), \
+             patch.object(auto,"ask",side_effect=mock_ask), \
+             patch.object(auto,"sem_filter_controlled",
+                          side_effect=lambda frame,instruction:frame):
+            result=auto.automatic_tag(
+                self.db,"Quali note regionali della Campania menzionano MED-A?",
+                "modello-fittizio")
+        self.assertEqual(result["stato"],"OK")
+        self.assertTrue(result["sql_normalizzato_ambito_regione"])
+        self.assertFalse(result["sql_normalizzato_nome"])
+        self.assertEqual(result["sql_originale_llm"],auto.validate_sql(raw_sql))
+        self.assertNotEqual(result["sql"],result["sql_originale_llm"])
+        self.assertEqual(result["righe_sql"],1)
+        self.assertEqual(result["note_nell_indice"],1)
+        self.assertEqual(len(responses),2)
+
+
 if __name__ == "__main__":
     unittest.main()
