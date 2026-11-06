@@ -22,7 +22,7 @@ MAX_NOTE_PAGES = 1200
 MAX_LOTUS_GROUPS = 12
 MAX_ANSWER_DOCUMENTS = 55
 MAX_ANSWER_CHARS = 44000
-TAG_AUTO_REVISION = "2026-11-05-r2-case-provenienza"
+TAG_AUTO_REVISION = "2026-11-06-r3-relazioni-note"
 
 SQL_PROMPT = (
     "Genera UNA sola query SQLite SELECT che recuperi candidati da far "
@@ -30,6 +30,12 @@ SQL_PROMPT = (
     "le tabelle e le colonne dello schema. Per le note regionali usa note "
     "JOIN pagine e seleziona DISTINCT note.id AS nota_id "
     "(e altri identificativi solo se utili). "
+    "La JOIN deve collegare le chiavi: note.id = pagine.nota_id "
+    "(o n.id = p.nota_id se usi alias). "
+    "Per domande su quali NOTE MENZIONANO un medicinale, cerca il nome "
+    "nel campo pagine.testo con LIKE e seleziona DISTINCT note.id AS nota_id; "
+    "non limitarti a note.nome_file o note.farmaco_candidato, perché una nota "
+    "può menzionare medicinali diversi da quello del titolo. "
     "Filtra con SQL i vincoli OGGETTIVI espliciti nella domanda, come il "
     "nome di un medicinale, il nome di una struttura, un AIC o un protocollo. "
     "Se la domanda chiede una CATEGORIA CLINICA, NON tradurla in elenchi "
@@ -54,6 +60,12 @@ SQL_PROMPT = (
     "con NULL un identificativo esistente nella tabella di provenienza: "
     "AIFA deve riportare il VERO aic e EMA il VERO ema_id; usa NULL solo "
     "per la colonna inesistente nell\u0027altro ramo. "
+    "Per collegamenti fra EMA e AIFA, quando la domanda riguarda uno "
+    "specifico medicinale e il nome è disponibile in entrambe le fonti, "
+    "usa anche la corrispondenza dei nomi con COLLATE NOCASE: "
+    "una JOIN soltanto sul principio attivo può collegare marchi diversi. "
+    "Non duplicare lo stesso collegamento con una UNION ALL del JOIN inverso; "
+    "per un rapporto uno-a-molti usa una singola JOIN, senza UNION ridondante. "
     "Non usare SQL per inferire autorizzazioni dalla sola menzione di un centro. "
     "Nessuna PRAGMA, DML, DDL, istruzioni multiple o spiegazioni. "
     "Restituisci esclusivamente il testo SQL."
