@@ -254,6 +254,9 @@ class TAGAutomaticoTests(unittest.TestCase):
         """D04/D05: query prodotta senza NOCASE, recupero completo e audit."""
         self.db.execute("PRAGMA query_only=OFF")
         self.db.executescript("""
+            CREATE TABLE aifa_confezioni(
+                aic TEXT,nome TEXT,principio_attivo TEXT
+            );
             CREATE TABLE ema_medicinali(
                 ema_id TEXT,nome TEXT,data_decisione_ue TEXT,url_ema TEXT
             );
