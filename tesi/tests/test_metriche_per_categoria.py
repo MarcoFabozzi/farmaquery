@@ -43,18 +43,20 @@ class MetricsReportTests(unittest.TestCase):
             with pred.open("w",encoding="utf-8",newline="") as f:
                 writer=csv.DictWriter(f,fieldnames=pfields,delimiter=";")
                 writer.writeheader()
-                for method in ("TAG","Text-to-SQL"):
+                for method in ("TAG","Text-to-SQL","TAG automatico"):
                     for q in ("r1","a1"):
                         writer.writerow({
                             "id":q,"metodo":method,"modello":"mock",
                             "snapshot_sha256":snapshot,
                             "risposta":"una risposta","fonti":"file.pdf#p1",
-                            "secondi":"2" if method=="TAG" else "1",
+                            "secondi":("3" if method=="TAG automatico"
+                                       else "2" if method=="TAG" else "1"),
                             "token_input":"4","token_output":"5","costo_usd":"0.001",
                             "valutazione_risposta":"1" if method=="TAG" else "0",
                             "valutazione_citazioni":"1",
                             "note_revisore":"Controllata manualmente",
-                            "chiamate_llm_effettive":"3" if method=="TAG" else "2",
+                            "chiamate_llm_effettive":("4" if method=="TAG automatico"
+                                                       else "3" if method=="TAG" else "2"),
                             "elementi_predetti":("A|B" if method=="TAG" else "A")
                                 if q=="r1" else "",
                             "valutazione_astensione":"1" if q=="a1" and method=="TAG"
@@ -63,6 +65,8 @@ class MetricsReportTests(unittest.TestCase):
                             "citazioni_verificate_n":"1"})
             report=evaluate(gold,pred,manifest)
         self.assertEqual(report["domande_con_entrambe_le_risposte"],2)
+        self.assertEqual(report["domande_con_tre_risposte"],2)
+        self.assertEqual(report["metodi"]["TAG automatico"]["chiamate_llm_medie"],4)
         self.assertEqual(report["metodi"]["TAG"]["chiamate_llm_medie"],3)
         self.assertEqual(report["metodi"]["Text-to-SQL"]["chiamate_llm_medie"],2)
         self.assertEqual(report["metodi"]["TAG"]["precision_micro"],1)
@@ -74,6 +78,7 @@ class MetricsReportTests(unittest.TestCase):
                  if x["categoria"]=="RELAZIONALI")
         self.assertEqual(row["TAG_accuratezza"],1)
         self.assertEqual(row["Text_to_SQL_accuratezza"],0)
+        self.assertEqual(row["TAG_automatico_tempo_s"],3)
 
     def test_senza_annotazioni_non_inventa_f1_o_chiamate(self):
         from tesi.valuta_confronto import _micro_list_metrics
