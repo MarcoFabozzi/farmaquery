@@ -22,7 +22,7 @@ MAX_NOTE_PAGES = 1200
 MAX_LOTUS_GROUPS = 12
 MAX_ANSWER_DOCUMENTS = 55
 MAX_ANSWER_CHARS = 44000
-TAG_AUTO_REVISION = "2026-11-06-r4-contesto-bilanciato"
+TAG_AUTO_REVISION = "2026-11-06-r5-ambito-regionale"
 
 SQL_PROMPT = (
     "Genera UNA sola query SQLite SELECT che recuperi candidati da far "
@@ -36,6 +36,13 @@ SQL_PROMPT = (
     "nel campo pagine.testo con LIKE e seleziona DISTINCT note.id AS nota_id; "
     "non limitarti a note.nome_file o note.farmaco_candidato, perché una nota "
     "può menzionare medicinali diversi da quello del titolo. "
+    "La tabella note è già l'archivio delle note REGIONALI della Campania: "
+    "NON aggiungere predicati su note.percorso_zip o note.nome_file "
+    "con LIKE '%Campania%' per riconoscere la regione. "
+    "Questi campi rappresentano nomi e percorsi dei file e NON attributi "
+    "geografici; il percorso può non contenere la parola Campania. "
+    "Quando servono menzioni testuali, filtra pagine.testo per il "
+    "medicinale richiesto, senza condizioni extra di appartenenza regionale. "
     "Filtra con SQL i vincoli OGGETTIVI espliciti nella domanda, come il "
     "nome di un medicinale, il nome di una struttura, un AIC o un protocollo. "
     "Se la domanda chiede una CATEGORIA CLINICA, NON tradurla in elenchi "
@@ -152,6 +159,51 @@ def _normalize_exact_name_comparisons(sql):
         lambda m: m.group("col") + " = " + m.group("value") +
         " COLLATE NOCASE", sql
     )
+
+
+def _normalize_regional_scope(sql, question):
+    """Elimina un falso vincolo regionale sul percorso dei documenti.
+
+    La tabella note è interamente regionale per costruzione dello snapshot.
+    Un filtro sul percorso con LIKE '%Campania%' non verifica quindi
+    l'appartenenza alla regione e può annullare risultati pertinenti.
+
+    Si interviene SOLO se la domanda riguarda le note della Campania,
+    non chiede esplicitamente percorsi/archivi, e il confronto letterale
+    riguarda note.percorso_zip (anche con alias). SQL originale preservato,
+    nessun retry o altra chiamata LLM. Le altre condizioni restano intatte.
+    """
+    lower_question = question.casefold()
+    if ("campania" not in lower_question or
+            not re.search(r"\bnot[ae]\b",lower_question) or
+            re.search(r"\b(percorso|percorsi|archivio|archivi|zip)\b",
+                      lower_question)):
+        return sql, False
+
+    from sqlglot import parse_one, exp
+    tree = parse_one(sql, read="sqlite")
+    note_aliases = {
+        str(table.alias_or_name).casefold()
+        for table in tree.find_all(exp.Table)
+        if str(table.name).casefold() == "note"
+    }
+    if not note_aliases:
+        return sql, False
+
+    changed = False
+    for predicate in list(tree.find_all(exp.Like)):
+        field, pattern = predicate.this, predicate.expression
+        if not isinstance(field, exp.Column) or not isinstance(pattern, exp.Literal):
+            continue
+        if (str(field.name).casefold() != "percorso_zip" or
+                str(field.table).casefold() not in note_aliases or
+                not pattern.is_string):
+            continue
+        if str(pattern.this).casefold() != "%campania%":
+            continue
+        predicate.replace(exp.Boolean(this=True))
+        changed = True
+    return (tree.sql(dialect="sqlite"), True) if changed else (sql, False)
 
 
 def _canonicalize_tabular_identifier(db, row):
@@ -413,15 +465,20 @@ def automatic_tag(db, question, model):
     sql_originale_llm = _in_phase(
         "validazione SQL TAG automatico", validate_sql, generated
     )
+    sql_with_name = _normalize_exact_name_comparisons(sql_originale_llm)
+    sql_with_scope, scope_changed = _in_phase(
+        "normalizzazione ambito regionale TAG automatico",
+        _normalize_regional_scope, sql_with_name, question
+    )
     sql = _in_phase(
-        "normalizzazione SQL TAG automatico", validate_sql,
-        _normalize_exact_name_comparisons(sql_originale_llm)
+        "normalizzazione SQL TAG automatico", validate_sql, sql_with_scope
     )
     records, sql_partial = _in_phase(
         "esecuzione SQL TAG automatico", _run_generated_select, db, sql
     )
     base = {"sql":sql, "sql_originale_llm":sql_originale_llm,
-            "sql_normalizzato_nome":sql != sql_originale_llm,
+            "sql_normalizzato_nome":sql_with_name != sql_originale_llm,
+            "sql_normalizzato_ambito_regione":scope_changed,
             "tag_auto_revision":TAG_AUTO_REVISION,
             "versione_tag":"automatico-v1",
             "recupero":"LLM-SQL", "sql_tentativi":1, "righe_sql":len(records)}
