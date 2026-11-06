@@ -279,13 +279,20 @@ def assistant_dialog():
                                 st.caption("SQL generato dall'LLM (prima dei controlli)")
                                 st.code(original,language="sql")
                                 if (item.get("sql_normalizzato_nome") or
-                                        item.get("sql_normalizzato_ambito_regione")):
+                                        item.get("sql_normalizzato_ambito_regione") or
+                                        item.get("sql_normalizzato_join_documentali")):
                                     if item.get("sql_normalizzato_nome"):
                                         st.caption("Confronti dei nomi normalizzati: case-insensitive.")
                                     if item.get("sql_normalizzato_ambito_regione"):
                                         st.caption(
                                             "Filtro regionale spurio sul percorso ZIP rimosso: "
                                             "la tabella note contiene già le note della Campania.")
+                                    if item.get("sql_normalizzato_join_documentali"):
+                                        st.caption(
+                                            "JOIN con tabella revisionata parziale "
+                                            "convertita in LEFT JOIN per non perdere "
+                                            "note prive di una relazione già verificata. "
+                                            "I centri andranno confermati nel PDF.")
                                     st.caption("SQL effettivamente eseguito dopo i controlli")
                                     st.code(item["sql"],language="sql")
                                 else:
@@ -400,6 +407,8 @@ def assistant_dialog():
                         "sql_normalizzato_nome":result.get("sql_normalizzato_nome"),
                         "sql_normalizzato_ambito_regione":result.get(
                             "sql_normalizzato_ambito_regione"),
+                        "sql_normalizzato_join_documentali":result.get(
+                            "sql_normalizzato_join_documentali"),
                         "tag_auto_revision":result.get("tag_auto_revision"),
                         "secondi":round(time.monotonic()-start,2),
                         "versione_tag":result.get("versione_tag"),
