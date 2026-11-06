@@ -1,0 +1,38 @@
+name: Test valutazione comparativa tre motori
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tesi/esegui_holdout.py'
+      - 'tesi/valuta_confronto.py'
+      - 'tesi/tests/test_runner_holdout_congelato.py'
+      - 'tesi/tests/test_metriche_per_categoria.py'
+      - '.github/workflows/test-valutazione-tre-motori.yml'
+  pull_request:
+    paths:
+      - 'tesi/esegui_holdout.py'
+      - 'tesi/valuta_confronto.py'
+      - 'tesi/tests/test_runner_holdout_congelato.py'
+      - 'tesi/tests/test_metriche_per_categoria.py'
+      - '.github/workflows/test-valutazione-tre-motori.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regressione-tre-motori:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Dipendenze test SQL senza provider
+        run: python -m pip install --disable-pip-version-check 'sqlglot>=25'
+      - name: Controllo sintattico
+        run: python -m py_compile tesi/esegui_holdout.py tesi/valuta_confronto.py
+      - name: Regressioni runner congelato e metriche tre motori
+        run: python -m unittest tesi.tests.test_runner_holdout_congelato tesi.tests.test_metriche_per_categoria -v
