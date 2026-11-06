@@ -22,7 +22,7 @@ MAX_NOTE_PAGES = 1200
 MAX_LOTUS_GROUPS = 12
 MAX_ANSWER_DOCUMENTS = 55
 MAX_ANSWER_CHARS = 44000
-TAG_AUTO_REVISION = "2026-11-06-r6-join-documentali"
+TAG_AUTO_REVISION = "2026-11-06-r7-astensione-documentata"
 
 SQL_PROMPT = (
     "Genera UNA sola query SQLite SELECT che recuperi candidati da far "
@@ -56,6 +56,22 @@ SQL_PROMPT = (
     "medicinale richiesto, senza condizioni extra di appartenenza regionale. "
     "Filtra con SQL i vincoli OGGETTIVI espliciti nella domanda, come il "
     "nome di un medicinale, il nome di una struttura, un AIC o un protocollo. "
+    "Se viene richiesto un DATO OPERATIVO non presente come colonna nello "
+    "schema (ad esempio eventi realmente avvenuti, conteggi di trattamenti, "
+    "date di inizio effettivo, ricavi), NON costruire JOIN artificiali, "
+    "non inventare colonne e non cercare una cifra inesistente con LIKE. "
+    "Recupera invece le note o i record pertinenti al medicinale o alla "
+    "fonte, per permettere alla sintesi di verificare e motivare "
+    "un'eventuale assenza documentale. "
+    "Per domande sull'intero DOCUMENTO non imporre che medicinali, anni, "
+    "strutture e altre parole compaiano tutti nella STESSA pagina di testo; "
+    "una condizione su pagine.testo vale solo sulla singola pagina. "
+    "Preferisci identificare il documento tramite note.farmaco_candidato "
+    "o note.nome_file, usare note.anno per l'anno di archivio se richiesto, "
+    "e poi lasciare che siano consultate tutte le sue pagine. "
+    "Usa solo JOIN fra tabelle con una reale relazione di chiave "
+    "esplicitata nello schema; non collegare tabelle senza legame "
+    "per cercare misure che non esistono. "
     "Se la domanda chiede una CATEGORIA CLINICA, NON tradurla in elenchi "
     "di patologie e NON filtrare per sinonimi o indicazioni cliniche: "
     "saranno valutati da LOTUS leggendo le note. "
@@ -95,8 +111,14 @@ DOCUMENT_SEMANTIC_PROMPT = (
     "clinico e le relazioni effettivamente documentate fra medicinali, "
     "indicazioni e strutture. La mera menzione di un ospedale non prova "
     "un'autorizzazione. Non usare elenchi precostituiti di patologie. "
-    "Se almeno un documento puo' essere pertinente, seleziona il gruppo: "
-    "la risposta finale esaminera' i documenti singolarmente."
+    "La selezione riguarda la PERTINENZA del documento rispetto al "
+    "soggetto della domanda, non la presenza garantita del dato richiesto. "
+    "Anche per domande su valori non documentati (numero reale di pazienti, "
+    "date di somministrazione, ricavi, eventi), conserva il gruppo se "
+    "contiene note del medicinale o un contesto direttamente pertinente: "
+    "la sintesi potra' verificare che manca la misura e astenersi "
+    "citando il documento. "
+    "Non selezionare gruppi totalmente estranei alla domanda."
 )
 
 TABULAR_SEMANTIC_PROMPT = (
@@ -131,6 +153,13 @@ ANSWER_PROMPT = (
     "con il numero della determina AIFA richiamata nel testo. "
     "I protocolli classificati come candidati richiedono verifica; "
     "non inventare date o completare date OCR illeggibili. "
+    "Se la domanda richiede un dato su eventi realmente avvenuti, "
+    "quantita' di pazienti, ricavi o date effettive, non desumerlo "
+    "da un'autorizzazione, una previsione o un registro. "
+    "Quando i documenti consultati non riportano il dato, rispondi "
+    "esplicitamente che non e' documentato NELLE FONTI CONSULTATE; "
+    "cita le note e le pagine pertinenti senza attribuire un valore "
+    "zero o affermare che l'evento non sia mai avvenuto. "
     "Cita nome del documento e pagina per le note; per EMA/AIFA cita "
     "l'identificativo. Non interpretare un'assenza nel database come "
     "l'assenza del fatto nel mondo reale."
