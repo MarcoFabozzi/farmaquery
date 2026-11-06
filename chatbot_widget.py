@@ -43,6 +43,22 @@ def _server_config():
     return model,enable_server_key(model,secrets)
 
 
+def _sql_validation_diagnostic(exc):
+    """Espone solo categorie sicure, mai SQL grezzo rifiutato dal validatore."""
+    if getattr(exc, "phase", "") != "validazione SQL TAG automatico":
+        return None
+    raw = str(getattr(exc, "original", "")).casefold()
+    if "join senza condizione" in raw or "join senza collegamento" in raw:
+        return "JOIN senza collegamento valido tra le tabelle."
+    if "tabella o schema non consentito" in raw:
+        return "Tabella o schema non presente fra quelli consentiti."
+    if "sono consentite solo select" in raw:
+        return "Il modello non ha prodotto una singola SELECT consentita."
+    if "funzione sql non consentita" in raw or "sql non consentito" in raw:
+        return "La SELECT contiene un'operazione o funzione non consentita."
+    return "La SELECT non ha superato la validazione sintattica o strutturale."
+
+
 def _reply(question,method,model,has_key,remaining):
     """Produce un risultato senza mai disabilitare l'editor dei messaggi."""
     if not has_key:
@@ -69,6 +85,10 @@ def _reply(question,method,model,has_key,remaining):
             # NON visualizzare il messaggio grezzo: può contenere chiavi API
             # o dettagli privati della richiesta. Mostra fase e classe sicure.
             outcome=label_error(exc)
+            if method=="TAG automatico":
+                category=_sql_validation_diagnostic(exc)
+                if category:
+                    outcome["diagnostica_sql"]=category
             # Misure tecniche sicure anche se la chiamata ha fallito.
             diagnostics=getattr(exc,"metriche_llm",None)
             if isinstance(diagnostics,dict):
@@ -249,6 +269,8 @@ def assistant_dialog():
                             for source in item["evidenze_fonti"]:
                                 st.caption(str(source.get("fonte") or "")[:200])
                                 _show_excerpt(source)
+                    if method=="TAG automatico" and item.get("diagnostica_sql"):
+                        st.caption("Diagnostica SQL: "+str(item["diagnostica_sql"]))
                     if method in ("Text-to-SQL","TAG automatico") and item.get("sql"):
                         with st.expander("SQL di recupero e tracciabilità" if method=="TAG automatico"
                                          else "Query SQL generata dall'LLM"):
@@ -359,6 +381,7 @@ def assistant_dialog():
                         "fonti":result.get("fonti",[]),
                         "evidenze_fonti":result.get("evidenze_fonti",[]),
                         "sql":result.get("sql",""),
+                        "diagnostica_sql":result.get("diagnostica_sql"),
                         "sql_originale_llm":result.get("sql_originale_llm"),
                         "sql_normalizzato_nome":result.get("sql_normalizzato_nome"),
                         "tag_auto_revision":result.get("tag_auto_revision"),
