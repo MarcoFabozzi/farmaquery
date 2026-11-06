@@ -22,7 +22,7 @@ COLUMNS=("id","metodo","modello","snapshot_sha256","risposta","fonti",
          "chiamate_llm_effettive","elementi_predetti",
          "valutazione_astensione","errore_tecnico",
          "citazioni_corrette_n","citazioni_verificate_n","codice_commit")
-METHODS=("Text-to-SQL","TAG")
+METHODS=("Text-to-SQL","TAG","TAG automatico")
 
 
 def file_sha(path):
@@ -64,9 +64,9 @@ def collect(gold_file,db_file,manifest_file,model,out,commit,answer_fn=answer_qu
         writer=csv.DictWriter(handle,fieldnames=COLUMNS,delimiter=";")
         writer.writeheader()
         for index,item in enumerate(gold):
-            # Ordine bilanciato per non favorire sistematicamente il
-            # primo metodo rispetto alla variabilita' temporale delle API.
-            order=METHODS if index%2==0 else METHODS[::-1]
+            # Rotazione ciclica dei tre metodi per bilanciare la posizione
+            # nelle esecuzioni senza ripetere nessuna domanda/metodo.
+            order=METHODS[index%len(METHODS):]+METHODS[:index%len(METHODS)]
             for method in order:
                 start=time.monotonic()
                 error=False
