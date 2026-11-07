@@ -327,8 +327,8 @@ def propose_empty_crosspage_category_fallback(sql, question):
     """Fallback generico per categoria semantica cercata sulla STESSA pagina.
 
     Si usa solo se la prima SELECT non trova righe e la forma SQL è nota:
-    note -> pagine -> centri_candidati, due predicati OR per (ospedale
-    testuale) AND (categoria testuale). Richiede esplicitamente le tre
+    note -> pagine -> centri_candidati, vincolo ospedaliero LIKE
+    diretto oppure OR su menzione/testo e filtro di categoria OR. Richiede esplicitamente le tre
     relazioni di chiave e non rimuove mai altri vincoli. Recupera come
     candidati le note che contengono un termine della denominazione del
     centro, lasciando a LOTUS la lettura completa delle pagine e
@@ -377,6 +377,17 @@ def propose_empty_crosspage_category_fallback(sql, question):
     category_pattern = None
     for clause in clauses:
         clause = _unbox(clause)
+        # L'LLM puo' ancorare il centro con una sola menzione indicizzata,
+        # senza OR sul testo della pagina. Si tratta sempre dello stesso
+        # vincolo OGGETTIVO, non di una nuova tassonomia clinica.
+        simple_center = _like(clause)
+        if simple_center is not None:
+            if (simple_center[:2] not in
+                    {(c, "menzione"), (p, "testo")}
+                    or center_pattern is not None):
+                return None, "filtro_centro_semplice_non_supportato"
+            center_pattern = simple_center[2]
+            continue
         if not isinstance(clause, exp.Or):
             return None, "assenza_coppia_semantica"
         first, second = _like(clause.this), _like(clause.expression)
@@ -384,8 +395,12 @@ def propose_empty_crosspage_category_fallback(sql, question):
             return None, "pattern_distinti"
         pair = {first[:2], second[:2]}
         if pair == {(c, "menzione"), (p, "testo")}:
+            if center_pattern is not None:
+                return None, "centro_duplicato"
             center_pattern = first[2]
         elif pair == {(n, "indicazione_candidata"), (p, "testo")}:
+            if category_pattern is not None:
+                return None, "categoria_duplicata"
             category_pattern = first[2]
         else:
             return None, "filtro_non_supportato"
