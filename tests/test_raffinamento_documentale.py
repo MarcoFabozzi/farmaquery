@@ -52,7 +52,7 @@ class DocumentRefinementTests(unittest.TestCase):
     def tearDown(self):
         self.db.close()
 
-    def _run(self, sql, selected, doc_count=25):
+    def _run(self, sql, selected, doc_count=25, bad_offset=None):
         seen=[]
         def fake_ask(model, system, payload, **kwargs):
             seen.append((system,payload))
@@ -61,6 +61,9 @@ class DocumentRefinementTests(unittest.TestCase):
             if system == REFINEMENT_PROMPT:
                 offset=payload["indice_globale_inizio"]
                 size=len(payload["documenti"])
+                if offset==bad_offset:
+                    return "JSON non valido",{
+                        "token_input":3,"token_output":3,"costo_usd":0}
                 local=[item-offset for item in selected
                        if offset<=item<offset+size]
                 return json.dumps({"indici":local,"incerto":False}),{
@@ -107,6 +110,21 @@ class DocumentRefinementTests(unittest.TestCase):
             {f"doc-{i:02d}" for i in range(25)})
         self.assertTrue(all("#p2" in " ".join(e["fonti"])
                             for e in calls[-1][1]["evidenze"]))
+
+    def test_lotto_malformato_resta_dichiaratamente_incompleto(self):
+        res,calls=self._run("SELECT id AS nota_id FROM note",
+                            [3,17,21],bad_offset=20)
+        self.assertTrue(res["raffinamento_documentale_usato"])
+        self.assertEqual(res["lotti_raffinamento"],2)
+        self.assertEqual(res["lotti_raffinamento_completati"],1)
+        self.assertEqual(res["lotti_raffinamento_non_validi"],1)
+        self.assertEqual(res["documenti_selezionati_raffinamento"],2)
+        self.assertEqual(res["note_nell_indice"],2)
+        self.assertEqual(res["chiamate_dirette_raffinamento"],2)
+        self.assertEqual(len(calls),4)
+        self.assertEqual(res["stato"],"RISULTATI_PARZIALI")
+        self.assertIn("lotto/i",res["risposta"])
+        self.assertIn("non e' garantito",res["risposta"])
 
     def test_risposta_invalid_json_non_presenta_elenco_come_accertato(self):
         sql="SELECT id AS nota_id FROM note"
