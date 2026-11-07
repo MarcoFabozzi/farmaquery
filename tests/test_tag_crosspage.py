@@ -41,6 +41,18 @@ SQL = (
 )
 
 
+SQL_CENTER_DIRECT = (
+    "SELECT DISTINCT n.farmaco_candidato AS nome, "
+    "n.indicazione_candidata AS indicazione, "
+    "n.id AS nota_id, p.numero_pagina "
+    "FROM note AS n JOIN pagine AS p ON n.id = p.nota_id "
+    "JOIN centri_candidati AS cc "
+    "ON cc.nota_id = p.nota_id AND cc.numero_pagina = p.numero_pagina "
+    "WHERE cc.menzione LIKE '%Federico II%' "
+    "AND (n.indicazione_candidata LIKE '%neuromuscolari%' "
+    "OR p.testo LIKE '%neuromuscolari%')"
+)
+
 SQL_ONLY_CENTER = (
     "SELECT DISTINCT n.farmaco_candidato AS nome, "
     "n.indicazione_candidata AS indicazione, "
@@ -106,6 +118,111 @@ class CrossPageFallbackTests(unittest.TestCase):
         self.assertEqual(len(docs), 1)
         self.assertIn("[pagina 1]", docs[0]["testo"])
         self.assertIn("[pagina 2]", docs[0]["testo"])
+
+    def test_like_singolo_centro_categoria_or_su_pagine_distinte(self):
+        """Riproduce letteralmente la nuova query LLM della r13."""
+        rows, _ = auto._run_generated_select(
+            self.db,auto.validate_sql(SQL_CENTER_DIRECT))
+        self.assertEqual(rows, [])
+        proposed, reason = propose_empty_crosspage_category_fallback(
+            SQL_CENTER_DIRECT, QUESTION)
+        self.assertEqual(
+            reason,"categoria_clinica_e_join_stessa_pagina_ampliati")
+        self.assertIn("SELECT DISTINCT n.id AS nota_id",proposed)
+        self.assertIn("LIKE '%Federico%'",proposed)
+        self.assertNotIn("neuromuscolari",proposed.casefold())
+        expanded, partial = auto._run_generated_select(
+            self.db,auto.validate_sql(proposed))
+        self.assertFalse(partial)
+        self.assertEqual([r["nota_id"] for r in expanded],["id-a"])
+        docs,truncated=auto._note_candidates(self.db,expanded)
+        self.assertFalse(truncated)
+        self.assertIn("[pagina 2]",docs[0]["testo"])
+
+    def test_like_singolo_non_rimuove_vincoli_oggettivi(self):
+        for altered in (
+            SQL_CENTER_DIRECT + " AND n.anno=2026",
+            SQL_CENTER_DIRECT.replace(
+                "%Federico II%","%Ospedale Altro%"),
+            SQL_CENTER_DIRECT.replace(
+                "%neuromuscolari%","%oncologia%"),
+            SQL_CENTER_DIRECT.replace(
+                "cc.menzione LIKE","cc.stato LIKE"),
+            SQL_CENTER_DIRECT.replace(
+                "cc.numero_pagina = p.numero_pagina",
+                "cc.numero_pagina = p.nota_id"),
+            SQL_CENTER_DIRECT.replace(
+                "JOIN centri_candidati","LEFT JOIN centri_candidati"),
+            SQL_CENTER_DIRECT + " LIMIT 8",
+            SQL_CENTER_DIRECT.replace(
+                "OR p.testo LIKE '%neuromuscolari%'",
+                "OR p.testo LIKE '%diversa%'"),
+        ):
+            proposed, reason = propose_empty_crosspage_category_fallback(
+                altered, QUESTION)
+            self.assertIsNone(proposed,reason)
+
+    def test_pipeline_nuova_forma_fallback_e_pagine_pdf(self):
+        calls=[]
+        def fake_ask(model,system,payload,**kwargs):
+            calls.append(system)
+            if system == auto.SQL_PROMPT:
+                return SQL_CENTER_DIRECT,{
+                    "token_input":1,"token_output":1,"costo_usd":0
+                }
+            return "MED-A e struttura; pagina 2.",{
+                "token_input":1,"token_output":1,"costo_usd":0
+            }
+        lotus=types.ModuleType("lotus")
+        lotus.settings=types.SimpleNamespace(configure=lambda **_:None)
+        models=types.ModuleType("lotus.models")
+        models.LM=lambda *_,**__:types.SimpleNamespace()
+        with patch.dict(sys.modules,{
+                "lotus":lotus,"lotus.models":models}), \
+             patch.object(auto,"ask",side_effect=fake_ask), \
+             patch.object(auto,"sem_filter_controlled",
+                          side_effect=lambda frame,instruction:frame):
+            result=auto.automatic_tag(self.db,QUESTION,"mock")
+        self.assertTrue(result["recupero_progressivo_usato"])
+        self.assertEqual(result["sql_tentativi"],2)
+        self.assertEqual(result["righe_sql_primo_tentativo"],0)
+        self.assertEqual(result["righe_sql"],1)
+        self.assertEqual(result["note_nel_contesto"],1)
+        self.assertTrue(any("#p2" in f for f in result["fonti"]))
+        self.assertEqual(len(calls),2)
+        self.assertEqual(result["tag_auto_revision"],
+                         "2026-11-07-r14-fallback-centro-semplice")
+
+    def test_snapshot_query_llm_r13_copertura_referenze_documentali(self):
+        root=Path(__file__).resolve().parents[1]
+        db_path=root/"risultati/tesi_statico_20261102.sqlite.gz"
+        gold_path=root/"tesi/riferimento_neuromuscolari_federico_ii_2026-11-03.json"
+        if not db_path.is_file() or not gold_path.is_file():
+            self.skipTest("Snapshot o riferimento non presente")
+        db=sqlite3.connect(":memory:")
+        try:
+            db.deserialize(gzip.decompress(db_path.read_bytes()))
+            db.row_factory=sqlite3.Row
+            db.execute("PRAGMA query_only=ON")
+            before,_=auto._run_generated_select(
+                db,auto.validate_sql(SQL_CENTER_DIRECT))
+            self.assertEqual(before,[])
+            proposed,why=propose_empty_crosspage_category_fallback(
+                SQL_CENTER_DIRECT,QUESTION)
+            self.assertIsNotNone(proposed,why)
+            rows,partial=auto._run_generated_select(
+                db,auto.validate_sql(proposed))
+            self.assertFalse(partial)
+            ids={str(r["nota_id"]) for r in rows}
+            gold=json.loads(gold_path.read_text(encoding="utf-8"))
+            expected={str(item["sha256_pdf"])
+                      for item in gold["casi_positivi"]}
+            self.assertTrue(expected<=ids)
+            self.assertEqual(len(ids),161)
+            print("Query r13: 0 iniziali;",len(ids),
+                  "note ampliate, copertura PDF gold:",len(expected))
+        finally:
+            db.close()
 
     def test_rifiuta_vincoli_extra_o_joins_alterate(self):
         for altered in (
@@ -227,7 +344,7 @@ class CrossPageFallbackTests(unittest.TestCase):
         self.assertTrue(any("#p2" in ref for ref in result["fonti"]))
         self.assertEqual(len(calls),2)
         self.assertEqual(
-            result["tag_auto_revision"],"2026-11-07-r13-raffinamento-in-lotti"
+            result["tag_auto_revision"],"2026-11-07-r14-fallback-centro-semplice"
         )
 
     def test_snapshot_statico_documenti_gold_nei_candidati(self):

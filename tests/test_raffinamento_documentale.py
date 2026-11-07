@@ -89,7 +89,7 @@ class DocumentRefinementTests(unittest.TestCase):
         res, calls=self._run(sql,[3,17])
         self.assertEqual(res["stato"],"RISULTATI_PARZIALI")
         self.assertEqual(res["tag_auto_revision"],
-                         "2026-11-07-r13-raffinamento-in-lotti")
+                         "2026-11-07-r14-fallback-centro-semplice")
         self.assertTrue(res["raffinamento_documentale_usato"])
         self.assertEqual(res["documenti_candidati_raffinamento"],25)
         self.assertEqual(res["documenti_selezionati_raffinamento"],2)
