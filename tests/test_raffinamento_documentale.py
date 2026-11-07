@@ -160,7 +160,9 @@ class DocumentRefinementTests(unittest.TestCase):
                 "FROM note n JOIN pagine p ON n.id=p.nota_id "
                 "WHERE p.testo LIKE '%Federico%' COLLATE NOCASE")
             docs,partial=auto._note_candidates(db,rows)
-            self.assertFalse(partial)
+            # Alcune pagine del vero snapshot superano il budget: e'
+            # corretto registrarlo, non dichiararle integralmente lette.
+            self.assertTrue(partial)
             self.assertEqual(len(docs),161)
             payload,reason=refinement_payload(
                 docs,"Quali patologie presso la struttura indicata?",55)
