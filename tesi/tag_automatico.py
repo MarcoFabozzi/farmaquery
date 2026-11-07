@@ -33,7 +33,7 @@ MAX_NOTE_PAGES = 1200
 MAX_LOTUS_GROUPS = 12
 MAX_ANSWER_DOCUMENTS = 55
 MAX_ANSWER_CHARS = 44000
-TAG_AUTO_REVISION = "2026-11-07-r15-fallback-note-pagine"
+TAG_AUTO_REVISION = "2026-11-07-r16-centro-like-diretto"
 
 SQL_PROMPT = (
     "Genera UNA sola query SQLite SELECT che recuperi candidati da far "
