@@ -202,7 +202,7 @@ class CrossPageFallbackTests(unittest.TestCase):
         self.assertTrue(any("#p2" in f for f in result["fonti"]))
         self.assertEqual(len(calls),2)
         self.assertEqual(result["tag_auto_revision"],
-                         "2026-11-07-r15-fallback-note-pagine")
+                         "2026-11-07-r16-centro-like-diretto")
 
     def test_snapshot_query_llm_r13_copertura_referenze_documentali(self):
         root=Path(__file__).resolve().parents[1]
@@ -311,7 +311,7 @@ class CrossPageFallbackTests(unittest.TestCase):
         self.assertTrue(any("#p2" in x for x in result["fonti"]))
         self.assertEqual(len(calls),2)
         self.assertEqual(result["tag_auto_revision"],
-                         "2026-11-07-r15-fallback-note-pagine")
+                         "2026-11-07-r16-centro-like-diretto")
 
     def test_snapshot_sql_note_pagine_ricopre_gold(self):
         root=Path(__file__).resolve().parents[1]
@@ -464,7 +464,7 @@ class CrossPageFallbackTests(unittest.TestCase):
         self.assertTrue(any("#p2" in ref for ref in result["fonti"]))
         self.assertEqual(len(calls),2)
         self.assertEqual(
-            result["tag_auto_revision"],"2026-11-07-r15-fallback-note-pagine"
+            result["tag_auto_revision"],"2026-11-07-r16-centro-like-diretto"
         )
 
     def test_snapshot_statico_documenti_gold_nei_candidati(self):
