@@ -90,11 +90,25 @@ def _is_clinical_like_pair(node, aliases):
 
 
 def normalize_document_note_id(sql):
-    """Un alias generico su note.id diventa nota_id per recuperare le pagine."""
+    """Riconosce note.id come identificativo documentale, senza cambiare righe.
+
+    Le note possono essere selezionate anche tramite centri_candidati, senza
+    JOIN pagine. In quel caso la vecchia regola non riconosceva documento_id:
+    LOTUS riceveva solo righe tabellari anziché i PDF. Verifichiamo che la
+    proiezione sia proprio l'ID della tabella note (non un ID omonimo di altre
+    tabelle). Non tocchiamo UNION, CTE o query annidate.
+    """
     tree = parse_one(sql, read="sqlite")
-    aliases = _from_note_with_pages(tree)
-    if not aliases or not isinstance(tree, exp.Select):
+    if not isinstance(tree, exp.Select):
         return sql, False
+    if tree.args.get("with_") or any(tree.find_all(exp.Subquery)):
+        return sql, False
+    source = tree.args.get("from_") or tree.args.get("from")
+    if not source or not isinstance(source.this, exp.Table):
+        return sql, False
+    if str(source.this.name).casefold() != "note":
+        return sql, False
+    alias = str(source.this.alias_or_name).casefold()
     if any(str(item.alias_or_name).casefold() == "nota_id"
            for item in tree.expressions):
         return sql, False
@@ -103,7 +117,7 @@ def normalize_document_note_id(sql):
                 and str(item.alias).casefold() == "documento_id"
                 and isinstance(item.this, exp.Column)
                 and str(item.this.name).casefold() == "id"
-                and str(item.this.table).casefold() == aliases["note"]):
+                and str(item.this.table).casefold() == alias):
             item.set("alias", exp.to_identifier("nota_id"))
             return tree.sql(dialect="sqlite"), True
     return sql, False
