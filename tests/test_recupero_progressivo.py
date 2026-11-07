@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 from tesi.recupero_progressivo import (
     normalize_document_note_id, propose_empty_category_fallback,
+    propose_partial_center_expansion,
 )
 from tesi import tag_automatico as auto
 
@@ -161,7 +162,43 @@ class ProgressiveRetrievalTests(unittest.TestCase):
         self.assertEqual(len(calls), 2)
         self.assertIn("indice_documentale", calls[-1][1])
         self.assertEqual(result["tag_auto_revision"],
-                         "2026-11-07-r9-riconoscimento-note")
+                         "2026-11-07-r10-recupero-centri-progressivo")
+
+    def test_non_amplia_filtri_autorizzativi_o_farmaci_precisi(self):
+        for sql in [
+            SQL_CENTRI_CANDIDATI.replace(
+                "(c.stato IS NULL OR NOT c.stato IN ('escluso', 'falso'))",
+                "c.stato = 'autorizzato'"),
+            SQL_CENTRI_CANDIDATI +
+                " AND n.farmaco_candidato='FARMACO-A'",
+            SQL_CENTRI_CANDIDATI +
+                " UNION SELECT id AS documento_id FROM note",
+            SQL_CENTRI_CANDIDATI.replace(
+                "JOIN centri_candidati AS c", "JOIN altro AS c"),
+        ]:
+            proposed, why = propose_partial_center_expansion(sql, QUESTION)
+            self.assertIsNone(proposed, why)
+        proposed, _ = propose_partial_center_expansion(
+            SQL_CENTRI_CANDIDATI, "Quali note riguardano altra struttura?")
+        self.assertIsNone(proposed)
+
+    def test_proposta_centri_documentali_conserva_i_candidati_iniziali(self):
+        normalized, changed = normalize_document_note_id(SQL_CENTRI_CANDIDATI)
+        self.assertTrue(changed)
+        suggestion, reason = propose_partial_center_expansion(
+            normalized, QUESTION)
+        self.assertEqual(
+            reason, "ampliamento_centro_documentale_senza_classificazione_clinica")
+        self.assertIsNotNone(suggestion)
+        self.assertIn(" UNION ", suggestion)
+        self.assertIn("centri_candidati", suggestion)
+        self.assertIn("pagine", suggestion)
+        self.assertIn("LIKE '%Federico%'", suggestion)
+        self.assertNotIn("neuromuscolari", suggestion.casefold())
+        records, truncated = auto._run_generated_select(
+            self.db, auto.validate_sql(suggestion))
+        self.assertFalse(truncated)
+        self.assertEqual([i["nota_id"] for i in records], ["a"])
 
     def test_non_allarga_se_esiste_una_condizione_oggettiva_aggiuntiva(self):
         for extra in [
@@ -288,6 +325,20 @@ class ProgressiveRetrievalTests(unittest.TestCase):
             print("Riferimento provvisorio: inclusi", len(matching),
                   "dei", len(reference["casi_positivi"]),
                   "esclusi dalla SELECT iniziale:", ", ".join(missing))
+            proposed, reason = propose_partial_center_expansion(
+                normalized, QUESTION)
+            self.assertIsNotNone(proposed, reason)
+            enlarged, enlarged_partial = auto._run_generated_select(
+                db, auto.validate_sql(proposed))
+            enlarged_ids = {str(row["nota_id"]) for row in enlarged}
+            still_missing = [i["medicinale"] for i in
+                             reference["casi_positivi"]
+                             if i["sha256_pdf"] not in enlarged_ids]
+            self.assertFalse(enlarged_partial)
+            self.assertEqual(still_missing, [])
+            self.assertGreater(len(enlarged_ids), len(ids))
+            print("Recupero ampliato centrato sulle pagine: ",
+                  len(enlarged_ids), "note, riferimento provvisorio 14/14")
         finally:
             db.close()
 
