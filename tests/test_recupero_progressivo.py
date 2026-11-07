@@ -1,5 +1,6 @@
 """Test offline: fallback zero righe, nessun lessico clinico nel codice."""
 import sqlite3
+import json
 import pandas as pd  # Import prima di patch.dict per evitare reimport numpy.
 import gzip
 from pathlib import Path
@@ -255,6 +256,17 @@ class ProgressiveRetrievalTests(unittest.TestCase):
             self.assertTrue(all(doc["fonti"] for doc in docs))
             print("Snapshot 20261102: righe centri candidati:",
                   len(rows), "PDF distinti:", len(docs))
+            reference_path = (Path(__file__).resolve().parents[1] /
+                "tesi/riferimento_neuromuscolari_federico_ii_2026-11-03.json")
+            reference = json.loads(reference_path.read_text(encoding="utf-8"))
+            ids = {str(doc["nota_id"]) for doc in docs}
+            matching = [item["medicinale"] for item in reference["casi_positivi"]
+                        if item["sha256_pdf"] in ids]
+            missing = [item["medicinale"] for item in reference["casi_positivi"]
+                       if item["sha256_pdf"] not in ids]
+            print("Riferimento provvisorio: inclusi", len(matching),
+                  "dei", len(reference["casi_positivi"]),
+                  "esclusi dalla SELECT iniziale:", ", ".join(missing))
         finally:
             db.close()
 
