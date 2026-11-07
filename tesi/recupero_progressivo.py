@@ -509,3 +509,92 @@ def propose_partial_crosspage_center_expansion(sql, question):
     return original.sql(dialect="sqlite")+" UNION "+broad, (
         "recupero_centro_tra_pagine_documentali"
     )
+
+
+def propose_empty_note_page_semantic_fallback(sql, question):
+    """Fallback per SELECT documentale note JOIN pagine, senza tabelle curate.
+
+    Se due soli predicati sono riconoscibili come:
+      (1) denominazione del centro in pagine.testo;
+      (2) categoria semantica in (pagine.testo OR note.indicazione_candidata),
+    l'LLM ha chiesto la presenza letterale di una categoria clinica sulla
+    stessa pagina. Dopo zero righe, recuperiamo invece TUTTE le note che
+    menzionano il centro, da sottoporre al TAG/LOTUS. Nessun lessico clinico
+    manuale, nessuna modifica alle note o ai vincoli extra.
+    """
+    tree = parse_one(sql, read="sqlite")
+    if not isinstance(tree, exp.Select):
+        return None, "query_non_select_semplice"
+    if any(tree.args.get(k) is not None for k in (
+            "with_", "group", "having", "qualify", "limit", "offset",
+            "order", "windows", "connect", "intersect", "except")):
+        return None, "query_aggregata_o_limitata"
+    if any(tree.find_all(exp.Subquery)):
+        return None, "sottoquery_non_ammesse"
+    source = tree.args.get("from_") or tree.args.get("from")
+    if not source or not isinstance(source.this, exp.Table):
+        return None, "tabella_iniziale_mancante"
+    if str(source.this.name).casefold() != "note":
+        return None, "fonte_non_documentale"
+    n = str(source.this.alias_or_name).casefold()
+    joins = tree.args.get("joins") or []
+    if len(joins) != 1:
+        return None, "numero_join_non_supportato"
+    join = joins[0]
+    if (not isinstance(join.this, exp.Table)
+            or str(join.this.name).casefold() != "pagine"
+            or join.args.get("side") or join.args.get("kind")):
+        return None, "join_pagine_non_interna"
+    p = str(join.this.alias_or_name).casefold()
+    if _eq_columns(join.args.get("on")) != frozenset({
+            (n, "id"), (p, "nota_id")}):
+        return None, "join_documentale_non_verificata"
+    where = tree.args.get("where")
+    if where is None:
+        return None, "vincoli_assenti"
+    clauses = _and_clauses(where.this)
+    if len(clauses) != 2:
+        return None, "vincoli_aggiuntivi_non_rimovibili"
+    center_pattern = None
+    category_pattern = None
+    for clause in clauses:
+        node = _unbox(clause)
+        exact = _like(node)
+        if exact is not None:
+            if exact[:2] != (p, "testo") or center_pattern is not None:
+                return None, "ancora_centro_non_riconosciuta"
+            center_pattern = exact[2]
+            continue
+        if not isinstance(node, exp.Or):
+            return None, "categoria_semantica_non_riconosciuta"
+        left, right = _like(node.this), _like(node.expression)
+        if left is None or right is None:
+            return None, "predicati_categoria_non_letterali"
+        if (left[2].casefold() != right[2].casefold()
+                or {left[:2], right[:2]} != {
+                    (p, "testo"), (n, "indicazione_candidata")}
+                or category_pattern is not None):
+            return None, "categoria_non_equivalente"
+        category_pattern = left[2]
+    if not center_pattern or not category_pattern:
+        return None, "centro_o_categoria_mancanti"
+    if not all(v.startswith("%") and v.endswith("%")
+               for v in (center_pattern, category_pattern)):
+        return None, "pattern_like_non_supportati"
+    center, category = center_pattern[1:-1], category_pattern[1:-1]
+    if (len(center.strip()) < 5 or len(category.strip()) < 4
+            or any(ch in center+category for ch in ("%","_"))
+            or center.casefold() not in question.casefold()
+            or category.casefold() not in question.casefold()):
+        return None, "termini_non_presenti_nella_domanda"
+    tokens = re.findall(r"[^\W\d_]{5,}", center, re.UNICODE)
+    if not tokens:
+        return None, "centro_senza_token_utile"
+    token = sorted(tokens, key=lambda w: (-len(w), w.casefold()))[0]
+    literal = exp.Literal.string("%"+token+"%").sql(dialect="sqlite")
+    candidate_sql = (
+        "SELECT DISTINCT n.id AS nota_id FROM note AS n "
+        "JOIN pagine AS p ON p.nota_id = n.id "
+        "WHERE p.testo LIKE " + literal + " COLLATE NOCASE"
+    )
+    return candidate_sql, "categoria_clinica_letterale_esclusa_da_note_pagine"
