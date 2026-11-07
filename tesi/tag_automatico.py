@@ -156,6 +156,10 @@ ANSWER_PROMPT = (
     "Per ogni elemento di un elenco controlla documento, indicazione, "
     "struttura e pagina. Una struttura menzionata non e' automaticamente "
     "autorizzata. Distingui i fatti verificati dalle sole menzioni. "
+    "Non limitarti al medicinale nel nome del PDF: se una nota cita "
+    "ulteriori medicinali pertinenti, controlla separatamente nel suo testo "
+    "se per ciascuno risulta il legame con l'indicazione e con la struttura. "
+    "Non dedurre l'abilitazione dalla sola menzione di un altro medicinale. "
     "Se mancano dati, l'evidenza non e' completa o le fonti sono troncate, "
     "segnala chiaramente la parzialita' e non inventare. "
     "Per elenchi di note regionali, considera ogni scheda dell'indice "
@@ -762,6 +766,7 @@ def automatic_tag(db, question, model):
     refinement_batch_count = 0
     refinement_batch_completed = 0
     refinement_batch_invalid = 0
+    refinement_batch_calls = 0
     direct_usage = generation_usage
     # LOTUS considera gruppi eterogenei e NON prova la pertinenza di ogni
     # singolo documento. Nei recuperi ampi esaminiamo TUTTI i candidati
@@ -793,6 +798,7 @@ def automatic_tag(db, question, model):
                 ask, model, REFINEMENT_PROMPT, payload,
                 timeout=75, max_tokens=1400
             )
+            refinement_batch_calls += 1
             direct_usage = _accumulate(direct_usage, usage)
             try:
                 indices, uncertain = parse_refinement_result(
@@ -897,9 +903,8 @@ def automatic_tag(db, question, model):
             "lotti_raffinamento":refinement_batch_count,
             "lotti_raffinamento_completati":refinement_batch_completed,
             "lotti_raffinamento_non_validi":refinement_batch_invalid,
-            "chiamate_llm_stimate":len(planned)+2+refinement_batch_completed+
-                                 refinement_batch_invalid
-                                 if refinement_used else len(planned)+2,
+            "chiamate_dirette_raffinamento":refinement_batch_calls,
+            "chiamate_llm_stimate":len(planned)+2+refinement_batch_calls,
             **_accumulate(prior_usage,answer_usage)}
 
 
