@@ -14,12 +14,13 @@ from tesi.contatore_llm import instrument_lotus, measured_engine
 from tesi.tag_budget import sem_filter_controlled, expand_selected, preserve_category_recall
 from tesi.raffinamento_documentale import (
     MIN_DOCS_FOR_REFINEMENT, REFINEMENT_PROMPT,
-    refinement_payload, parse_refinement_result,
+    refinement_payload, parse_refinement_result, refinement_batches,
 )
 from tesi.recupero_progressivo import (
     normalize_document_note_id, propose_empty_category_fallback,
     propose_partial_center_expansion,
     propose_empty_crosspage_category_fallback,
+    propose_partial_crosspage_center_expansion,
 )
 from tesi.pilota_tag_vs_sql import (
     _accumulate, _in_phase, _source_previews, _sql_schema,
@@ -31,7 +32,7 @@ MAX_NOTE_PAGES = 1200
 MAX_LOTUS_GROUPS = 12
 MAX_ANSWER_DOCUMENTS = 55
 MAX_ANSWER_CHARS = 44000
-TAG_AUTO_REVISION = "2026-11-07-r12-raffinamento-documentale"
+TAG_AUTO_REVISION = "2026-11-07-r13-raffinamento-in-lotti"
 
 SQL_PROMPT = (
     "Genera UNA sola query SQLite SELECT che recuperi candidati da far "
@@ -655,6 +656,11 @@ def automatic_tag(db, question, model):
         "analisi copertura centri candidati TAG automatico",
         propose_partial_center_expansion, sql_initial, question
     )
+    if not expansion:
+        expansion, expansion_reason = _in_phase(
+            "analisi copertura centro su pagine diverse TAG automatico",
+            propose_partial_crosspage_center_expansion, sql_initial, question
+        )
     if expansion:
         fallback_sql = _in_phase(
             "validazione SQL centri ampliati TAG automatico",
@@ -752,48 +758,62 @@ def automatic_tag(db, question, model):
     refinement_used = False
     refinement_uncertain = False
     refinement_skipped_reason = ""
-    refinement_usage = None
     refinement_pool_count = 0
-    # LOTUS filtra gruppi eterogenei, NON singoli documenti. Un gruppo
-    # scartato non dimostra che ogni nota interna sia irrilevante; nel
-    # recupero ampio conserviamo il richiamo di tutti i candidati SQLite.
+    refinement_batch_count = 0
+    refinement_batch_completed = 0
+    refinement_batch_invalid = 0
+    direct_usage = generation_usage
+    # LOTUS considera gruppi eterogenei e NON prova la pertinenza di ogni
+    # singolo documento. Nei recuperi ampi esaminiamo TUTTI i candidati
+    # in piccoli lotti senza escludere i gruppi non scelti da LOTUS.
     if (len(candidates) >= MIN_DOCS_FOR_REFINEMENT
             and all(item.get("nota_id") is not None for item in candidates)):
         pool = preserve_category_recall(candidates, selected)
         refinement_pool_count = len(pool)
-        payload, refinement_skipped_reason = _in_phase(
-            "preparazione raffinamento documentale TAG automatico",
-            refinement_payload, pool, question, MAX_ANSWER_DOCUMENTS
+        chunks = _in_phase(
+            "organizzazione lotti documentali TAG automatico",
+            refinement_batches, pool
         )
-        if payload is not None:
-            response, refinement_usage = _in_phase(
-                "raffinamento per nota TAG automatico",
-                ask, model, REFINEMENT_PROMPT, payload,
-                timeout=75, max_tokens=1900
+        refinement_batch_count = len(chunks)
+        accepted = set()
+        refinement_used = True
+        for start, documents in chunks:
+            payload, why = _in_phase(
+                "preparazione lotto documentale TAG automatico",
+                refinement_payload, documents, question,
+                len(documents), start
             )
+            if payload is None:
+                refinement_batch_invalid += 1
+                refinement_uncertain = True
+                refinement_skipped_reason = why
+                continue
+            response, usage = _in_phase(
+                "raffinamento lotto documentale TAG automatico",
+                ask, model, REFINEMENT_PROMPT, payload,
+                timeout=75, max_tokens=1400
+            )
+            direct_usage = _accumulate(direct_usage, usage)
             try:
-                indices, refinement_uncertain = parse_refinement_result(
-                    response, len(pool), MAX_ANSWER_DOCUMENTS
+                indices, uncertain = parse_refinement_result(
+                    response, len(documents), len(documents)
                 )
             except ValueError:
-                return {
-                    **base,
-                    "risposta":"Il filtro documentale non ha restituito una "
-                    "selezione verificabile. Non e' possibile certificare "
-                    "la completezza dell'elenco.",
-                    "fonti":[], "stato":"RAFFINAMENTO_NON_VALIDO",
-                    "raffinamento_documentale_usato":True,
-                    "documenti_candidati_raffinamento":len(pool),
-                    "righe_recuperate":len(candidates),
-                    "righe_sem_filter":len(planned),
-                    "righe_selezionate_lotus":len(selected_groups),
-                    **_accumulate(generation_usage, refinement_usage)
-                }
-            selected = [pool[i] for i in indices]
-            refinement_used = True
+                # Il lotto non verificabile NON autorizza a scartare come
+                # irrilevanti le sue note. Segnaliamo esplicitamente
+                # omissioni potenziali e conserviamo gli altri lotti validi.
+                refinement_batch_invalid += 1
+                refinement_uncertain = True
+                refinement_skipped_reason = "risposta_json_lotto_non_valida"
+                continue
+            refinement_batch_completed += 1
+            refinement_uncertain |= uncertain
+            accepted.update(start + index for index in indices)
+        # Ordine stabile nell'indice originale; deduplica sempre per nota.
+        selected = [pool[index] for index in sorted(accepted)]
+        if refinement_batch_invalid == 0:
             refinement_skipped_reason = "nessuno"
-    prior_usage = (_accumulate(generation_usage,refinement_usage)
-                   if refinement_usage is not None else generation_usage)
+    prior_usage = direct_usage
     if not selected:
         # Mantieni la diagnostica storica se e' stato LOTUS a non
         # selezionare alcun gruppo (senza raffinamento successivo).
@@ -811,6 +831,9 @@ def automatic_tag(db, question, model):
             "fonti":[], "stato":"NESSUNA_SELEZIONE_SEMANTICA",
             "raffinamento_documentale_usato":refinement_used,
             "documenti_candidati_raffinamento":refinement_pool_count,
+            "lotti_raffinamento":refinement_batch_count,
+            "lotti_raffinamento_completati":refinement_batch_completed,
+            "lotti_raffinamento_non_validi":refinement_batch_invalid,
             "righe_recuperate":len(candidates),
             "righe_sem_filter":len(planned),
             "righe_selezionate_lotus":len(selected_groups),
@@ -843,6 +866,10 @@ def automatic_tag(db, question, model):
         answer += ("\n\nAvvertenza: la selezione dei singoli documenti "
                    "e' stata effettuata semanticamente dall'LLM; "
                    "la completezza richiede validazione indipendente.")
+    if refinement_batch_invalid:
+        answer += ("\n\nAvvertenza: "+str(refinement_batch_invalid)+
+                   " lotto/i di documenti non hanno superato la verifica "
+                   "della selezione. Alcune note potrebbero mancare.")
     if refinement_uncertain:
         answer += ("\n\nAvvertenza: il raffinamento documentale ha "
                    "segnalato incertezza sulla pertinenza; "
@@ -867,7 +894,12 @@ def automatic_tag(db, question, model):
             "documenti_candidati_raffinamento":refinement_pool_count,
             "documenti_selezionati_raffinamento":len(selected)
                 if refinement_used else None,
-            "chiamate_llm_stimate":len(planned)+2+(1 if refinement_used else 0),
+            "lotti_raffinamento":refinement_batch_count,
+            "lotti_raffinamento_completati":refinement_batch_completed,
+            "lotti_raffinamento_non_validi":refinement_batch_invalid,
+            "chiamate_llm_stimate":len(planned)+2+refinement_batch_completed+
+                                 refinement_batch_invalid
+                                 if refinement_used else len(planned)+2,
             **_accumulate(prior_usage,answer_usage)}
 
 
