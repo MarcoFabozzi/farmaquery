@@ -18,6 +18,15 @@ QUESTION = (
     "malattie neuromuscolari prevedono la prescrizione presso l'AOU "
     "Federico II? Indica medicinale, patologia, documento e pagina."
 )
+SQL_CENTRI_CANDIDATI = (
+    "SELECT DISTINCT n.farmaco_candidato AS nome, "
+    "n.indicazione_candidata AS indicazione, "
+    "n.id AS documento_id, c.numero_pagina AS pagina "
+    "FROM note AS n JOIN centri_candidati AS c ON n.id = c.nota_id "
+    "WHERE c.menzione LIKE '%Federico II%' COLLATE NOCASE "
+    "AND (c.stato IS NULL OR NOT c.stato IN ('escluso', 'falso'))"
+)
+
 ORIGINAL_SQL = (
     "SELECT DISTINCT n.farmaco_candidato AS nome, "
     "n.indicazione_candidata AS indicazione, n.id AS documento_id, "
@@ -48,6 +57,10 @@ class ProgressiveRetrievalTests(unittest.TestCase):
             CREATE TABLE nota_centro_documentato(
                 nota_id TEXT, numero_pagina INTEGER, centro TEXT
             );
+            CREATE TABLE centri_candidati(
+                nota_id TEXT, numero_pagina INTEGER,
+                menzione TEXT, stato TEXT
+            );
             INSERT INTO note VALUES
                 ('a','A.pdf',2026,NULL,NULL,'FARMACO-A',
                  'Disturbo documentato A','A.pdf','https://example.org/a.zip'),
@@ -57,6 +70,9 @@ class ProgressiveRetrievalTests(unittest.TestCase):
                 ('a',1,'Farmaco A, condizione A','TESTO'),
                 ('a',2,'Prescrizione presso AOU Federico II','TESTO'),
                 ('b',1,'Altra struttura ospedaliera','TESTO');
+            INSERT INTO centri_candidati VALUES
+                ('a',2,'AOU Federico II',NULL),
+                ('b',1,'Altro ospedale',NULL);
         """)
         self.db.execute("PRAGMA query_only=ON")
 
@@ -79,6 +95,71 @@ class ProgressiveRetrievalTests(unittest.TestCase):
         self.assertFalse(partial)
         self.assertEqual(len(docs), 1)
         self.assertIn("[pagina 2]", docs[0]["testo"])
+
+    def test_centri_candidati_alias_documentale_diventa_nota_id(self):
+        """Riproduce la SELECT ottenuta dall'LLM su 72 righe tabellari."""
+        normalized, fixed = normalize_document_note_id(SQL_CENTRI_CANDIDATI)
+        self.assertTrue(fixed)
+        self.assertIn("n.id AS nota_id", normalized)
+        self.assertNotIn("documento_id", normalized)
+        records, partial = auto._run_generated_select(
+            self.db, auto.validate_sql(normalized))
+        self.assertFalse(partial)
+        self.assertEqual([r["nota_id"] for r in records], ["a"])
+        candidates, truncated = auto._note_candidates(self.db, records)
+        self.assertFalse(truncated)
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["nota_id"], "a")
+        self.assertIn("Prescrizione presso AOU Federico II",
+                      candidates[0]["testo"])
+        self.assertIn("#p2", " ".join(candidates[0]["fonti"]))
+
+    def test_non_trasforma_id_che_non_appartiene_a_note(self):
+        for sql in [
+            "SELECT c.id AS documento_id FROM note n "
+            "JOIN centri_candidati c ON n.id=c.nota_id",
+            "SELECT n.id AS documento_id FROM altri_documenti n",
+            "SELECT n.id AS documento_id FROM note n "
+            "UNION SELECT id AS documento_id FROM altra_tabella",
+            "SELECT n.id AS nota_id FROM note n",
+        ]:
+            result, changed = normalize_document_note_id(sql)
+            self.assertFalse(changed, sql)
+            self.assertEqual(result, sql)
+
+    def test_centri_candidati_end_to_end_torna_a_documenti_pdf(self):
+        calls = []
+        def mock_ask(model, system, payload, **kwargs):
+            calls.append((system, payload))
+            if system == auto.SQL_PROMPT:
+                return SQL_CENTRI_CANDIDATI, {
+                    "token_input":1,"token_output":1,"costo_usd":0
+                }
+            return "Farmaco A, documento A.pdf, pagina 2.", {
+                "token_input":1,"token_output":1,"costo_usd":0
+            }
+        fake_lotus = types.ModuleType("lotus")
+        fake_lotus.settings = types.SimpleNamespace(configure=lambda **_: None)
+        fake_models = types.ModuleType("lotus.models")
+        fake_models.LM = lambda *_,**__:types.SimpleNamespace()
+        with patch.dict(sys.modules, {
+                "lotus":fake_lotus,"lotus.models":fake_models}), \
+             patch.object(auto,"ask",side_effect=mock_ask), \
+             patch.object(auto,"sem_filter_controlled",
+                          side_effect=lambda frame,instruction:frame):
+            result = auto.automatic_tag(self.db, QUESTION, "modello-fittizio")
+        self.assertEqual(result["stato"], "OK")
+        self.assertFalse(result["recupero_progressivo_usato"])
+        self.assertTrue(result["sql_normalizzato_nota_id"])
+        self.assertEqual(result["sql_tentativi"], 1)
+        self.assertEqual(result["righe_sql"], 1)
+        self.assertEqual(result["note_nell_indice"], 1)
+        self.assertEqual(result["note_nel_contesto"], 1)
+        self.assertTrue(any("#p2" in f for f in result["fonti"]))
+        self.assertEqual(len(calls), 2)
+        self.assertIn("indice_documentale", calls[-1][1])
+        self.assertEqual(result["tag_auto_revision"],
+                         "2026-11-07-r9-riconoscimento-note")
 
     def test_non_allarga_se_esiste_una_condizione_oggettiva_aggiuntiva(self):
         for extra in [
@@ -176,7 +257,7 @@ class ProgressiveRetrievalTests(unittest.TestCase):
         self.assertIn("nota_id", result["sql"])
         self.assertEqual(result["note_nell_indice"], 1)
         self.assertEqual(result["tag_auto_revision"],
-                         "2026-11-07-r8-recupero-progressivo")
+                         "2026-11-07-r9-riconoscimento-note")
         self.assertEqual(len(calls), 2)  # SQL + sintesi; LOTUS simulato.
 
 
