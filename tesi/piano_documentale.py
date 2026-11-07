@@ -92,7 +92,8 @@ def document_center_anchors(sql, question):
     where = tree.args.get("where")
     if not where:
         return []
-    found=[]
+    structured=[]
+    page_text=[]
     for node in where.find_all(exp.Like):
         column = node.this
         literal = node.expression
@@ -119,9 +120,13 @@ def document_center_anchors(sql, question):
         if (len(value.strip())<5 or "%" in value or "_" in value or
                 value.casefold() not in question.casefold()):
             continue
-        if value.casefold() not in {x.casefold() for x in found}:
-            found.append(value)
-    # Only names from document-linked SQL, never candidate drug strings.
+        target = page_text if source == "pagine" else structured
+        if value.casefold() not in {x.casefold() for x in target}:
+            target.append(value)
+    # Le colonne di CENTRO sono la fonte piu' affidabile. Il testo libero
+    # puo' contenere anche il termine della CATEGORIA clinica: lo usiamo
+    # soltanto quando nessun campo di centro offre un'ancora verificabile.
+    found = structured if structured else page_text
     return found[:MAX_CENTER_CANDIDATES]
 
 
