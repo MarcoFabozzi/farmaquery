@@ -191,7 +191,7 @@ class CrossPageFallbackTests(unittest.TestCase):
         self.assertTrue(any("#p2" in f for f in result["fonti"]))
         self.assertEqual(len(calls),2)
         self.assertEqual(result["tag_auto_revision"],
-                         "2026-11-07-r14-fallback-centro-semplice")
+                         "2026-11-07-r15-fallback-note-pagine")
 
     def test_snapshot_query_llm_r13_copertura_referenze_documentali(self):
         root=Path(__file__).resolve().parents[1]
@@ -344,7 +344,7 @@ class CrossPageFallbackTests(unittest.TestCase):
         self.assertTrue(any("#p2" in ref for ref in result["fonti"]))
         self.assertEqual(len(calls),2)
         self.assertEqual(
-            result["tag_auto_revision"],"2026-11-07-r14-fallback-centro-semplice"
+            result["tag_auto_revision"],"2026-11-07-r15-fallback-note-pagine"
         )
 
     def test_snapshot_statico_documenti_gold_nei_candidati(self):
