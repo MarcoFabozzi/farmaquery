@@ -1,5 +1,7 @@
 """Test offline: fallback zero righe, nessun lessico clinico nel codice."""
 import sqlite3
+import gzip
+from pathlib import Path
 import sys
 import types
 import unittest
@@ -118,6 +120,32 @@ class ProgressiveRetrievalTests(unittest.TestCase):
         self.assertIsNone(candidate)
         rows, _ = auto._run_generated_select(self.db, auto.validate_sql(sql))
         self.assertEqual(len(rows), 1)
+
+    def test_snapshot_originale_20261102_documenti_candidati(self):
+        """Controlla la query problematica sul database reale, senza Gemini."""
+        snapshot = (Path(__file__).resolve().parents[1] /
+                    "risultati/tesi_statico_20261102.sqlite.gz")
+        if not snapshot.is_file():
+            self.skipTest("Snapshot originale non disponibile")
+        real_db = sqlite3.connect(":memory:")
+        try:
+            real_db.deserialize(gzip.decompress(snapshot.read_bytes()))
+            real_db.row_factory = sqlite3.Row
+            real_db.execute("PRAGMA query_only=ON")
+            original, _ = normalize_document_note_id(ORIGINAL_SQL)
+            before, _ = auto._run_generated_select(
+                real_db, auto.validate_sql(original))
+            self.assertEqual(before, [])
+            suggestion, _ = propose_empty_category_fallback(
+                original, QUESTION)
+            after, partial = auto._run_generated_select(
+                real_db, auto.validate_sql(suggestion))
+            self.assertTrue(after, "Fallback non ha trovato note candidate")
+            self.assertFalse(partial, "Troppe note candidate per il budget SQL")
+            self.assertTrue(all("nota_id" in row for row in after))
+            print("Snapshot 20261102: note candidate dopo fallback:", len(after))
+        finally:
+            real_db.close()
 
     def test_integrazione_con_audit_e_numero_chiamate_immutato(self):
         calls = []
