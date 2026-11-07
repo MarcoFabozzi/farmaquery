@@ -64,6 +64,17 @@ SQL_NOTE_PAGES = (
     "OR n.indicazione_candidata LIKE '%neuromuscolar%' COLLATE NOCASE)"
 )
 
+SQL_CENTER_DIRECT_R15 = (
+    "SELECT DISTINCT note.farmaco_candidato AS nome, "
+    "note.indicazione_candidata AS patologia, "
+    "note.id AS documento_id, pagine.numero_pagina "
+    "FROM note JOIN pagine ON note.id = pagine.nota_id "
+    "JOIN centri_candidati "
+    "ON centri_candidati.nota_id = pagine.nota_id "
+    "AND centri_candidati.numero_pagina = pagine.numero_pagina "
+    "WHERE centri_candidati.menzione LIKE '%Federico II%' COLLATE NOCASE"
+)
+
 SQL_ONLY_CENTER = (
     "SELECT DISTINCT n.farmaco_candidato AS nome, "
     "n.indicazione_candidata AS indicazione, "
@@ -387,6 +398,127 @@ class CrossPageFallbackTests(unittest.TestCase):
             self.db,auto.validate_sql(proposed))
         self.assertFalse(partial)
         self.assertEqual([r["nota_id"] for r in rows],["id-a"])
+
+    def test_sql_reale_r15_like_diretto_recupera_pagine_e_note(self):
+        """Riproduce la SELECT non vuota che selezionava solo 68 PDF."""
+        original, normalized = normalize_document_note_id(SQL_CENTER_DIRECT_R15)
+        self.assertTrue(normalized)
+        before,partial=auto._run_generated_select(
+            self.db,auto.validate_sql(original))
+        self.assertFalse(partial)
+        self.assertEqual(len(before),1)
+        suggestion,reason=propose_partial_crosspage_center_expansion(
+            original,QUESTION)
+        self.assertEqual(reason,"recupero_centro_tra_pagine_documentali")
+        self.assertIn(" UNION ",suggestion)
+        self.assertIn("LIKE '%Federico%'",suggestion)
+        self.assertNotIn("neuromuscolar",suggestion.casefold())
+        after,partial=auto._run_generated_select(
+            self.db,auto.validate_sql(suggestion))
+        self.assertFalse(partial)
+        self.assertEqual([x["nota_id"] for x in after],["id-a"])
+
+    def test_filtro_diretto_non_confonde_predicati_e_vincoli(self):
+        for sql in (
+            SQL_CENTER_DIRECT_R15+" AND note.anno=2026",
+            SQL_CENTER_DIRECT_R15.replace(
+                "centri_candidati.menzione LIKE",
+                "centri_candidati.stato LIKE"),
+            SQL_CENTER_DIRECT_R15.replace(
+                "%Federico II%","%Ospedale differente%"),
+            SQL_CENTER_DIRECT_R15.replace(
+                "pagine.numero_pagina = centri_candidati.numero_pagina",
+                "pagine.numero_pagina = centri_candidati.nota_id"),
+            SQL_CENTER_DIRECT_R15.replace(
+                "centri_candidati.numero_pagina = pagine.numero_pagina",
+                "centri_candidati.numero_pagina = pagine.nota_id"),
+            SQL_CENTER_DIRECT_R15+" LIMIT 4",
+            SQL_CENTER_DIRECT_R15+" UNION SELECT 1,2,3,4",
+        ):
+            suggestion,reason=propose_partial_crosspage_center_expansion(
+                sql,QUESTION)
+            self.assertIsNone(suggestion,(reason,sql))
+
+    def test_sql_reale_r15_snapshot_espande_68_a_161(self):
+        root=Path(__file__).resolve().parents[1]
+        snapshot=root/"risultati/tesi_statico_20261102.sqlite.gz"
+        gold_file=root/"tesi/riferimento_neuromuscolari_federico_ii_2026-11-03.json"
+        if not snapshot.is_file() or not gold_file.is_file():
+            self.skipTest("Snapshot o riferimento non presenti")
+        db=sqlite3.connect(":memory:")
+        try:
+            db.deserialize(gzip.decompress(snapshot.read_bytes()))
+            db.row_factory=sqlite3.Row
+            db.execute("PRAGMA query_only=ON")
+            normalized,changed=normalize_document_note_id(SQL_CENTER_DIRECT_R15)
+            self.assertTrue(changed)
+            initial,partial=auto._run_generated_select(
+                db,auto.validate_sql(normalized))
+            self.assertFalse(partial)
+            before={x["nota_id"] for x in initial}
+            self.assertGreater(len(before),0)
+            suggested,reason=propose_partial_crosspage_center_expansion(
+                normalized,QUESTION)
+            self.assertIsNotNone(suggested,reason)
+            enlarged,partial=auto._run_generated_select(
+                db,auto.validate_sql(suggested))
+            self.assertFalse(partial)
+            after={x["nota_id"] for x in enlarged}
+            self.assertTrue(before<=after)
+            self.assertGreater(len(after),len(before))
+            gold=json.loads(gold_file.read_text(encoding="utf-8"))
+            expected={x["sha256_pdf"] for x in gold["casi_positivi"]}
+            self.assertTrue(expected<=after)
+            self.assertEqual(len(after),161)
+            print("R15 SQL diretto: iniziali",len(before),
+                  "dopo ampliamento",len(after),
+                  "PDF riferimenti",len(expected))
+        finally:
+            db.close()
+
+    def test_pipeline_r16_amplia_anche_se_prima_sql_non_e_vuota(self):
+        # Nel sintetico c'e' una nota inizialmente selezionata e una che
+        # menziona Federico II su una pagina senza centri_candidati.
+        self.db.execute("PRAGMA query_only=OFF")
+        self.db.execute(
+            "INSERT INTO note VALUES ('id-b','med-b.pdf',2026,NULL,NULL,"
+            "'MED-B','disturbo differente','med-b.pdf',"
+            "'https://example.org/b.zip')"
+        )
+        self.db.execute(
+            "INSERT INTO pagine VALUES("
+            "'id-b',1,'Centro prescrittore presso AOU Federico II','TESTO')"
+        )
+        self.db.execute("PRAGMA query_only=ON")
+        calls=[]
+        def fake_ask(model,system,payload,**kwargs):
+            calls.append((system,payload))
+            if system==auto.SQL_PROMPT:
+                return SQL_CENTER_DIRECT_R15, {
+                    "token_input":1,"token_output":1,"costo_usd":0
+                }
+            return "Risposta dimostrativa basata sui PDF.", {
+                "token_input":1,"token_output":1,"costo_usd":0
+            }
+        lotus=types.ModuleType("lotus")
+        lotus.settings=types.SimpleNamespace(configure=lambda **_:None)
+        models=types.ModuleType("lotus.models")
+        models.LM=lambda *_,**__:types.SimpleNamespace()
+        with patch.dict(sys.modules,{
+                "lotus":lotus,"lotus.models":models}), \
+             patch.object(auto,"ask",side_effect=fake_ask), \
+             patch.object(auto,"sem_filter_controlled",
+                          side_effect=lambda frame,instruction:frame):
+            result=auto.automatic_tag(self.db, QUESTION,"mock")
+        self.assertTrue(result["recupero_progressivo_usato"])
+        self.assertEqual(result["righe_sql_primo_tentativo"],1)
+        self.assertEqual(result["sql_tentativi"],2)
+        self.assertEqual(result["righe_sql"],2)
+        self.assertEqual(result["note_nell_indice"],2)
+        self.assertEqual(result["note_nel_contesto"],2)
+        self.assertEqual(len(calls),2)
+        self.assertEqual(result["tag_auto_revision"],
+                         "2026-11-07-r16-centro-like-diretto")
 
     def test_non_amplia_query_con_vincoli_aggiuntivi(self):
         for altered in (
