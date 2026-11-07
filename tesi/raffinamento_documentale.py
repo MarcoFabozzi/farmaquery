@@ -58,24 +58,33 @@ def _evidence_excerpt(raw, max_chars=PER_NOTE_EXCERPT_CHARS):
         if len(p) <= per_page:
             snippets.append(p)
             continue
-        head = p[:min(95, per_page // 4)]
-        # "Indicazione", "centro" e "prescrizione" sono intestazioni generali
-        # delle note, non nomi di farmaci/patologie. Preleva i dintorni dei
-        # punti testuali, senza decidere in Python la loro rilevanza clinica.
+        # Campione della pagina: testa, coda e due punti vicino a
+        # intestazioni generiche (la prima e l'ultima). Non contiene
+        # elenchi di patologie o nomi di strutture preimpostati.
+        head_chars = max(8, min(75, per_page//5))
+        tail_chars = max(8, min(95, per_page//4))
+        head, tail = p[:head_chars], p[-tail_chars:]
+        budget = max(0, per_page - len(head)-len(tail)-10)
         matches = list(re.finditer(
             r"indicazion\w*|prescri\w*|centri\b|centro\b|abilitat\w*|"
             r"trattament\w*|presidi\b", p, re.I
         ))
-        room = max(0, per_page - len(head) - 12)
-        candidates = []
-        for m in matches[:2]:
-            snippet = p[max(0, m.start()-45):m.start()+max(55, room//2)]
-            if snippet not in candidates:
-                candidates.append(snippet)
-        excerpt = " […] ".join(candidates)
-        if not excerpt:
-            excerpt = p[-room:]
-        snippets.append((head + " […] " + excerpt)[:per_page])
+        locations = []
+        if matches:
+            locations = [matches[0]]
+            if matches[-1].start() != matches[0].start():
+                locations.append(matches[-1])
+        parts = []
+        for m in locations:
+            length = max(0, budget//len(locations)-3)
+            if not length:
+                break
+            begin = max(0, m.start()-25)
+            parts.append(p[begin:begin+length])
+        middle = " […] ".join(parts)
+        piece = (head + " […] " + middle + " […] " + tail
+                 if middle else head + " […] " + tail)
+        snippets.append(piece[:per_page])
     return ("\n".join(snippets))[:max_chars]
 
 
