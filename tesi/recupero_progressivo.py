@@ -414,3 +414,83 @@ def propose_empty_crosspage_category_fallback(sql, question):
         "WHERE p.testo LIKE " + literal + " COLLATE NOCASE"
     )
     return broad, "categoria_clinica_e_join_stessa_pagina_ampliati"
+
+
+def propose_partial_crosspage_center_expansion(sql, question):
+    """Recall documentale per query note-pagine-centri_candidati non vuota.
+
+    Se il centro viene richiesto con una JOIN sulla STESSA pagina, aggiunge
+    note che lo menzionano su altre pagine senza filtri clinici. I risultati
+    originali restano inclusi mediante UNION. Non attribuisce autorizzazioni
+    né usa elenchi di medicinali, patologie o strutture.
+    """
+    tree = parse_one(sql, read="sqlite")
+    if not isinstance(tree, exp.Select):
+        return None, "selezione_non_semplice"
+    if any(tree.args.get(k) is not None for k in (
+            "with_", "group", "having", "qualify", "limit", "offset",
+            "order", "windows")) or any(tree.find_all(exp.Subquery)):
+        return None, "selezione_aggregata_o_limitata"
+    source = tree.args.get("from_") or tree.args.get("from")
+    if not source or not isinstance(source.this, exp.Table):
+        return None, "nessuna_tabella_note"
+    if str(source.this.name).casefold() != "note":
+        return None, "nessuna_tabella_note"
+    n = str(source.this.alias_or_name).casefold()
+    joins = tree.args.get("joins") or []
+    if len(joins) != 2:
+        return None, "join_non_riconosciute"
+    if any(not isinstance(j.this, exp.Table) or
+           j.args.get("side") or j.args.get("kind") for j in joins):
+        return None, "join_non_interne"
+    if ([str(j.this.name).casefold() for j in joins] !=
+            ["pagine", "centri_candidati"]):
+        return None, "join_sorgenti_non_riconosciute"
+    p = str(joins[0].this.alias_or_name).casefold()
+    c = str(joins[1].this.alias_or_name).casefold()
+    if _eq_columns(joins[0].args.get("on")) != frozenset({
+            (n, "id"), (p, "nota_id")}):
+        return None, "relazione_nota_pagine_non_verificata"
+    expected = {
+        frozenset({(p, "nota_id"), (c, "nota_id")}),
+        frozenset({(p, "numero_pagina"), (c, "numero_pagina")})
+    }
+    jc = _and_clauses(joins[1].args.get("on"))
+    if len(jc) != 2 or {_eq_columns(j) for j in jc} != expected:
+        return None, "relazione_pagina_centro_non_verificata"
+    where = tree.args.get("where")
+    if where is None:
+        return None, "nessun_filtro"
+    center_clause = _unbox(where.this)
+    if not isinstance(center_clause, exp.Or):
+        return None, "filtro_aggiuntivo_o_non_supportato"
+    first, second = _like(center_clause.this), _like(center_clause.expression)
+    if not first or not second or first[2].casefold() != second[2].casefold():
+        return None, "valori_centro_non_uguali"
+    if {first[:2], second[:2]} != {(c, "menzione"), (p, "testo")}:
+        return None, "filtro_centro_non_riconosciuto"
+    pattern = first[2]
+    if not (pattern.startswith("%") and pattern.endswith("%")):
+        return None, "ricerca_non_generica"
+    label = pattern[1:-1]
+    if (len(label.strip()) < 5 or "%" in label or "_" in label
+            or label.casefold() not in question.casefold()):
+        return None, "centro_non_richiesto_nella_domanda"
+    words = re.findall(r"[^\\W\\d_]{5,}", label, flags=re.UNICODE)
+    if not words:
+        return None, "centro_senza_token_significativo"
+    token = sorted(words, key=lambda w: (-len(w),w.casefold()))[0]
+    original = tree.copy()
+    original.set("expressions", [
+        exp.alias_(exp.column("id", table=n), "nota_id")
+    ])
+    original.set("distinct",exp.Distinct())
+    literal = exp.Literal.string("%"+token+"%").sql(dialect="sqlite")
+    broad = (
+        "SELECT DISTINCT n.id AS nota_id FROM note AS n "
+        "JOIN pagine AS p ON p.nota_id=n.id "
+        "WHERE p.testo LIKE "+literal+" COLLATE NOCASE"
+    )
+    return original.sql(dialect="sqlite")+" UNION "+broad, (
+        "recupero_centro_tra_pagine_documentali"
+    )
