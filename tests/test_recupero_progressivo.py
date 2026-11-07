@@ -154,7 +154,9 @@ class ProgressiveRetrievalTests(unittest.TestCase):
         self.assertEqual(result["stato"], "OK")
         self.assertFalse(result["recupero_progressivo_usato"])
         self.assertTrue(result["sql_normalizzato_nota_id"])
-        self.assertEqual(result["sql_tentativi"], 1)
+        # Il recupero ampliato viene verificato anche quando la prima SELECT
+        # e' non vuota, ma non sostituisce la query se non aggiunge nuove note.
+        self.assertEqual(result["sql_tentativi"], 2)
         self.assertEqual(result["righe_sql"], 1)
         self.assertEqual(result["note_nell_indice"], 1)
         self.assertEqual(result["note_nel_contesto"], 1)
@@ -371,7 +373,7 @@ class ProgressiveRetrievalTests(unittest.TestCase):
         self.assertIn("nota_id", result["sql"])
         self.assertEqual(result["note_nell_indice"], 1)
         self.assertEqual(result["tag_auto_revision"],
-                         "2026-11-07-r9-riconoscimento-note")
+                         "2026-11-07-r10-recupero-centri-progressivo")
         self.assertEqual(len(calls), 2)  # SQL + sintesi; LOTUS simulato.
 
 
