@@ -25,24 +25,26 @@ class FloatingAssistantTests(unittest.TestCase):
         self.assertIn('st.rerun(scope="fragment")',src)
         self.assertIn('if not has_key:',src)
         self.assertIn('if remaining<=0:',src)
-        self.assertIn('("Text-to-SQL","TAG")',src)
+        self.assertIn('("Text-to-SQL","TAG","TAG automatico")',src)
         self.assertIn("answer_question(db,question,method,model)",src)
         self.assertIn("st.form_submit_button",src)
         self.assertNotIn("FARMAQUERY_CHAT_PASSWORD",src)
         self.assertNotIn("domande_utente_35.csv",src)
         self.assertNotIn("domande_della_tesi",src)
 
-    def test_nuova_conversazione_cancella_davvero_entrambe_le_chat(self):
+    def test_nuova_conversazione_cancella_tutte_tre_le_chat(self):
         import chatbot_widget as widget
         state={
             "farmaquery_chat_sql":[{"role":"user","text":"prima domanda"}],
             "farmaquery_chat_tag":[{"role":"assistant","text":"risposta"}],
+            "farmaquery_chat_tag_auto":[{"role":"assistant","text":"altro"}],
             "farmaquery_chat_count":5,
         }
         with patch.object(widget.st,"session_state",state):
             widget.start_new_conversation()
         self.assertEqual(state["farmaquery_chat_sql"],[])
         self.assertEqual(state["farmaquery_chat_tag"],[])
+        self.assertEqual(state["farmaquery_chat_tag_auto"],[])
         self.assertEqual(state["farmaquery_chat_count"],5)
         self.assertTrue(state["farmaquery_chat_just_cleared"])
 

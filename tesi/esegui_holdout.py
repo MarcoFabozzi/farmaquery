@@ -29,7 +29,9 @@ COLUMNS=("id","metodo","modello","snapshot_sha256","risposta","fonti",
          "chiamate_llm_dirette","chiamate_llm_lotus","conteggio_llm_completo",
          "sql_primo_tentativo","sql_fallback","recupero_progressivo_usato",
          "motivo_recupero_progressivo","righe_sql_primo_tentativo",
-         "sql_normalizzato_nota_id","sql_tentativi")
+         "sql_normalizzato_nota_id","sql_tentativi",
+         "raffinamento_documentale_usato","raffinamento_documentale_incerto",
+         "documenti_candidati_raffinamento","documenti_selezionati_raffinamento")
 METHODS=("Text-to-SQL","TAG","TAG automatico")
 
 
@@ -114,6 +116,14 @@ def collect(gold_file,db_file,manifest_file,model,out,commit,answer_fn=answer_qu
                     "righe_sql_primo_tentativo":result.get("righe_sql_primo_tentativo"),
                     "sql_normalizzato_nota_id":result.get("sql_normalizzato_nota_id"),
                     "sql_tentativi":result.get("sql_tentativi"),
+                    "raffinamento_documentale_usato":result.get(
+                        "raffinamento_documentale_usato"),
+                    "raffinamento_documentale_incerto":result.get(
+                        "raffinamento_documentale_incerto"),
+                    "documenti_candidati_raffinamento":result.get(
+                        "documenti_candidati_raffinamento"),
+                    "documenti_selezionati_raffinamento":result.get(
+                        "documenti_selezionati_raffinamento"),
                     "sql_normalizzato_nome":result.get("sql_normalizzato_nome"),
                     "sql_normalizzato_ambito_regione":result.get(
                         "sql_normalizzato_ambito_regione"),

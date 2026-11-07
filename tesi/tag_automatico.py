@@ -11,7 +11,11 @@ import re
 import time
 
 from tesi.contatore_llm import instrument_lotus, measured_engine
-from tesi.tag_budget import sem_filter_controlled, expand_selected
+from tesi.tag_budget import sem_filter_controlled, expand_selected, preserve_category_recall
+from tesi.raffinamento_documentale import (
+    MIN_DOCS_FOR_REFINEMENT, REFINEMENT_PROMPT,
+    refinement_payload, parse_refinement_result,
+)
 from tesi.recupero_progressivo import (
     normalize_document_note_id, propose_empty_category_fallback,
     propose_partial_center_expansion,
@@ -27,7 +31,7 @@ MAX_NOTE_PAGES = 1200
 MAX_LOTUS_GROUPS = 12
 MAX_ANSWER_DOCUMENTS = 55
 MAX_ANSWER_CHARS = 44000
-TAG_AUTO_REVISION = "2026-11-07-r11-recupero-crosspage"
+TAG_AUTO_REVISION = "2026-11-07-r12-raffinamento-documentale"
 
 SQL_PROMPT = (
     "Genera UNA sola query SQLite SELECT che recuperi candidati da far "
@@ -515,6 +519,57 @@ def _lotus_plan(candidates):
     return frames, members
 
 
+def _balanced_page_excerpt(raw, allowance):
+    """Mantiene evidenze da OGNI pagina anche quando un PDF va abbreviato.
+
+    Non stabilisce quali pagine siano clinicamente pertinenti: il testo
+    resta fedele ai passaggi originali e ogni taglio e' segnalato.
+    """
+    raw = str(raw)
+    if len(raw) <= allowance:
+        return raw, False
+    if allowance <= 0:
+        return "", True
+    parts = re.split(r"(?=\[pagina \d+\])", raw)
+    marker = " [ESTRATTO TRONCATO]"
+    if len(parts) < 2:
+        keep = max(0, allowance - len(marker))
+        return raw[:keep] + marker[:allowance-keep], True
+    head = parts[0][:min(len(parts[0]), max(100, allowance//7))]
+    pages = parts[1:]
+    remaining = max(0, allowance - len(head) - len(pages)*len(marker))
+    base = remaining // max(1,len(pages))
+    more = remaining % max(1,len(pages))
+    excerpts = [head]
+    for idx,page in enumerate(pages):
+        quota = base + (1 if idx < more else 0)
+        if len(page) <= quota:
+            excerpts.append(page)
+            continue
+        if quota < 20:
+            excerpts.append(page[:quota])
+        else:
+            # Inizio e fine pagina, piu' contesto di una sezione generica
+            # se presente. Non vengono inserite parole cliniche ad hoc.
+            label = re.match(r"\[pagina \d+\]",page)
+            label_text = label.group(0) if label else ""
+            usable = max(0, quota - len(label_text) - 7)
+            cue = re.search(
+                r"indicazion\w*|prescri\w*|centri\b|centro\b",
+                page[len(label_text):], re.I)
+            main = page[:min(len(page),max(len(label_text)+30, quota//3))]
+            if cue and usable > 90:
+                start = len(label_text) + cue.start()
+                middle = page[max(len(main),start-30):
+                              max(len(main),start-30)+max(35,usable//3)]
+            else:
+                middle = ""
+            tail_len = max(0, quota-len(main)-len(middle)-7)
+            excerpts.append((main + " […] " + middle + page[-tail_len:]
+                             if tail_len else main + " […] " + middle)[:quota])
+    return ("".join(excerpts))[:allowance], True
+
+
 def _balanced_answer_evidence(selected):
     """Distribuisce il contesto su tutte le evidenze scelte, non solo sulle prime.
 
@@ -535,13 +590,7 @@ def _balanced_answer_evidence(selected):
         still_to_consider = len(eligible) - index
         allowance = max(0, budget // still_to_consider)
         raw = str(item["testo"])
-        clipped = len(raw) > allowance
-        if clipped:
-            marker = " [EVIDENZA TRONCATA]"
-            keep = max(0, allowance - len(marker))
-            trimmed = raw[:keep] + marker[:max(0,allowance-keep)]
-        else:
-            trimmed = raw
+        trimmed, clipped = _balanced_page_excerpt(raw, allowance)
         truncated = truncated or clipped
         budget -= len(trimmed)
         chosen.append({"chiave": item["chiave"],
@@ -700,16 +749,81 @@ def automatic_tag(db, question, model):
                              testo="{testo}",domanda=json.dumps(question,ensure_ascii=False)))
     selected_groups = filtered[["chiave"]].to_dict("records")
     selected = expand_selected(selected_groups, members)
+    refinement_used = False
+    refinement_uncertain = False
+    refinement_skipped_reason = ""
+    refinement_usage = None
+    refinement_pool_count = 0
+    # LOTUS filtra gruppi eterogenei, NON singoli documenti. Un gruppo
+    # scartato non dimostra che ogni nota interna sia irrilevante; nel
+    # recupero ampio conserviamo il richiamo di tutti i candidati SQLite.
+    if (len(candidates) >= MIN_DOCS_FOR_REFINEMENT
+            and all(item.get("nota_id") is not None for item in candidates)):
+        pool = preserve_category_recall(candidates, selected)
+        refinement_pool_count = len(pool)
+        payload, refinement_skipped_reason = _in_phase(
+            "preparazione raffinamento documentale TAG automatico",
+            refinement_payload, pool, question, MAX_ANSWER_DOCUMENTS
+        )
+        if payload is not None:
+            response, refinement_usage = _in_phase(
+                "raffinamento per nota TAG automatico",
+                ask, model, REFINEMENT_PROMPT, payload,
+                timeout=75, max_tokens=1900
+            )
+            try:
+                indices, refinement_uncertain = parse_refinement_result(
+                    response, len(pool), MAX_ANSWER_DOCUMENTS
+                )
+            except ValueError:
+                return {
+                    **base,
+                    "risposta":"Il filtro documentale non ha restituito una "
+                    "selezione verificabile. Non e' possibile certificare "
+                    "la completezza dell'elenco.",
+                    "fonti":[], "stato":"RAFFINAMENTO_NON_VALIDO",
+                    "raffinamento_documentale_usato":True,
+                    "documenti_candidati_raffinamento":len(pool),
+                    "righe_recuperate":len(candidates),
+                    "righe_sem_filter":len(planned),
+                    "righe_selezionate_lotus":len(selected_groups),
+                    **_accumulate(generation_usage, refinement_usage)
+                }
+            selected = [pool[i] for i in indices]
+            refinement_used = True
+            refinement_skipped_reason = "nessuno"
+    prior_usage = (_accumulate(generation_usage,refinement_usage)
+                   if refinement_usage is not None else generation_usage)
     if not selected:
-        return {**base, "risposta":"LOTUS non ha selezionato evidenze fra "
-                "i candidati. Questo non dimostra che l'informazione sia assente.",
-                "fonti":[], "stato":"NESSUNA_SELEZIONE_SEMANTICA",
-                "righe_recuperate":len(candidates), "righe_sem_filter":len(planned),
-                "righe_selezionate_lotus":0, **generation_usage}
+        # Mantieni la diagnostica storica se e' stato LOTUS a non
+        # selezionare alcun gruppo (senza raffinamento successivo).
+        missing_message = (
+            "LOTUS non ha selezionato evidenze fra i candidati. "
+            "Questo non dimostra che l'informazione sia assente."
+            if not refinement_used else
+            "Il raffinamento delle note non ha selezionato evidenze "
+            "sufficientemente pertinenti. Questo non dimostra "
+            "l'assenza delle informazioni."
+        )
+        return {
+            **base,
+            "risposta":missing_message,
+            "fonti":[], "stato":"NESSUNA_SELEZIONE_SEMANTICA",
+            "raffinamento_documentale_usato":refinement_used,
+            "documenti_candidati_raffinamento":refinement_pool_count,
+            "righe_recuperate":len(candidates),
+            "righe_sem_filter":len(planned),
+            "righe_selezionate_lotus":len(selected_groups),
+            **prior_usage
+        }
 
     chosen, truncated_answer = _balanced_answer_evidence(selected)
     index_notes = _document_index(selected[:MAX_ANSWER_DOCUMENTS])
-    partial = sql_partial or page_partial or truncated_answer
+    # La selezione semantica per nota richiede una verifica indipendente.
+    partial = (sql_partial or page_partial or truncated_answer
+               or refinement_used or refinement_uncertain
+               or bool(refinement_skipped_reason
+                   and refinement_skipped_reason not in ("nessuno", "")))
     answer_prompt = (ANSWER_PROMPT if any(
         item.get("nota_id") is not None for item in candidates
     ) else TABULAR_ANSWER_PROMPT)
@@ -725,6 +839,17 @@ def automatic_tag(db, question, model):
     elif truncated_answer:
         answer += ("\n\nAvvertenza: alcuni testi di pagina sono abbreviati "
                    "per limiti di contesto; verificare i dettagli sui documenti originali.")
+    if refinement_used:
+        answer += ("\n\nAvvertenza: la selezione dei singoli documenti "
+                   "e' stata effettuata semanticamente dall'LLM; "
+                   "la completezza richiede validazione indipendente.")
+    if refinement_uncertain:
+        answer += ("\n\nAvvertenza: il raffinamento documentale ha "
+                   "segnalato incertezza sulla pertinenza; "
+                   "verificare i documenti originali.")
+    if refinement_skipped_reason not in ("", "nessuno"):
+        answer += ("\n\nAvvertenza: raffinamento documentale non eseguito; "
+                   "l'elenco non e' garantito esaustivo.")
     sources = list(dict.fromkeys(src for item in chosen for src in item["fonti"]))
     return {**base, "risposta":answer, "fonti":sources[:80],
             "evidenze_fonti":_source_previews(selected),
@@ -734,9 +859,16 @@ def automatic_tag(db, question, model):
             "risultato_parziale":partial,
             "righe_recuperate":len(candidates),"righe_sem_filter":len(planned),
             "righe_selezionate_lotus":len(selected_groups),
-            "modalita_selezione":"gruppi neutri",
-            "chiamate_llm_stimate":len(planned)+2,
-            **_accumulate(generation_usage,answer_usage)}
+            "modalita_selezione":"gruppi neutri + singole note"
+                if refinement_used else "gruppi neutri",
+            "raffinamento_documentale_usato":refinement_used,
+            "raffinamento_documentale_incerto":refinement_uncertain,
+            "raffinamento_documentale_non_eseguito":refinement_skipped_reason,
+            "documenti_candidati_raffinamento":refinement_pool_count,
+            "documenti_selezionati_raffinamento":len(selected)
+                if refinement_used else None,
+            "chiamate_llm_stimate":len(planned)+2+(1 if refinement_used else 0),
+            **_accumulate(prior_usage,answer_usage)}
 
 
 # La misurazione delle chiamate usa lo stesso contatore degli altri motori.

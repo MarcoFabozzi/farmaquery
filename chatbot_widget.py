@@ -280,7 +280,8 @@ def assistant_dialog():
                                 st.code(original,language="sql")
                                 if (item.get("sql_normalizzato_nome") or
                                         item.get("sql_normalizzato_ambito_regione") or
-                                        item.get("sql_normalizzato_join_documentali")):
+                                        item.get("sql_normalizzato_join_documentali") or
+                                        item.get("sql") != original):
                                     if item.get("sql_normalizzato_nome"):
                                         st.caption("Confronti dei nomi normalizzati: case-insensitive.")
                                     if item.get("sql_normalizzato_ambito_regione"):
@@ -293,7 +294,7 @@ def assistant_dialog():
                                             "convertita in LEFT JOIN per non perdere "
                                             "note prive di una relazione già verificata. "
                                             "I centri andranno confermati nel PDF.")
-                                    st.caption("SQL effettivamente eseguito dopo i controlli")
+                                    st.caption("SQL effettivamente eseguito (incluso eventuale fallback)")
                                     st.code(item["sql"],language="sql")
                                 else:
                                     st.caption("SQL eseguito senza normalizzazioni")
@@ -337,6 +338,19 @@ def assistant_dialog():
                             "Selezione TAG: "+str(item["modalita_selezione"])+
                             " · evidenze: "+str(item.get("righe_recuperate","?"))+
                             " · elementi LOTUS: "+str(item.get("righe_sem_filter","?")))
+                    if method=="TAG automatico" and item.get("raffinamento_documentale_usato"):
+                        st.caption(
+                            "Raffinamento documentale · candidati valutati: "+
+                            str(item.get("documenti_candidati_raffinamento","?"))+
+                            " · documenti scelti: "+
+                            str(item.get("documenti_selezionati_raffinamento","?"))+
+                            " · chiamata LLM aggiuntiva: 1. "+
+                            "Pertinenza e completezza non certificate.")
+                    if method=="TAG automatico" and item.get("recupero_progressivo_usato"):
+                        st.caption(
+                            "Recupero SQL progressivo attivato · SELECT eseguite: "+
+                            str(item.get("sql_tentativi","?"))+
+                            ". SQL originale e finale disponibili sopra.")
                     if method=="TAG automatico" and item.get("note_nell_indice") is not None:
                         st.caption(
                             "Note documentali nel contesto di sintesi: "+
@@ -410,6 +424,16 @@ def assistant_dialog():
                         "sql_normalizzato_join_documentali":result.get(
                             "sql_normalizzato_join_documentali"),
                         "tag_auto_revision":result.get("tag_auto_revision"),
+                        "raffinamento_documentale_usato":result.get(
+                            "raffinamento_documentale_usato"),
+                        "raffinamento_documentale_incerto":result.get(
+                            "raffinamento_documentale_incerto"),
+                        "documenti_candidati_raffinamento":result.get(
+                            "documenti_candidati_raffinamento"),
+                        "documenti_selezionati_raffinamento":result.get(
+                            "documenti_selezionati_raffinamento"),
+                        "recupero_progressivo_usato":result.get("recupero_progressivo_usato"),
+                        "sql_tentativi":result.get("sql_tentativi"),
                         "secondi":round(time.monotonic()-start,2),
                         "versione_tag":result.get("versione_tag"),
                         "verifica_contesto":result.get("verifica_contesto"),
