@@ -795,11 +795,19 @@ def automatic_tag(db, question, model):
     prior_usage = (_accumulate(generation_usage,refinement_usage)
                    if refinement_usage is not None else generation_usage)
     if not selected:
+        # Mantieni la diagnostica storica se e' stato LOTUS a non
+        # selezionare alcun gruppo (senza raffinamento successivo).
+        missing_message = (
+            "LOTUS non ha selezionato evidenze fra i candidati. "
+            "Questo non dimostra che l'informazione sia assente."
+            if not refinement_used else
+            "Il raffinamento delle note non ha selezionato evidenze "
+            "sufficientemente pertinenti. Questo non dimostra "
+            "l'assenza delle informazioni."
+        )
         return {
             **base,
-            "risposta":"Non sono state individuate evidenze documentali "
-            "sufficientemente pertinenti nel materiale recuperato. "
-            "Questo non dimostra l'assenza delle informazioni.",
+            "risposta":missing_message,
             "fonti":[], "stato":"NESSUNA_SELEZIONE_SEMANTICA",
             "raffinamento_documentale_usato":refinement_used,
             "documenti_candidati_raffinamento":refinement_pool_count,
