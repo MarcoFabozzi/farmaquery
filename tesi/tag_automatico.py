@@ -15,6 +15,7 @@ from tesi.tag_budget import sem_filter_controlled, expand_selected
 from tesi.recupero_progressivo import (
     normalize_document_note_id, propose_empty_category_fallback,
     propose_partial_center_expansion,
+    propose_empty_crosspage_category_fallback,
 )
 from tesi.pilota_tag_vs_sql import (
     _accumulate, _in_phase, _source_previews, _sql_schema,
@@ -26,7 +27,7 @@ MAX_NOTE_PAGES = 1200
 MAX_LOTUS_GROUPS = 12
 MAX_ANSWER_DOCUMENTS = 55
 MAX_ANSWER_CHARS = 44000
-TAG_AUTO_REVISION = "2026-11-07-r10-recupero-centri-progressivo"
+TAG_AUTO_REVISION = "2026-11-07-r11-recupero-crosspage"
 
 SQL_PROMPT = (
     "Genera UNA sola query SQLite SELECT che recuperi candidati da far "
@@ -631,6 +632,12 @@ def automatic_tag(db, question, model):
             "analisi recupero SQL vuoto TAG automatico",
             propose_empty_category_fallback, sql_initial, question
         )
+        if not suggestion:
+            suggestion, fallback_reason = _in_phase(
+                "analisi categoria e centro su pagine distinte TAG automatico",
+                propose_empty_crosspage_category_fallback,
+                sql_initial, question
+            )
         if suggestion:
             fallback_sql = _in_phase(
                 "validazione SQL recupero progressivo", validate_sql, suggestion

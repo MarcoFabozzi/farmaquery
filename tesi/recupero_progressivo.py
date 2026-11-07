@@ -307,3 +307,110 @@ def propose_partial_center_expansion(sql, question):
     return original.sql(dialect="sqlite") + " UNION " + broad, (
         "ampliamento_centro_documentale_senza_classificazione_clinica"
     )
+
+
+def _eq_columns(node):
+    """Restituisce la coppia non ordinata di colonne di un'uguaglianza."""
+    node = _unbox(node)
+    if not isinstance(node, exp.EQ):
+        return None
+    left, right = _unbox(node.this), _unbox(node.expression)
+    if not isinstance(left, exp.Column) or not isinstance(right, exp.Column):
+        return None
+    return frozenset({
+        (str(left.table).casefold(), str(left.name).casefold()),
+        (str(right.table).casefold(), str(right.name).casefold()),
+    })
+
+
+def propose_empty_crosspage_category_fallback(sql, question):
+    """Fallback generico per categoria semantica cercata sulla STESSA pagina.
+
+    Si usa solo se la prima SELECT non trova righe e la forma SQL è nota:
+    note -> pagine -> centri_candidati, due predicati OR per (ospedale
+    testuale) AND (categoria testuale). Richiede esplicitamente le tre
+    relazioni di chiave e non rimuove mai altri vincoli. Recupera come
+    candidati le note che contengono un termine della denominazione del
+    centro, lasciando a LOTUS la lettura completa delle pagine e
+    la valutazione del significato clinico. Nessun dizionario di patologie.
+    """
+    tree = parse_one(sql, read="sqlite")
+    if not isinstance(tree, exp.Select):
+        return None, "selezione_non_semplice"
+    if any(tree.args.get(k) is not None for k in (
+            "with_", "group", "having", "qualify", "limit", "offset",
+            "order", "windows")) or any(tree.find_all(exp.Subquery)):
+        return None, "selezione_aggregata_o_limitata"
+    source = tree.args.get("from_") or tree.args.get("from")
+    if not source or not isinstance(source.this, exp.Table):
+        return None, "nessuna_tabella_note"
+    if str(source.this.name).casefold() != "note":
+        return None, "nessuna_tabella_note"
+    n = str(source.this.alias_or_name).casefold()
+    joins = tree.args.get("joins") or []
+    if len(joins) != 2:
+        return None, "join_non_riconosciute"
+    if any(not isinstance(j.this, exp.Table) or
+           j.args.get("side") or j.args.get("kind") for j in joins):
+        return None, "join_non_interne"
+    if ([str(j.this.name).casefold() for j in joins] !=
+            ["pagine", "centri_candidati"]):
+        return None, "join_sorgenti_non_riconosciute"
+    p = str(joins[0].this.alias_or_name).casefold()
+    c = str(joins[1].this.alias_or_name).casefold()
+    key_note = frozenset({(n, "id"), (p, "nota_id")})
+    key_center = frozenset({(p, "nota_id"), (c, "nota_id")})
+    key_page = frozenset({(p, "numero_pagina"), (c, "numero_pagina")})
+    if _eq_columns(joins[0].args.get("on")) != key_note:
+        return None, "relazione_nota_pagine_non_verificata"
+    center_joins = _and_clauses(joins[1].args.get("on"))
+    if len(center_joins) != 2 or {
+            _eq_columns(j) for j in center_joins} != {key_center, key_page}:
+        return None, "relazione_pagina_centro_non_verificata"
+    where = tree.args.get("where")
+    if where is None:
+        return None, "nessun_filtro"
+    clauses = _and_clauses(where.this)
+    if len(clauses) != 2:
+        return None, "vincoli_aggiuntivi_non_rimovibili"
+    center_pattern = None
+    category_pattern = None
+    for clause in clauses:
+        clause = _unbox(clause)
+        if not isinstance(clause, exp.Or):
+            return None, "assenza_coppia_semantica"
+        first, second = _like(clause.this), _like(clause.expression)
+        if not first or not second or first[2].casefold() != second[2].casefold():
+            return None, "pattern_distinti"
+        pair = {first[:2], second[:2]}
+        if pair == {(c, "menzione"), (p, "testo")}:
+            center_pattern = first[2]
+        elif pair == {(n, "indicazione_candidata"), (p, "testo")}:
+            category_pattern = first[2]
+        else:
+            return None, "filtro_non_supportato"
+    if not center_pattern or not category_pattern:
+        return None, "centro_o_categoria_mancante"
+    if not (center_pattern.startswith("%") and center_pattern.endswith("%")
+            and category_pattern.startswith("%") and category_pattern.endswith("%")):
+        return None, "ricerca_non_generica"
+    label = center_pattern[1:-1]
+    category = category_pattern[1:-1]
+    if not (len(label.strip()) >= 5 and len(category.strip()) >= 4
+            and "%" not in label and "_" not in label
+            and "%" not in category and "_" not in category
+            and label.casefold() in question.casefold()
+            and category.casefold() in question.casefold()):
+        return None, "vincoli_non_verificabili_nella_domanda"
+    words = re.findall(r"[^\W\d_]{5,}", label, flags=re.UNICODE)
+    if not words:
+        return None, "denominazione_centro_troppo_breve"
+    token = sorted(words, key=lambda word: (-len(word), word.casefold()))[0]
+    literal = exp.Literal.string("%" + token + "%").sql(dialect="sqlite")
+    # Solo candidati: la presenza del centro NON equivale ad autorizzazione.
+    broad = (
+        "SELECT DISTINCT n.id AS nota_id FROM note AS n "
+        "JOIN pagine AS p ON p.nota_id = n.id "
+        "WHERE p.testo LIKE " + literal + " COLLATE NOCASE"
+    )
+    return broad, "categoria_clinica_e_join_stessa_pagina_ampliati"

@@ -6,6 +6,7 @@ on:
       - 'tesi/tag_automatico.py'
       - 'tesi/recupero_progressivo.py'
       - 'tests/test_recupero_progressivo.py'
+      - 'tests/test_tag_crosspage.py'
       - 'tests/test_tag_automatico.py'
       - '.github/workflows/test-tag-automatico.yml'
   push:
@@ -42,3 +43,4 @@ jobs:
         run: |
           python -m unittest discover -s tests -p 'test_tag_automatico.py' -v
           python -m unittest discover -s tests -p 'test_recupero_progressivo.py' -v
+          python -m unittest discover -s tests -p 'test_tag_crosspage.py' -v
