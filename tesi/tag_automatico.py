@@ -519,6 +519,57 @@ def _lotus_plan(candidates):
     return frames, members
 
 
+def _balanced_page_excerpt(raw, allowance):
+    """Mantiene evidenze da OGNI pagina anche quando un PDF va abbreviato.
+
+    Non stabilisce quali pagine siano clinicamente pertinenti: il testo
+    resta fedele ai passaggi originali e ogni taglio e' segnalato.
+    """
+    raw = str(raw)
+    if len(raw) <= allowance:
+        return raw, False
+    if allowance <= 0:
+        return "", True
+    parts = re.split(r"(?=\\[pagina \\d+\\])", raw)
+    marker = " [ESTRATTO TRONCATO]"
+    if len(parts) < 2:
+        keep = max(0, allowance - len(marker))
+        return raw[:keep] + marker[:allowance-keep], True
+    head = parts[0][:min(len(parts[0]), max(100, allowance//7))]
+    pages = parts[1:]
+    remaining = max(0, allowance - len(head) - len(pages)*len(marker))
+    base = remaining // max(1,len(pages))
+    more = remaining % max(1,len(pages))
+    excerpts = [head]
+    for idx,page in enumerate(pages):
+        quota = base + (1 if idx < more else 0)
+        if len(page) <= quota:
+            excerpts.append(page)
+            continue
+        if quota < 20:
+            excerpts.append(page[:quota])
+        else:
+            # Inizio e fine pagina, piu' contesto di una sezione generica
+            # se presente. Non vengono inserite parole cliniche ad hoc.
+            label = re.match(r"\\[pagina \\d+\\]",page)
+            label_text = label.group(0) if label else ""
+            usable = max(0, quota - len(label_text) - 7)
+            cue = re.search(
+                r"indicazion\\w*|prescri\\w*|centri\\b|centro\\b",
+                page[len(label_text):], re.I)
+            main = page[:min(len(page),max(len(label_text)+30, quota//3))]
+            if cue and usable > 90:
+                start = len(label_text) + cue.start()
+                middle = page[max(len(main),start-30):
+                              max(len(main),start-30)+max(35,usable//3)]
+            else:
+                middle = ""
+            tail_len = max(0, quota-len(main)-len(middle)-7)
+            excerpts.append((main + " […] " + middle + page[-tail_len:]
+                             if tail_len else main + " […] " + middle)[:quota])
+    return ("".join(excerpts))[:allowance], True
+
+
 def _balanced_answer_evidence(selected):
     """Distribuisce il contesto su tutte le evidenze scelte, non solo sulle prime.
 
@@ -539,13 +590,7 @@ def _balanced_answer_evidence(selected):
         still_to_consider = len(eligible) - index
         allowance = max(0, budget // still_to_consider)
         raw = str(item["testo"])
-        clipped = len(raw) > allowance
-        if clipped:
-            marker = " [EVIDENZA TRONCATA]"
-            keep = max(0, allowance - len(marker))
-            trimmed = raw[:keep] + marker[:max(0,allowance-keep)]
-        else:
-            trimmed = raw
+        trimmed, clipped = _balanced_page_excerpt(raw, allowance)
         truncated = truncated or clipped
         budget -= len(trimmed)
         chosen.append({"chiave": item["chiave"],
@@ -784,6 +829,13 @@ def automatic_tag(db, question, model):
     elif truncated_answer:
         answer += ("\n\nAvvertenza: alcuni testi di pagina sono abbreviati "
                    "per limiti di contesto; verificare i dettagli sui documenti originali.")
+    if refinement_uncertain:
+        answer += ("\\n\\nAvvertenza: il raffinamento documentale ha "
+                   "segnalato incertezza sulla pertinenza; "
+                   "verificare i documenti originali.")
+    if refinement_skipped_reason not in ("", "nessuno"):
+        answer += ("\\n\\nAvvertenza: raffinamento documentale non eseguito; "
+                   "l'elenco non e' garantito esaustivo.")
     sources = list(dict.fromkeys(src for item in chosen for src in item["fonti"]))
     return {**base, "risposta":answer, "fonti":sources[:80],
             "evidenze_fonti":_source_previews(selected),
