@@ -235,6 +235,19 @@ class ProgressiveRetrievalTests(unittest.TestCase):
                        if i["sha256_pdf"] not in ids]
             print("Riferimento provvisorio, mancanti dal fallback 132:",
                   ", ".join(missing) if missing else "nessuno")
+            broader = (
+                "SELECT DISTINCT n.id AS nota_id FROM note n "
+                "JOIN pagine p ON p.nota_id=n.id "
+                "WHERE p.testo LIKE '%Federico%' COLLATE NOCASE"
+            )
+            broad, more = auto._run_generated_select(
+                real_db, auto.validate_sql(broader))
+            missing_broad = [i["medicinale"] for i in gold["casi_positivi"]
+                             if i["sha256_pdf"] not in
+                             {str(row["nota_id"]) for row in broad}]
+            print("Recupero con token denominazione centro: note",
+                  len(broad), "parziale", more, "mancanti:",
+                  ", ".join(missing_broad) if missing_broad else "nessuno")
         finally:
             real_db.close()
 
