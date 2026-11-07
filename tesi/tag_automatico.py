@@ -530,7 +530,7 @@ def _balanced_page_excerpt(raw, allowance):
         return raw, False
     if allowance <= 0:
         return "", True
-    parts = re.split(r"(?=\\[pagina \\d+\\])", raw)
+    parts = re.split(r"(?=\[pagina \d+\])", raw)
     marker = " [ESTRATTO TRONCATO]"
     if len(parts) < 2:
         keep = max(0, allowance - len(marker))
@@ -551,11 +551,11 @@ def _balanced_page_excerpt(raw, allowance):
         else:
             # Inizio e fine pagina, piu' contesto di una sezione generica
             # se presente. Non vengono inserite parole cliniche ad hoc.
-            label = re.match(r"\\[pagina \\d+\\]",page)
+            label = re.match(r"\[pagina \d+\]",page)
             label_text = label.group(0) if label else ""
             usable = max(0, quota - len(label_text) - 7)
             cue = re.search(
-                r"indicazion\\w*|prescri\\w*|centri\\b|centro\\b",
+                r"indicazion\w*|prescri\w*|centri\b|centro\b",
                 page[len(label_text):], re.I)
             main = page[:min(len(page),max(len(label_text)+30, quota//3))]
             if cue and usable > 90:
