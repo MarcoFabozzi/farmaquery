@@ -476,7 +476,7 @@ def propose_partial_crosspage_center_expansion(sql, question):
     if (len(label.strip()) < 5 or "%" in label or "_" in label
             or label.casefold() not in question.casefold()):
         return None, "centro_non_richiesto_nella_domanda"
-    words = re.findall(r"[^\\W\\d_]{5,}", label, flags=re.UNICODE)
+    words = re.findall(r"[^\W\d_]{5,}", label, flags=re.UNICODE)
     if not words:
         return None, "centro_senza_token_significativo"
     token = sorted(words, key=lambda w: (-len(w),w.casefold()))[0]
