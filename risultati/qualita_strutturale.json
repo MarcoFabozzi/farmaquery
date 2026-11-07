@@ -1,5 +1,5 @@
 {
-  "generato_utc": "2026-11-06T08:21:01+00:00",
+  "generato_utc": "2026-11-07T08:04:20+00:00",
   "stato": "OK",
   "controlli_bloccanti": [],
   "avvertenze": [
@@ -10,10 +10,10 @@
   "metriche": {
     "errori_foreign_key": 0,
     "conteggi": {
-      "acquisizioni": 12,
+      "acquisizioni": 13,
       "aifa_confezioni": 10607,
       "classi_snapshot": 2186,
-      "cnn_elenco_storico": 1842,
+      "cnn_elenco_storico": 1862,
       "ema_medicinali": 2357,
       "ema_revisioni_snapshot": 2357,
       "eventi_verificati": 4,
@@ -52,15 +52,15 @@
     },
     "aifa_anagrafica": {
       "stato": "OK",
-      "ultima_acquisizione_utc": "2026-11-06T05:24:15+00:00"
+      "ultima_acquisizione_utc": "2026-11-07T05:14:24+00:00"
     },
     "aifa_ah": {
       "stato": "OK",
-      "ultima_acquisizione_utc": "2026-11-06T05:37:14+00:00"
+      "ultima_acquisizione_utc": "2026-11-07T05:27:21+00:00"
     },
     "aifa_cnn": {
       "stato": "OK",
-      "ultima_acquisizione_utc": "2026-11-06T05:41:35+00:00"
+      "ultima_acquisizione_utc": "2026-11-07T05:30:04+00:00"
     },
     "gazzetta": {
       "stato": "OK",
