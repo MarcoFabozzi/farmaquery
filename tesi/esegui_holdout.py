@@ -26,7 +26,10 @@ COLUMNS=("id","metodo","modello","snapshot_sha256","risposta","fonti",
          "sql_normalizzato_nome","sql_normalizzato_ambito_regione",
          "sql_normalizzato_join_documentali","righe_sql","righe_recuperate",
          "righe_sem_filter","righe_selezionate_lotus","risultato_parziale",
-         "chiamate_llm_dirette","chiamate_llm_lotus","conteggio_llm_completo")
+         "chiamate_llm_dirette","chiamate_llm_lotus","conteggio_llm_completo",
+         "sql_primo_tentativo","sql_fallback","recupero_progressivo_usato",
+         "motivo_recupero_progressivo","righe_sql_primo_tentativo",
+         "sql_normalizzato_nota_id","sql_tentativi")
 METHODS=("Text-to-SQL","TAG","TAG automatico")
 
 
@@ -104,6 +107,13 @@ def collect(gold_file,db_file,manifest_file,model,out,commit,answer_fn=answer_qu
                     "sql_originale_llm":result.get("sql_originale_llm"),
                     "sql_eseguito":result.get("sql"),
                     "tag_auto_revision":result.get("tag_auto_revision"),
+                    "sql_primo_tentativo":result.get("sql_primo_tentativo"),
+                    "sql_fallback":result.get("sql_fallback"),
+                    "recupero_progressivo_usato":result.get("recupero_progressivo_usato"),
+                    "motivo_recupero_progressivo":result.get("motivo_recupero_progressivo"),
+                    "righe_sql_primo_tentativo":result.get("righe_sql_primo_tentativo"),
+                    "sql_normalizzato_nota_id":result.get("sql_normalizzato_nota_id"),
+                    "sql_tentativi":result.get("sql_tentativi"),
                     "sql_normalizzato_nome":result.get("sql_normalizzato_nome"),
                     "sql_normalizzato_ambito_regione":result.get(
                         "sql_normalizzato_ambito_regione"),
