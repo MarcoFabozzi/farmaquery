@@ -434,8 +434,9 @@ def propose_empty_crosspage_category_fallback(sql, question):
 def propose_partial_crosspage_center_expansion(sql, question):
     """Recall documentale per query note-pagine-centri_candidati non vuota.
 
-    Se il centro viene richiesto con una JOIN sulla STESSA pagina, aggiunge
-    note che lo menzionano su altre pagine senza filtri clinici. I risultati
+    Se il centro viene richiesto con una JOIN sulla STESSA pagina, tramite
+    menzione LIKE diretta oppure OR con il testo, aggiunge le note che
+    riportano l'ospedale su altre pagine senza filtri clinici. I risultati
     originali restano inclusi mediante UNION. Non attribuisce autorizzazioni
     né usa elenchi di medicinali, patologie o strutture.
     """
@@ -477,14 +478,23 @@ def propose_partial_crosspage_center_expansion(sql, question):
     if where is None:
         return None, "nessun_filtro"
     center_clause = _unbox(where.this)
-    if not isinstance(center_clause, exp.Or):
-        return None, "filtro_aggiuntivo_o_non_supportato"
-    first, second = _like(center_clause.this), _like(center_clause.expression)
-    if not first or not second or first[2].casefold() != second[2].casefold():
-        return None, "valori_centro_non_uguali"
-    if {first[:2], second[:2]} != {(c, "menzione"), (p, "testo")}:
-        return None, "filtro_centro_non_riconosciuto"
-    pattern = first[2]
+    # La SELECT generata puo' contenere un unico filtro verificabile sul
+    # centro, senza l'OR sulla pagina. Non va confuso con un vincolo
+    # clinico: l'ospedale e' una stringa oggettiva presente nella domanda.
+    direct = _like(center_clause)
+    if direct is not None:
+        if direct[:2] not in {(c, "menzione"), (p, "testo")}:
+            return None, "filtro_diretto_non_documentale"
+        pattern = direct[2]
+    else:
+        if not isinstance(center_clause, exp.Or):
+            return None, "filtro_aggiuntivo_o_non_supportato"
+        first, second = _like(center_clause.this), _like(center_clause.expression)
+        if not first or not second or first[2].casefold() != second[2].casefold():
+            return None, "valori_centro_non_uguali"
+        if {first[:2], second[:2]} != {(c, "menzione"), (p, "testo")}:
+            return None, "filtro_centro_non_riconosciuto"
+        pattern = first[2]
     if not (pattern.startswith("%") and pattern.endswith("%")):
         return None, "ricerca_non_generica"
     label = pattern[1:-1]
