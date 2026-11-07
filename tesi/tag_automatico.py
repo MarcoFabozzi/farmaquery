@@ -12,6 +12,9 @@ import time
 
 from tesi.contatore_llm import instrument_lotus, measured_engine
 from tesi.tag_budget import sem_filter_controlled, expand_selected
+from tesi.recupero_progressivo import (
+    normalize_document_note_id, propose_empty_category_fallback,
+)
 from tesi.pilota_tag_vs_sql import (
     _accumulate, _in_phase, _source_previews, _sql_schema,
     _sql_sources, ask, validate_sql,
@@ -22,7 +25,7 @@ MAX_NOTE_PAGES = 1200
 MAX_LOTUS_GROUPS = 12
 MAX_ANSWER_DOCUMENTS = 55
 MAX_ANSWER_CHARS = 44000
-TAG_AUTO_REVISION = "2026-11-06-r7-astensione-documentata"
+TAG_AUTO_REVISION = "2026-11-07-r8-recupero-progressivo"
 
 SQL_PROMPT = (
     "Genera UNA sola query SQLite SELECT che recuperi candidati da far "
@@ -576,19 +579,55 @@ def automatic_tag(db, question, model):
         "normalizzazione JOIN documentali TAG automatico",
         _normalize_sparse_note_enrichment, sql_with_scope
     )
-    sql = _in_phase(
-        "normalizzazione SQL TAG automatico", validate_sql, sql_with_joins
+    sql_with_id, note_id_changed = _in_phase(
+        "normalizzazione identificativo nota TAG automatico",
+        normalize_document_note_id, sql_with_joins
+    )
+    sql_initial = _in_phase(
+        "normalizzazione SQL TAG automatico", validate_sql, sql_with_id
     )
     records, sql_partial = _in_phase(
-        "esecuzione SQL TAG automatico", _run_generated_select, db, sql
+        "esecuzione SQL TAG automatico", _run_generated_select, db, sql_initial
     )
+    initial_rows = len(records)
+    sql, fallback_sql, fallback_reason = sql_initial, None, "non_necessario"
+    sql_attempts = 1
+    fallback_used = False
+    if not records:
+        suggestion, fallback_reason = _in_phase(
+            "analisi recupero SQL vuoto TAG automatico",
+            propose_empty_category_fallback, sql_initial, question
+        )
+        if suggestion:
+            fallback_sql = _in_phase(
+                "validazione SQL recupero progressivo", validate_sql, suggestion
+            )
+            # Nessuna nuova generazione LLM: seconda SELECT sempre read-only.
+            sql_attempts = 2
+            fallback_rows, fallback_partial = _in_phase(
+                "esecuzione recupero SQL progressivo TAG automatico",
+                _run_generated_select, db, fallback_sql
+            )
+            if fallback_rows:
+                records, sql_partial = fallback_rows, fallback_partial
+                sql = fallback_sql
+                fallback_used = True
+            else:
+                fallback_reason = "fallback_senza_risultati"
     base = {"sql":sql, "sql_originale_llm":sql_originale_llm,
+            "sql_primo_tentativo":sql_initial,
+            "sql_fallback":fallback_sql,
+            "recupero_progressivo_usato":fallback_used,
+            "motivo_recupero_progressivo":fallback_reason,
+            "righe_sql_primo_tentativo":initial_rows,
+            "sql_normalizzato_nota_id":note_id_changed,
             "sql_normalizzato_nome":sql_with_name != sql_originale_llm,
             "sql_normalizzato_ambito_regione":scope_changed,
             "sql_normalizzato_join_documentali":note_join_changed,
             "tag_auto_revision":TAG_AUTO_REVISION,
             "versione_tag":"automatico-v1",
-            "recupero":"LLM-SQL", "sql_tentativi":1, "righe_sql":len(records)}
+            "recupero":"LLM-SQL-progressivo" if fallback_used else "LLM-SQL",
+            "sql_tentativi":sql_attempts, "righe_sql":len(records)}
     if not records:
         return {**base, "risposta":"La query SQL non ha restituito righe. "
                 "Questo non dimostra che l'informazione sia assente dalle fonti.",
