@@ -811,8 +811,10 @@ def automatic_tag(db, question, model):
 
     chosen, truncated_answer = _balanced_answer_evidence(selected)
     index_notes = _document_index(selected[:MAX_ANSWER_DOCUMENTS])
+    # La selezione semantica per nota richiede una verifica indipendente.
     partial = (sql_partial or page_partial or truncated_answer
-               or refinement_uncertain or bool(refinement_skipped_reason
+               or refinement_used or refinement_uncertain
+               or bool(refinement_skipped_reason
                    and refinement_skipped_reason not in ("nessuno", "")))
     answer_prompt = (ANSWER_PROMPT if any(
         item.get("nota_id") is not None for item in candidates
@@ -829,12 +831,16 @@ def automatic_tag(db, question, model):
     elif truncated_answer:
         answer += ("\n\nAvvertenza: alcuni testi di pagina sono abbreviati "
                    "per limiti di contesto; verificare i dettagli sui documenti originali.")
+    if refinement_used:
+        answer += ("\n\nAvvertenza: la selezione dei singoli documenti "
+                   "e' stata effettuata semanticamente dall'LLM; "
+                   "la completezza richiede validazione indipendente.")
     if refinement_uncertain:
-        answer += ("\\n\\nAvvertenza: il raffinamento documentale ha "
+        answer += ("\n\nAvvertenza: il raffinamento documentale ha "
                    "segnalato incertezza sulla pertinenza; "
                    "verificare i documenti originali.")
     if refinement_skipped_reason not in ("", "nessuno"):
-        answer += ("\\n\\nAvvertenza: raffinamento documentale non eseguito; "
+        answer += ("\n\nAvvertenza: raffinamento documentale non eseguito; "
                    "l'elenco non e' garantito esaustivo.")
     sources = list(dict.fromkeys(src for item in chosen for src in item["fonti"]))
     return {**base, "risposta":answer, "fonti":sources[:80],
