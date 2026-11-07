@@ -8,6 +8,8 @@ oggettivo alla struttura, e lascia la classificazione a LOTUS.
 """
 from __future__ import annotations
 
+import re
+
 from sqlglot import exp, parse_one
 
 
@@ -90,11 +92,25 @@ def _is_clinical_like_pair(node, aliases):
 
 
 def normalize_document_note_id(sql):
-    """Un alias generico su note.id diventa nota_id per recuperare le pagine."""
+    """Riconosce note.id come identificativo documentale, senza cambiare righe.
+
+    Le note possono essere selezionate anche tramite centri_candidati, senza
+    JOIN pagine. In quel caso la vecchia regola non riconosceva documento_id:
+    LOTUS riceveva solo righe tabellari anziché i PDF. Verifichiamo che la
+    proiezione sia proprio l'ID della tabella note (non un ID omonimo di altre
+    tabelle). Non tocchiamo UNION, CTE o query annidate.
+    """
     tree = parse_one(sql, read="sqlite")
-    aliases = _from_note_with_pages(tree)
-    if not aliases or not isinstance(tree, exp.Select):
+    if not isinstance(tree, exp.Select):
         return sql, False
+    if tree.args.get("with_") or any(tree.find_all(exp.Subquery)):
+        return sql, False
+    source = tree.args.get("from_") or tree.args.get("from")
+    if not source or not isinstance(source.this, exp.Table):
+        return sql, False
+    if str(source.this.name).casefold() != "note":
+        return sql, False
+    alias = str(source.this.alias_or_name).casefold()
     if any(str(item.alias_or_name).casefold() == "nota_id"
            for item in tree.expressions):
         return sql, False
@@ -103,7 +119,7 @@ def normalize_document_note_id(sql):
                 and str(item.alias).casefold() == "documento_id"
                 and isinstance(item.this, exp.Column)
                 and str(item.this.name).casefold() == "id"
-                and str(item.this.table).casefold() == aliases["note"]):
+                and str(item.this.table).casefold() == alias):
             item.set("alias", exp.to_identifier("nota_id"))
             return tree.sql(dialect="sqlite"), True
     return sql, False
@@ -159,3 +175,135 @@ def propose_empty_category_fallback(sql, question):
         "WHERE p.testo LIKE " + literal + " COLLATE NOCASE"
     )
     return candidate_sql, "categoria_semantica_da_valutare_con_lotus"
+
+
+def _column_is(node, table, name):
+    node = _unbox(node)
+    return (isinstance(node, exp.Column)
+            and str(node.table).casefold() == table
+            and str(node.name).casefold() == name)
+
+
+def _weak_candidate_status(node, alias):
+    """Accetta solo la guardia (stato IS NULL OR stato NOT IN esclusi).
+
+    Altri stati, inclusi filtri di autorizzazione esplicita, non vengono
+    mai rilassati. I due valori rappresentano flag della tabella candidata,
+    NON classi di farmaci o dizionari di patologie.
+    """
+    node = _unbox(node)
+    if not isinstance(node, exp.Or):
+        return False
+
+    def is_unreviewed(part):
+        part = _unbox(part)
+        return (isinstance(part, exp.Is) and
+                _column_is(part.this, alias, "stato") and
+                isinstance(_unbox(part.expression), exp.Null))
+
+    def is_not_rejected(part):
+        part = _unbox(part)
+        if not isinstance(part, exp.Not):
+            return False
+        inner = _unbox(part.this)
+        if not isinstance(inner, exp.In):
+            return False
+        if not _column_is(inner.this, alias, "stato"):
+            return False
+        values = inner.expressions
+        return (len(values) == 2 and
+                all(isinstance(v, exp.Literal) and v.is_string for v in values)
+                and {str(v.this).casefold() for v in values} ==
+                    {"escluso", "falso"})
+
+    return ((is_unreviewed(node.this) and is_not_rejected(node.expression))
+            or (is_unreviewed(node.expression) and is_not_rejected(node.this)))
+
+
+def propose_partial_center_expansion(sql, question):
+    """Amplia una SELECT su centri_candidati senza perdere i risultati originali.
+
+    SOLO pattern documentale non aggregato con join chiave nota-id e filtri:
+    menzione del centro + stato non escluso/non revisionato. Il singolo token
+    usato per il recall deriva dalla stringa di centro dell'LLM, verificata
+    anche nella domanda, mai da sinonimi clinici scritti dal programmatore.
+    UNION conserva tutte le note del primo recupero; la seconda SELECT legge
+    pagine nel loro contesto e LOTUS verifica indicazioni e autorizzazioni.
+    """
+    tree = parse_one(sql, read="sqlite")
+    if not isinstance(tree, exp.Select):
+        return None, "non_select_documentale"
+    if (tree.args.get("with_") or tree.args.get("group") or
+            tree.args.get("having") or tree.args.get("limit") or
+            tree.args.get("order") or tree.args.get("qualify") or
+            any(tree.find_all(exp.Subquery))):
+        return None, "select_complessa"
+    source = tree.args.get("from_") or tree.args.get("from")
+    if not source or not isinstance(source.this, exp.Table):
+        return None, "nessuna_nota"
+    if str(source.this.name).casefold() != "note":
+        return None, "nessuna_nota"
+    note_alias = str(source.this.alias_or_name).casefold()
+    joins = tree.args.get("joins") or []
+    if len(joins) != 1 or not isinstance(joins[0].this, exp.Table):
+        return None, "join_non_riconosciute"
+    if str(joins[0].this.name).casefold() != "centri_candidati":
+        return None, "fonte_centro_non_candidata"
+    c_alias = str(joins[0].this.alias_or_name).casefold()
+    on = _unbox(joins[0].args.get("on"))
+    if not isinstance(on, exp.EQ):
+        return None, "join_chiave_non_verificata"
+    pair = {
+        (note_alias, "id"), (c_alias, "nota_id")
+    }
+    if not (isinstance(_unbox(on.this), exp.Column) and
+            isinstance(_unbox(on.expression), exp.Column) and
+            {(str(_unbox(on.this).table).casefold(),
+              str(_unbox(on.this).name).casefold()),
+             (str(_unbox(on.expression).table).casefold(),
+              str(_unbox(on.expression).name).casefold())} == pair):
+        return None, "join_chiave_non_verificata"
+    where = tree.args.get("where")
+    if where is None:
+        return None, "nessun_filtro"
+    clauses = _and_clauses(where.this)
+    if len(clauses) != 2:
+        return None, "vincoli_extra_non_ampliabili"
+    mentioned = None
+    weak_status = False
+    for clause in clauses:
+        pred = _like(clause)
+        if pred and pred[:2] == (c_alias, "menzione"):
+            mentioned = pred[2]
+        elif _weak_candidate_status(clause, c_alias):
+            weak_status = True
+        else:
+            return None, "vincoli_extra_non_ampliabili"
+    if not (mentioned and weak_status and
+            mentioned.startswith("%") and mentioned.endswith("%")):
+        return None, "centro_o_stato_non_riconosciuto"
+    label = mentioned[1:-1]
+    if (not label or "%" in label or "_" in label or
+            label.casefold() not in question.casefold()):
+        return None, "denominazione_centro_non_verificata"
+    tokens = re.findall(r"[^\W\d_]{5,}", label, flags=re.UNICODE)
+    if not tokens:
+        return None, "nessun_token_discriminante"
+    token = sorted(tokens, key=lambda x: (-len(x), x.casefold()))[0]
+    # Preserva le condizioni originali per tutti i documenti già recuperabili.
+    original = tree.copy()
+    original.set(
+        "expressions",
+        [exp.alias_(exp.column("id", table=note_alias), "nota_id")]
+    )
+    original.set("distinct", exp.Distinct())
+    # String literal SQLGlot: niente interpolazione non protetta.
+    token_literal = exp.Literal.string("%" + token + "%").sql(dialect="sqlite")
+    broad = (
+        "SELECT DISTINCT n.id AS nota_id FROM note AS n "
+        "JOIN pagine AS p ON p.nota_id=n.id "
+        "WHERE p.testo LIKE " + token_literal + " COLLATE NOCASE"
+    )
+    return original.sql(dialect="sqlite") + " UNION " + broad, (
+        "ampliamento_centro_documentale_senza_classificazione_clinica"
+    )
