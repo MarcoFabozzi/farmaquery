@@ -18,6 +18,7 @@ from tesi.recupero_progressivo import (
     normalize_document_note_id,
     propose_empty_crosspage_category_fallback,
     propose_partial_crosspage_center_expansion,
+    propose_empty_note_page_semantic_fallback,
 )
 
 QUESTION = (
@@ -51,6 +52,16 @@ SQL_CENTER_DIRECT = (
     "WHERE cc.menzione LIKE '%Federico II%' "
     "AND (n.indicazione_candidata LIKE '%neuromuscolari%' "
     "OR p.testo LIKE '%neuromuscolari%')"
+)
+
+SQL_NOTE_PAGES = (
+    "SELECT DISTINCT n.farmaco_candidato AS nome, "
+    "n.indicazione_candidata AS indicazione, "
+    "n.id AS nota_id, p.numero_pagina FROM note AS n "
+    "JOIN pagine AS p ON n.id = p.nota_id "
+    "WHERE (p.testo LIKE '%Federico II%' COLLATE NOCASE) "
+    "AND (p.testo LIKE '%neuromuscolar%' COLLATE NOCASE "
+    "OR n.indicazione_candidata LIKE '%neuromuscolar%' COLLATE NOCASE)"
 )
 
 SQL_ONLY_CENTER = (
@@ -221,6 +232,115 @@ class CrossPageFallbackTests(unittest.TestCase):
             self.assertEqual(len(ids),161)
             print("Query r13: 0 iniziali;",len(ids),
                   "note ampliate, copertura PDF gold:",len(expected))
+        finally:
+            db.close()
+
+    def test_sql_note_pagine_esatta_r14_zero_poi_fallback(self):
+        first, partial = auto._run_generated_select(
+            self.db, auto.validate_sql(SQL_NOTE_PAGES))
+        self.assertEqual(first, [])
+        self.assertFalse(partial)
+        candidate, why = propose_empty_note_page_semantic_fallback(
+            SQL_NOTE_PAGES, QUESTION)
+        self.assertEqual(
+            why, "categoria_clinica_letterale_esclusa_da_note_pagine")
+        self.assertNotIn("neuromuscolar", candidate.casefold())
+        self.assertIn("LIKE '%Federico%'", candidate)
+        found, truncated = auto._run_generated_select(
+            self.db, auto.validate_sql(candidate))
+        self.assertFalse(truncated)
+        self.assertEqual([r["nota_id"] for r in found], ["id-a"])
+        docs, missing_pages = auto._note_candidates(self.db, found)
+        self.assertFalse(missing_pages)
+        self.assertEqual(len(docs),1)
+        self.assertIn("[pagina 1]", docs[0]["testo"])
+        self.assertIn("[pagina 2]", docs[0]["testo"])
+
+    def test_note_pagine_rifiuta_extra_vincoli_e_join_diverse(self):
+        variations = (
+            SQL_NOTE_PAGES + " AND n.anno=2026",
+            SQL_NOTE_PAGES.replace(
+                "n.id = p.nota_id", "n.id = p.numero_pagina"),
+            SQL_NOTE_PAGES.replace(
+                "JOIN pagine", "LEFT JOIN pagine"),
+            SQL_NOTE_PAGES.replace(
+                "%Federico II%", "%Ospedale Altro%"),
+            SQL_NOTE_PAGES.replace(
+                "%neuromuscolar%", "%malattia_non_nella_domanda%"),
+            SQL_NOTE_PAGES.replace(
+                "p.testo LIKE '%Federico II%'",
+                "n.farmaco_candidato LIKE '%Federico II%'"),
+            SQL_NOTE_PAGES + " LIMIT 10",
+            SQL_NOTE_PAGES + " UNION SELECT 1,2,3,4",
+            SQL_NOTE_PAGES.replace(
+                "OR n.indicazione_candidata LIKE '%neuromuscolar%'",
+                "OR n.indicazione_candidata LIKE '%altra%'")
+        )
+        for altered in variations:
+            suggested, why = propose_empty_note_page_semantic_fallback(
+                altered, QUESTION)
+            self.assertIsNone(suggested, (why,altered))
+
+    def test_pipeline_note_pagine_restituisce_pdf_non_righe(self):
+        calls=[]
+        def fake_ask(model,system,payload,**kwargs):
+            calls.append(system)
+            if system == auto.SQL_PROMPT:
+                return SQL_NOTE_PAGES,{
+                    "token_input":1,"token_output":1,"costo_usd":0
+                }
+            return "MED-A: patologia del nervo periferico (pagina 2).",{
+                "token_input":1,"token_output":1,"costo_usd":0
+            }
+        lotus=types.ModuleType("lotus")
+        lotus.settings=types.SimpleNamespace(configure=lambda **_:None)
+        models=types.ModuleType("lotus.models")
+        models.LM=lambda *_,**__:types.SimpleNamespace()
+        with patch.dict(sys.modules,{
+                "lotus":lotus,"lotus.models":models}), \
+             patch.object(auto,"ask",side_effect=fake_ask), \
+             patch.object(auto,"sem_filter_controlled",
+                          side_effect=lambda frame,instruction:frame):
+            result=auto.automatic_tag(self.db, QUESTION, "mock")
+        self.assertEqual(result["sql_tentativi"],2)
+        self.assertTrue(result["recupero_progressivo_usato"])
+        self.assertEqual(result["righe_sql_primo_tentativo"],0)
+        self.assertEqual(result["righe_sql"],1)
+        self.assertEqual(result["note_nell_indice"],1)
+        self.assertEqual(result["note_nel_contesto"],1)
+        self.assertTrue(any("#p2" in x for x in result["fonti"]))
+        self.assertEqual(len(calls),2)
+        self.assertEqual(result["tag_auto_revision"],
+                         "2026-11-07-r15-fallback-note-pagine")
+
+    def test_snapshot_sql_note_pagine_ricopre_gold(self):
+        root=Path(__file__).resolve().parents[1]
+        snapshot=root/"risultati/tesi_statico_20261102.sqlite.gz"
+        goldpath=root/"tesi/riferimento_neuromuscolari_federico_ii_2026-11-03.json"
+        if not snapshot.is_file() or not goldpath.is_file():
+            self.skipTest("Snapshot o gold non disponibili")
+        db=sqlite3.connect(":memory:")
+        try:
+            db.deserialize(gzip.decompress(snapshot.read_bytes()))
+            db.row_factory=sqlite3.Row
+            db.execute("PRAGMA query_only=ON")
+            rows,partial=auto._run_generated_select(
+                db,auto.validate_sql(SQL_NOTE_PAGES))
+            self.assertEqual(rows,[])
+            self.assertFalse(partial)
+            suggestion,why=propose_empty_note_page_semantic_fallback(
+                SQL_NOTE_PAGES,QUESTION)
+            self.assertIsNotNone(suggestion,why)
+            after,more=auto._run_generated_select(
+                db,auto.validate_sql(suggestion))
+            self.assertFalse(more)
+            gold=json.loads(goldpath.read_text(encoding="utf-8"))
+            wanted={x["sha256_pdf"] for x in gold["casi_positivi"]}
+            ids={x["nota_id"] for x in after}
+            self.assertTrue(wanted<=ids)
+            self.assertEqual(len(ids),161)
+            print("R15 note/pagine:",len(rows),"->",len(ids),
+                  "PDF di riferimento:",len(wanted))
         finally:
             db.close()
 
