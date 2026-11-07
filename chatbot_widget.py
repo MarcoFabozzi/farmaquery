@@ -352,6 +352,15 @@ def assistant_dialog():
                             " · chiamate dirette del raffinamento: "+
                             str(item.get("chiamate_dirette_raffinamento","?"))+
                             ". Pertinenza e completezza non certificate.")
+                    if method=="TAG automatico" and item.get("chiamate_piano_documentale"):
+                        st.caption(
+                            "Piano documentale strutturato · esito: "+
+                            str(item.get("piano_documentale_esito","?"))+
+                            " · struttura: "+
+                            str(item.get("piano_documentale_centro") or "non confermata")+
+                            " · chiamate LLM piano: "+
+                            str(item.get("chiamate_piano_documentale",0))+
+                            ". Piano e pertinenza soggetti a verifica.")
                     if method=="TAG automatico" and item.get("recupero_progressivo_usato"):
                         st.caption(
                             "Recupero SQL progressivo attivato · SELECT eseguite: "+
@@ -446,6 +455,10 @@ def assistant_dialog():
                         "chiamate_dirette_raffinamento":result.get(
                             "chiamate_dirette_raffinamento"),
                         "recupero_progressivo_usato":result.get("recupero_progressivo_usato"),
+                        "piano_documentale_usato":result.get("piano_documentale_usato"),
+                        "piano_documentale_centro":result.get("piano_documentale_centro"),
+                        "piano_documentale_esito":result.get("piano_documentale_esito"),
+                        "chiamate_piano_documentale":result.get("chiamate_piano_documentale"),
                         "sql_tentativi":result.get("sql_tentativi"),
                         "secondi":round(time.monotonic()-start,2),
                         "versione_tag":result.get("versione_tag"),
