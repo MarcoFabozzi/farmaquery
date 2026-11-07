@@ -1,6 +1,13 @@
 name: Test offline TAG automatico
 
 on:
+  pull_request:
+    paths:
+      - 'tesi/tag_automatico.py'
+      - 'tesi/recupero_progressivo.py'
+      - 'tests/test_recupero_progressivo.py'
+      - 'tests/test_tag_automatico.py'
+      - '.github/workflows/test-tag-automatico.yml'
   push:
     branches: [main]
     paths:
