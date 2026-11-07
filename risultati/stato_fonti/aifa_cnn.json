@@ -1,28 +1,28 @@
 {
   "fonte": "aifa_cnn",
   "esito": "OK",
-  "ultimo_successo_utc": "2026-11-06T05:41:35+00:00",
-  "precedente_successo_utc": "2026-11-05T05:41:33+00:00",
+  "ultimo_successo_utc": "2026-11-07T05:30:04+00:00",
+  "precedente_successo_utc": "2026-11-06T05:41:35+00:00",
   "statistiche": {
-    "data_riferimento_file_cnn": "2026-10-14",
-    "righe_file_cnn": 3098,
-    "righe_pertinenti": 2860,
-    "nuove_righe_storiche": 0,
+    "data_riferimento_file_cnn": "2026-11-06",
+    "righe_file_cnn": 3104,
+    "righe_pertinenti": 2866,
+    "nuove_righe_storiche": 20,
     "indice_nazionale_cnn": {
       "file_indice": "aifa_riferimenti_cnn.json",
-      "record_indicizzati": 2076,
-      "codici_medicinale": 1394,
-      "data_riferimento_file": "2026-10-14"
+      "record_indicizzati": 2082,
+      "codici_medicinale": 1400,
+      "data_riferimento_file": "2026-11-06"
     },
     "nota": "La C(nn) in elenco storico non certifica la classificazione attuale",
     "metodo_scoperta": "pagina_aifa",
-    "ultima_scoperta_indice_utc": "2026-11-06T05:41:22+00:00"
+    "ultima_scoperta_indice_utc": "2026-11-07T05:29:53+00:00"
   },
   "fonti": {
     "aifa_cnn": {
-      "url": "https://www.aifa.gov.it/documents/20142/847358/lista_farmaci_valutati_inserimento_classe_Cnn_14.10.2026.csv",
-      "bytes": 37610821,
-      "sha256": "4c8d85f3b9e30c559cb3da53ad7a3ffc8d4cde28f867ca13d9c5bae894462589"
+      "url": "https://www.aifa.gov.it/documents/20142/847358/lista_farmaci_valutati_inserimento_classe_Cnn_06.11.2026.csv",
+      "bytes": 37893621,
+      "sha256": "f3b8e00580a1682a489f1aee228537cc505a58e9190692c386f763a3d2b3a4a7"
     }
   },
   "nota": "Controllo della fonte completato, non certificazione di stato regolatorio corrente"
