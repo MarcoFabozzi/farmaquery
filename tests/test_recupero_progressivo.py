@@ -227,6 +227,14 @@ class ProgressiveRetrievalTests(unittest.TestCase):
             self.assertFalse(partial, "Troppe note candidate per il budget SQL")
             self.assertTrue(all("nota_id" in row for row in after))
             print("Snapshot 20261102: note candidate dopo fallback:", len(after))
+            reference_path = (Path(__file__).resolve().parents[1] /
+                "tesi/riferimento_neuromuscolari_federico_ii_2026-11-03.json")
+            gold = json.loads(reference_path.read_text(encoding="utf-8"))
+            ids = {str(row["nota_id"]) for row in after}
+            missing = [i["medicinale"] for i in gold["casi_positivi"]
+                       if i["sha256_pdf"] not in ids]
+            print("Riferimento provvisorio, mancanti dal fallback 132:",
+                  ", ".join(missing) if missing else "nessuno")
         finally:
             real_db.close()
 
