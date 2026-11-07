@@ -733,7 +733,7 @@ def automatic_tag(db, question, model):
     plan_center = None
     plan_reason = "non_necessario"
     plan_llm_calls = 0
-    if not fallback_used and (not expansion or not records):
+    if not fallback_used and not records:
         anchors = _in_phase(
             "individuazione ancore documentali piano TAG automatico",
             document_center_anchors, sql_initial, question
