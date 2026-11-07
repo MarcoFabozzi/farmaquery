@@ -12,7 +12,7 @@ import re
 
 MIN_DOCS_FOR_REFINEMENT = 19
 MAX_REFINEMENT_DOCS = 220
-MAX_REFINEMENT_TEXT_CHARS = 110000
+MAX_REFINEMENT_TEXT_CHARS = 155000
 PER_NOTE_EXCERPT_CHARS = 600
 
 REFINEMENT_PROMPT = (
@@ -45,7 +45,7 @@ def _evidence_excerpt(raw, max_chars=PER_NOTE_EXCERPT_CHARS):
                 text[-(max_chars - max_chars // 2 - 7):])
     prefix = pieces[0][:120]
     pages = pieces[1:]
-    per_page = max(110, (max_chars - len(prefix) - 15) // len(pages))
+    per_page = max(35, (max_chars - len(prefix) - 15) // len(pages))
     snippets = [prefix]
     for p in pages:
         if len(p) <= per_page:
