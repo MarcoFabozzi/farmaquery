@@ -13,7 +13,7 @@ import pandas as pd  # Importa NumPy prima dei mock di sys.modules.
 from tesi import tag_automatico as auto
 from tesi.raffinamento_documentale import (
     REFINEMENT_PROMPT, refinement_payload, parse_refinement_result,
-    _evidence_excerpt
+    refinement_batches, REFINEMENT_BATCH_SIZE, _evidence_excerpt
 )
 
 
@@ -59,7 +59,11 @@ class DocumentRefinementTests(unittest.TestCase):
             if system == auto.SQL_PROMPT:
                 return sql,{"token_input":2,"token_output":2,"costo_usd":0}
             if system == REFINEMENT_PROMPT:
-                return json.dumps({"indici":selected,"incerto":False}),{
+                offset=payload["indice_globale_inizio"]
+                size=len(payload["documenti"])
+                local=[item-offset for item in selected
+                       if offset<=item<offset+size]
+                return json.dumps({"indici":local,"incerto":False}),{
                     "token_input":3,"token_output":3,"costo_usd":0}
             return "Risposta documentale verificabile.",{
                 "token_input":5,"token_output":5,"costo_usd":0}
@@ -82,14 +86,20 @@ class DocumentRefinementTests(unittest.TestCase):
         res, calls=self._run(sql,[3,17])
         self.assertEqual(res["stato"],"RISULTATI_PARZIALI")
         self.assertEqual(res["tag_auto_revision"],
-                         "2026-11-07-r12-raffinamento-documentale")
+                         "2026-11-07-r13-raffinamento-in-lotti")
         self.assertTrue(res["raffinamento_documentale_usato"])
         self.assertEqual(res["documenti_candidati_raffinamento"],25)
         self.assertEqual(res["documenti_selezionati_raffinamento"],2)
         self.assertEqual(res["note_nel_contesto"],2)
         self.assertEqual(res["note_nell_indice"],2)
-        self.assertEqual(len(calls),3)
+        self.assertEqual(len(calls),4)  # SQL + 2 lotti + sintesi
         self.assertEqual(calls[1][0],REFINEMENT_PROMPT)
+        self.assertEqual(calls[2][0],REFINEMENT_PROMPT)
+        self.assertEqual(calls[1][1]["indice_globale_inizio"],0)
+        self.assertEqual(calls[2][1]["indice_globale_inizio"],20)
+        self.assertEqual(res["lotti_raffinamento"],2)
+        self.assertEqual(res["lotti_raffinamento_completati"],2)
+        self.assertEqual(res["lotti_raffinamento_non_validi"],0)
         self.assertEqual(len(calls[-1][1]["evidenze"]),2)
         docs={d["nota_id"] for d in calls[-1][1]["indice_documentale"]}
         self.assertEqual(len(docs),2)
@@ -145,6 +155,29 @@ class DocumentRefinementTests(unittest.TestCase):
         self.assertNotIn("neuromuscolar",
                          json.dumps(payload).casefold())
 
+    def test_23_documenti_generano_due_lotti_senza_omissioni(self):
+        docs=[{"chiave":f"NOTA:{i}","nome_file":f"{i}.pdf",
+               "testo":"[pagina 1] indicazione [pagina 2] centro"}
+              for i in range(23)]
+        batches=refinement_batches(docs)
+        self.assertEqual([(offset,len(part)) for offset,part in batches],
+                         [(0,20),(20,3)])
+        self.assertEqual([item["chiave"] for _,part in batches for item in part],
+                         [item["chiave"] for item in docs])
+        with self.assertRaises(ValueError):
+            refinement_batches(docs,21)
+
+    def test_lotti_molteplici_non_usano_i_medici_come_etichette_fisse(self):
+        doc={"chiave":"NOTA:aaa","nome_file":"prova.pdf",
+             "testo":"[pagina 1] Sindrome rara in trattamento "
+                     "[pagina 2] Centro prescrittore ospedaliero"}
+        payload,reason=refinement_payload([doc],
+            "Quali medicinali per questa condizione?",1,20)
+        self.assertEqual(reason,"ok")
+        self.assertEqual(payload["indice_globale_inizio"],20)
+        self.assertIn("[pagina 2]",payload["documenti"][0]["passaggi"])
+        self.assertNotIn("neuromuscolar",json.dumps(payload).casefold())
+
     def test_snapshot_161_documenti_puo_essere_sottoposto_a_raffinamento(self):
         root=Path(__file__).resolve().parents[1]
         source=root/"risultati/tesi_statico_20261102.sqlite.gz"
@@ -164,10 +197,19 @@ class DocumentRefinementTests(unittest.TestCase):
             # corretto registrarlo, non dichiararle integralmente lette.
             self.assertTrue(partial)
             self.assertEqual(len(docs),161)
-            payload,reason=refinement_payload(
-                docs,"Quali patologie presso la struttura indicata?",55)
-            self.assertIsNotNone(payload,reason)
-            self.assertEqual(len(payload["documenti"]),161)
+            batches=refinement_batches(docs)
+            self.assertEqual(len(batches),9)
+            self.assertEqual([len(chunk) for _,chunk in batches],
+                             [20]*8+[1])
+            self.assertEqual([offset for offset,_ in batches],
+                             [0,20,40,60,80,100,120,140,160])
+            self.assertEqual(sum(len(chunk) for _,chunk in batches),161)
+            for offset,chunk in batches:
+                payload,reason=refinement_payload(
+                    chunk,"Quali patologie presso la struttura indicata?",
+                    len(chunk),offset)
+                self.assertIsNotNone(payload,reason)
+                self.assertEqual(len(payload["documenti"]),len(chunk))
         finally:
             db.close()
 
