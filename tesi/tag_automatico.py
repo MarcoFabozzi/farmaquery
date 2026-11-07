@@ -11,6 +11,10 @@ import re
 import time
 
 from tesi.contatore_llm import instrument_lotus, measured_engine
+from tesi.piano_documentale import (
+    PLAN_PROMPT, document_center_anchors, validated_document_plan,
+    sql_from_document_plan,
+)
 from tesi.tag_budget import sem_filter_controlled, expand_selected, preserve_category_recall
 from tesi.raffinamento_documentale import (
     MIN_DOCS_FOR_REFINEMENT, REFINEMENT_PROMPT,
@@ -33,7 +37,7 @@ MAX_NOTE_PAGES = 1200
 MAX_LOTUS_GROUPS = 12
 MAX_ANSWER_DOCUMENTS = 55
 MAX_ANSWER_CHARS = 44000
-TAG_AUTO_REVISION = "2026-11-07-r16-centro-like-diretto"
+TAG_AUTO_REVISION = "2026-11-07-r17-piano-documentale-strutturato"
 
 SQL_PROMPT = (
     "Genera UNA sola query SQLite SELECT che recuperi candidati da far "
@@ -720,11 +724,73 @@ def automatic_tag(db, question, model):
                 fallback_used = True
             else:
                 fallback_reason = "fallback_senza_risultati"
+    # Rete di sicurezza architetturale quando la SQL inventa filtri e le
+    # regole AST non riescono a riconoscere un recupero documentale valido.
+    # L'LLM formula solo un PIANO tipizzato; la SELECT e' costruita in Python.
+    # In una domanda con altri vincoli oggettivi (anno, protocollo, farmaco
+    # specifico, stato esplicitamente richiesto) il piano viene rifiutato.
+    plan_used = False
+    plan_center = None
+    plan_reason = "non_necessario"
+    plan_llm_calls = 0
+    if not fallback_used and not expansion:
+        anchors = _in_phase(
+            "individuazione ancore documentali piano TAG automatico",
+            document_center_anchors, sql_initial, question
+        )
+        if anchors:
+            plan_text, plan_usage = _in_phase(
+                "pianificazione strutturata recupero TAG automatico",
+                ask, model, PLAN_PROMPT,
+                {"domanda": question, "centri_candidati_sql": anchors,
+                 "sql_generato": sql_initial}
+            )
+            generation_usage = _accumulate(generation_usage, plan_usage)
+            plan_llm_calls = 1
+            plan, plan_reason = _in_phase(
+                "validazione piano documentale TAG automatico",
+                validated_document_plan, plan_text, anchors, question
+            )
+            if plan:
+                plan_center = plan["centro"]
+                document_sql = _in_phase(
+                    "compilazione SQL piano documentale TAG automatico",
+                    sql_from_document_plan, plan
+                )
+                document_sql = _in_phase(
+                    "validazione SELECT piano documentale TAG automatico",
+                    validate_sql, document_sql
+                )
+                # Solo due SELECT in totale: quella dell'LLM e la forma
+                # verificata su note/pagine. Non modifica lo snapshot.
+                sql_attempts = 2
+                plan_rows, plan_partial = _in_phase(
+                    "esecuzione piano documentale TAG automatico",
+                    _run_generated_select, db, document_sql
+                )
+                old_ids = {str(row["nota_id"]) for row in records
+                           if row.get("nota_id") is not None}
+                new_ids = {str(row["nota_id"]) for row in plan_rows
+                           if row.get("nota_id") is not None}
+                if plan_rows and (not records or old_ids <= new_ids):
+                    records, sql_partial = plan_rows, plan_partial
+                    sql, fallback_sql = document_sql, document_sql
+                    fallback_reason = "piano_strutturato_centro_e_categoria"
+                    fallback_used = True
+                    plan_used = True
+                else:
+                    plan_reason = ("nessun_documento_nel_piano"
+                                   if not plan_rows else
+                                   "piano_non_contiene_candidati_originali")
     base = {"sql":sql, "sql_originale_llm":sql_originale_llm,
             "sql_primo_tentativo":sql_initial,
             "sql_fallback":fallback_sql,
             "recupero_progressivo_usato":fallback_used,
             "motivo_recupero_progressivo":fallback_reason,
+            "piano_documentale_usato":plan_used,
+            "piano_documentale_centro":plan_center,
+            "piano_documentale_esito":plan_reason,
+            "chiamate_piano_documentale":plan_llm_calls,
             "righe_sql_primo_tentativo":initial_rows,
             "sql_normalizzato_nota_id":note_id_changed,
             "sql_normalizzato_nome":sql_with_name != sql_originale_llm,
