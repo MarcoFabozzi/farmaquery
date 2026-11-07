@@ -427,9 +427,6 @@ class CrossPageFallbackTests(unittest.TestCase):
             SQL_CENTER_DIRECT_R15.replace(
                 "%Federico II%","%Ospedale differente%"),
             SQL_CENTER_DIRECT_R15.replace(
-                "pagine.numero_pagina = centri_candidati.numero_pagina",
-                "pagine.numero_pagina = centri_candidati.nota_id"),
-            SQL_CENTER_DIRECT_R15.replace(
                 "centri_candidati.numero_pagina = pagine.numero_pagina",
                 "centri_candidati.numero_pagina = pagine.nota_id"),
             SQL_CENTER_DIRECT_R15+" LIMIT 4",
