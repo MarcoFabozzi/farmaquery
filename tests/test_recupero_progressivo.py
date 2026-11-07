@@ -1,5 +1,6 @@
 """Test offline: fallback zero righe, nessun lessico clinico nel codice."""
 import sqlite3
+import pandas as pd  # Import prima di patch.dict per evitare reimport numpy.
 import gzip
 from pathlib import Path
 import sys
