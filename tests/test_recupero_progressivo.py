@@ -228,6 +228,35 @@ class ProgressiveRetrievalTests(unittest.TestCase):
         finally:
             real_db.close()
 
+    def test_centri_candidati_nello_snapshot_reale(self):
+        """Verifica riconoscimento PDF sullo snapshot congelato senza LLM."""
+        snapshot = (Path(__file__).resolve().parents[1] /
+                    "risultati/tesi_statico_20261102.sqlite.gz")
+        if not snapshot.is_file():
+            self.skipTest("Snapshot sperimentale non disponibile")
+        db = sqlite3.connect(":memory:")
+        try:
+            db.deserialize(gzip.decompress(snapshot.read_bytes()))
+            db.row_factory = sqlite3.Row
+            db.execute("PRAGMA query_only=ON")
+            normalized, fixed = normalize_document_note_id(
+                SQL_CENTRI_CANDIDATI)
+            self.assertTrue(fixed)
+            rows, partial = auto._run_generated_select(
+                db, auto.validate_sql(normalized))
+            self.assertFalse(partial)
+            self.assertGreater(len(rows), 0)
+            self.assertTrue(all("nota_id" in row for row in rows))
+            docs, truncated = auto._note_candidates(db, rows)
+            self.assertFalse(truncated)
+            self.assertGreater(len(docs), 0)
+            self.assertTrue(all(doc["tipo"] == "REGIONE" for doc in docs))
+            self.assertTrue(all(doc["fonti"] for doc in docs))
+            print("Snapshot 20261102: righe centri candidati:",
+                  len(rows), "PDF distinti:", len(docs))
+        finally:
+            db.close()
+
     def test_integrazione_con_audit_e_numero_chiamate_immutato(self):
         calls = []
         def mock_ask(model, system, payload, **kwargs):
