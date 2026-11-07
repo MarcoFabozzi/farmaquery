@@ -1,8 +1,8 @@
 """Raffinamento documentale per TAG automatico: selezione su prove, non liste.
 
-Quando un sem_filter LOTUS per gruppi conserva molti documenti eterogenei,
-una sola chiamata LLM aggiuntiva individua gli indici dei singoli documenti
-candidati. I PDF restano le uniche fonti: nessuna patologia, farmaco o
+Quando un sem_filter LOTUS per gruppi conserva documenti eterogenei,
+il raffinamento opera in piccoli lotti indipendenti, ciascuno con un limite
+esplicito di contesto, per selezionare gli indici di ogni singolo documento. I PDF restano le uniche fonti: nessuna patologia, farmaco o
 struttura specifica è codificata nella selezione.
 """
 from __future__ import annotations
@@ -11,9 +11,11 @@ import json
 import re
 
 MIN_DOCS_FOR_REFINEMENT = 19
-MAX_REFINEMENT_DOCS = 220
-MAX_REFINEMENT_TEXT_CHARS = 155000
-PER_NOTE_EXCERPT_CHARS = 600
+MAX_REFINEMENT_DOCS = 240
+REFINEMENT_BATCH_SIZE = 20
+MAX_REFINEMENT_BATCHES = 12
+MAX_REFINEMENT_TEXT_CHARS = 48000
+PER_NOTE_EXCERPT_CHARS = 1450
 
 REFINEMENT_PROMPT = (
     "Sei un classificatore di PERTINENZA di NOTE REGIONALI, non il generatore "
@@ -27,9 +29,14 @@ REFINEMENT_PROMPT = (
     "dei centri e delle pagine spetta alla sintesi finale. "
     "Riconosci semanticamente le patologie anche quando sono chiamate "
     "con nomi specifici diversi dal termine generale della domanda. "
+    "Questa e' una classificazione ad alto richiamo: non scartare una nota "
+    "solo perche' una pagina descrive la patologia e un'altra descrive "
+    "il centro. Quando i passaggi sono abbreviati, segnala incerto=true "
+    "e includi il documento se la pertinenza e' plausibile. "
     "Non usare elenchi precostituiti di patologie o inferire medicine nuove. "
     "Privilegia il richiamo: in caso di dubbio pertinente, includi "
-    "il documento e imposta incerto=true. Non inserire indici estranei; "
+    "il documento e imposta incerto=true. Valuta ogni documento del lotto "
+    "indipendentemente dagli altri. Non inserire indici estranei; "
     "non superare il massimo esplicitato. Non inventare citazioni o pagine."
 )
 
@@ -51,29 +58,38 @@ def _evidence_excerpt(raw, max_chars=PER_NOTE_EXCERPT_CHARS):
         if len(p) <= per_page:
             snippets.append(p)
             continue
-        head = p[:min(95, per_page // 4)]
-        # "Indicazione", "centro" e "prescrizione" sono intestazioni generali
-        # delle note, non nomi di farmaci/patologie. Preleva i dintorni dei
-        # punti testuali, senza decidere in Python la loro rilevanza clinica.
+        # Campione della pagina: testa, coda e due punti vicino a
+        # intestazioni generiche (la prima e l'ultima). Non contiene
+        # elenchi di patologie o nomi di strutture preimpostati.
+        head_chars = max(8, min(75, per_page//5))
+        tail_chars = max(8, min(95, per_page//4))
+        head, tail = p[:head_chars], p[-tail_chars:]
+        budget = max(0, per_page - len(head)-len(tail)-10)
         matches = list(re.finditer(
             r"indicazion\w*|prescri\w*|centri\b|centro\b|abilitat\w*|"
             r"trattament\w*|presidi\b", p, re.I
         ))
-        room = max(0, per_page - len(head) - 12)
-        candidates = []
-        for m in matches[:2]:
-            snippet = p[max(0, m.start()-45):m.start()+max(55, room//2)]
-            if snippet not in candidates:
-                candidates.append(snippet)
-        excerpt = " […] ".join(candidates)
-        if not excerpt:
-            excerpt = p[-room:]
-        snippets.append((head + " […] " + excerpt)[:per_page])
+        locations = []
+        if matches:
+            locations = [matches[0]]
+            if matches[-1].start() != matches[0].start():
+                locations.append(matches[-1])
+        parts = []
+        for m in locations:
+            length = max(0, budget//len(locations)-3)
+            if not length:
+                break
+            begin = max(0, m.start()-25)
+            parts.append(p[begin:begin+length])
+        middle = " […] ".join(parts)
+        piece = (head + " […] " + middle + " […] " + tail
+                 if middle else head + " […] " + tail)
+        snippets.append(piece[:per_page])
     return ("\n".join(snippets))[:max_chars]
 
 
-def refinement_payload(documents, question, cap):
-    """Prepara l'indice stabile delle note per un unico confronto semantico."""
+def refinement_payload(documents, question, cap, offset=0):
+    """Indice dei documenti di UN lotto: indici locali da 0 a N-1."""
     if not 1 <= cap <= 220:
         raise ValueError("Cap raffinamento non valido")
     if len(documents) > MAX_REFINEMENT_DOCS:
@@ -90,7 +106,10 @@ def refinement_payload(documents, question, cap):
                 document.get("testo") or document.get("testo_selezione")
             ),
         })
-    payload={"domanda":question,"massimo_documenti":cap,"documenti":rows}
+    payload={
+        "domanda":question, "indice_globale_inizio":offset,
+        "massimo_documenti":cap, "documenti":rows
+    }
     if len(json.dumps(payload,ensure_ascii=False)) > MAX_REFINEMENT_TEXT_CHARS:
         return None, "indice_documenti_troppo_grande"
     return payload, "ok"
@@ -119,3 +138,21 @@ def parse_refinement_result(answer, document_count, cap):
     if len(chosen) != len(set(chosen)):
         raise ValueError("Il raffinamento ha duplicato alcuni indici")
     return chosen, uncertain
+
+
+
+def refinement_batches(documents, batch_size=REFINEMENT_BATCH_SIZE):
+    """Lotti stabili, senza perdere note né attraversare i limiti SQL.
+
+    L'ordine di input viene preservato: gli indici nel JSON sono locali
+    e vanno ricondotti al pool originale tramite offset.
+    """
+    if not 1 <= batch_size <= REFINEMENT_BATCH_SIZE:
+        raise ValueError("Dimensione lotto non consentita")
+    if len(documents) > MAX_REFINEMENT_DOCS:
+        raise ValueError("Numero di documenti oltre il limite di sicurezza")
+    chunks = [(i, documents[i:i+batch_size])
+              for i in range(0,len(documents),batch_size)]
+    if len(chunks)>MAX_REFINEMENT_BATCHES:
+        raise ValueError("Numero di lotti oltre il limite di sicurezza")
+    return chunks

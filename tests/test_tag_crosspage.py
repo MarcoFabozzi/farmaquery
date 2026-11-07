@@ -17,6 +17,7 @@ from tesi import tag_automatico as auto
 from tesi.recupero_progressivo import (
     normalize_document_note_id,
     propose_empty_crosspage_category_fallback,
+    propose_partial_crosspage_center_expansion,
 )
 
 QUESTION = (
@@ -39,6 +40,17 @@ SQL = (
     "OR p.testo LIKE '%neuromuscolar%' COLLATE NOCASE)"
 )
 
+
+SQL_ONLY_CENTER = (
+    "SELECT DISTINCT n.farmaco_candidato AS nome, "
+    "n.indicazione_candidata AS indicazione, "
+    "n.id AS nota_id, p.numero_pagina AS numero_pagina "
+    "FROM note n JOIN pagine p ON n.id = p.nota_id "
+    "JOIN centri_candidati c "
+    "ON c.nota_id = p.nota_id AND c.numero_pagina = p.numero_pagina "
+    "WHERE (c.menzione LIKE '%Federico II%' COLLATE NOCASE "
+    "OR p.testo LIKE '%Federico II%' COLLATE NOCASE)"
+)
 
 class CrossPageFallbackTests(unittest.TestCase):
     def setUp(self):
@@ -127,6 +139,66 @@ class CrossPageFallbackTests(unittest.TestCase):
                 altered, QUESTION)
             self.assertIsNone(candidate, reason)
 
+    def test_centro_senza_filtro_clinico_ampliato_su_pagine_diverse(self):
+        proposed,reason=propose_partial_crosspage_center_expansion(
+            SQL_ONLY_CENTER,QUESTION)
+        self.assertEqual(reason,"recupero_centro_tra_pagine_documentali")
+        self.assertIn(" UNION ",proposed)
+        self.assertIn("LIKE '%Federico%'",proposed)
+        self.assertNotIn("neuromuscolar",proposed.casefold())
+        rows,partial=auto._run_generated_select(
+            self.db,auto.validate_sql(proposed))
+        self.assertFalse(partial)
+        self.assertEqual([r["nota_id"] for r in rows],["id-a"])
+
+    def test_non_amplia_query_con_vincoli_aggiuntivi(self):
+        for altered in (
+            SQL_ONLY_CENTER+" AND n.anno=2026",
+            SQL_ONLY_CENTER+" LIMIT 5",
+            SQL_ONLY_CENTER.replace(
+                "c.numero_pagina = p.numero_pagina",
+                "c.numero_pagina = p.nota_id"),
+            SQL_ONLY_CENTER.replace(
+                "centri_candidati c","nota_centro_documentato c"),
+            SQL_ONLY_CENTER.replace(
+                "%Federico II%","%Altro Centro%"),
+        ):
+            suggestion,reason=propose_partial_crosspage_center_expansion(
+                altered,QUESTION)
+            self.assertIsNone(suggestion,reason)
+
+    def test_snapshot_recupero_centro_senza_join_stessa_pagina(self):
+        root=Path(__file__).resolve().parents[1]
+        path=root/"risultati/tesi_statico_20261102.sqlite.gz"
+        gold_path=root/"tesi/riferimento_neuromuscolari_federico_ii_2026-11-03.json"
+        if not path.is_file() or not gold_path.is_file():
+            self.skipTest("Snapshot o riferimento non disponibile")
+        db=sqlite3.connect(":memory:")
+        try:
+            db.deserialize(gzip.decompress(path.read_bytes()))
+            db.row_factory=sqlite3.Row
+            db.execute("PRAGMA query_only=ON")
+            original,old_partial=auto._run_generated_select(
+                db,auto.validate_sql(SQL_ONLY_CENTER))
+            self.assertFalse(old_partial)
+            proposed,why=propose_partial_crosspage_center_expansion(
+                SQL_ONLY_CENTER,QUESTION)
+            self.assertIsNotNone(proposed,why)
+            expanded,partial=auto._run_generated_select(
+                db,auto.validate_sql(proposed))
+            self.assertFalse(partial)
+            old_ids={r["nota_id"] for r in original}
+            new_ids={r["nota_id"] for r in expanded}
+            self.assertTrue(old_ids<=new_ids)
+            self.assertGreater(len(new_ids),len(old_ids))
+            gold=json.loads(gold_path.read_text(encoding="utf-8"))
+            target={d["sha256_pdf"] for d in gold["casi_positivi"]}
+            self.assertTrue(target<=new_ids)
+            print("Centro cross-page: prima",len(old_ids),
+                  "dopo",len(new_ids),"fonti gold",len(target))
+        finally:
+            db.close()
+
     def test_pipeline_tag_r11_legge_pagine_pdf(self):
         calls = []
         def fake_ask(model, system, payload, **kwargs):
@@ -155,7 +227,7 @@ class CrossPageFallbackTests(unittest.TestCase):
         self.assertTrue(any("#p2" in ref for ref in result["fonti"]))
         self.assertEqual(len(calls),2)
         self.assertEqual(
-            result["tag_auto_revision"],"2026-11-07-r12-raffinamento-documentale"
+            result["tag_auto_revision"],"2026-11-07-r13-raffinamento-in-lotti"
         )
 
     def test_snapshot_statico_documenti_gold_nei_candidati(self):
