@@ -349,6 +349,8 @@ def assistant_dialog():
                             "/"+str(item.get("lotti_raffinamento","?"))+
                             " · lotti non validi: "+
                             str(item.get("lotti_raffinamento_non_validi",0))+
+                            " · chiamate dirette del raffinamento: "+
+                            str(item.get("chiamate_dirette_raffinamento","?"))+
                             ". Pertinenza e completezza non certificate.")
                     if method=="TAG automatico" and item.get("recupero_progressivo_usato"):
                         st.caption(
@@ -441,6 +443,8 @@ def assistant_dialog():
                             "lotti_raffinamento_completati"),
                         "lotti_raffinamento_non_validi":result.get(
                             "lotti_raffinamento_non_validi"),
+                        "chiamate_dirette_raffinamento":result.get(
+                            "chiamate_dirette_raffinamento"),
                         "recupero_progressivo_usato":result.get("recupero_progressivo_usato"),
                         "sql_tentativi":result.get("sql_tentativi"),
                         "secondi":round(time.monotonic()-start,2),
