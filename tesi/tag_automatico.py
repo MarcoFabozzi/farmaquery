@@ -11,7 +11,11 @@ import re
 import time
 
 from tesi.contatore_llm import instrument_lotus, measured_engine
-from tesi.tag_budget import sem_filter_controlled, expand_selected
+from tesi.tag_budget import sem_filter_controlled, expand_selected, preserve_category_recall
+from tesi.raffinamento_documentale import (
+    MIN_DOCS_FOR_REFINEMENT, REFINEMENT_PROMPT,
+    refinement_payload, parse_refinement_result,
+)
 from tesi.recupero_progressivo import (
     normalize_document_note_id, propose_empty_category_fallback,
     propose_partial_center_expansion,
@@ -27,7 +31,7 @@ MAX_NOTE_PAGES = 1200
 MAX_LOTUS_GROUPS = 12
 MAX_ANSWER_DOCUMENTS = 55
 MAX_ANSWER_CHARS = 44000
-TAG_AUTO_REVISION = "2026-11-07-r11-recupero-crosspage"
+TAG_AUTO_REVISION = "2026-11-07-r12-raffinamento-documentale"
 
 SQL_PROMPT = (
     "Genera UNA sola query SQLite SELECT che recuperi candidati da far "
@@ -700,16 +704,71 @@ def automatic_tag(db, question, model):
                              testo="{testo}",domanda=json.dumps(question,ensure_ascii=False)))
     selected_groups = filtered[["chiave"]].to_dict("records")
     selected = expand_selected(selected_groups, members)
+    refinement_used = False
+    refinement_uncertain = False
+    refinement_skipped_reason = ""
+    refinement_usage = None
+    refinement_pool_count = 0
+    # LOTUS filtra gruppi eterogenei, NON singoli documenti. Un gruppo
+    # scartato non dimostra che ogni nota interna sia irrilevante; nel
+    # recupero ampio conserviamo il richiamo di tutti i candidati SQLite.
+    if (len(candidates) >= MIN_DOCS_FOR_REFINEMENT
+            and all(item.get("nota_id") is not None for item in candidates)):
+        pool = preserve_category_recall(candidates, selected)
+        refinement_pool_count = len(pool)
+        payload, refinement_skipped_reason = _in_phase(
+            "preparazione raffinamento documentale TAG automatico",
+            refinement_payload, pool, question, MAX_ANSWER_DOCUMENTS
+        )
+        if payload is not None:
+            response, refinement_usage = _in_phase(
+                "raffinamento per nota TAG automatico",
+                ask, model, REFINEMENT_PROMPT, payload,
+                timeout=75, max_tokens=1900
+            )
+            try:
+                indices, refinement_uncertain = parse_refinement_result(
+                    response, len(pool), MAX_ANSWER_DOCUMENTS
+                )
+            except ValueError:
+                return {
+                    **base,
+                    "risposta":"Il filtro documentale non ha restituito una "
+                    "selezione verificabile. Non e' possibile certificare "
+                    "la completezza dell'elenco.",
+                    "fonti":[], "stato":"RAFFINAMENTO_NON_VALIDO",
+                    "raffinamento_documentale_usato":True,
+                    "documenti_candidati_raffinamento":len(pool),
+                    "righe_recuperate":len(candidates),
+                    "righe_sem_filter":len(planned),
+                    "righe_selezionate_lotus":len(selected_groups),
+                    **_accumulate(generation_usage, refinement_usage)
+                }
+            selected = [pool[i] for i in indices]
+            refinement_used = True
+            refinement_skipped_reason = "nessuno"
+    prior_usage = (_accumulate(generation_usage,refinement_usage)
+                   if refinement_usage is not None else generation_usage)
     if not selected:
-        return {**base, "risposta":"LOTUS non ha selezionato evidenze fra "
-                "i candidati. Questo non dimostra che l'informazione sia assente.",
-                "fonti":[], "stato":"NESSUNA_SELEZIONE_SEMANTICA",
-                "righe_recuperate":len(candidates), "righe_sem_filter":len(planned),
-                "righe_selezionate_lotus":0, **generation_usage}
+        return {
+            **base,
+            "risposta":"Non sono state individuate evidenze documentali "
+            "sufficientemente pertinenti nel materiale recuperato. "
+            "Questo non dimostra l'assenza delle informazioni.",
+            "fonti":[], "stato":"NESSUNA_SELEZIONE_SEMANTICA",
+            "raffinamento_documentale_usato":refinement_used,
+            "documenti_candidati_raffinamento":refinement_pool_count,
+            "righe_recuperate":len(candidates),
+            "righe_sem_filter":len(planned),
+            "righe_selezionate_lotus":len(selected_groups),
+            **prior_usage
+        }
 
     chosen, truncated_answer = _balanced_answer_evidence(selected)
     index_notes = _document_index(selected[:MAX_ANSWER_DOCUMENTS])
-    partial = sql_partial or page_partial or truncated_answer
+    partial = (sql_partial or page_partial or truncated_answer
+               or refinement_uncertain or bool(refinement_skipped_reason
+                   and refinement_skipped_reason not in ("nessuno", "")))
     answer_prompt = (ANSWER_PROMPT if any(
         item.get("nota_id") is not None for item in candidates
     ) else TABULAR_ANSWER_PROMPT)
@@ -734,9 +793,16 @@ def automatic_tag(db, question, model):
             "risultato_parziale":partial,
             "righe_recuperate":len(candidates),"righe_sem_filter":len(planned),
             "righe_selezionate_lotus":len(selected_groups),
-            "modalita_selezione":"gruppi neutri",
-            "chiamate_llm_stimate":len(planned)+2,
-            **_accumulate(generation_usage,answer_usage)}
+            "modalita_selezione":"gruppi neutri + singole note"
+                if refinement_used else "gruppi neutri",
+            "raffinamento_documentale_usato":refinement_used,
+            "raffinamento_documentale_incerto":refinement_uncertain,
+            "raffinamento_documentale_non_eseguito":refinement_skipped_reason,
+            "documenti_candidati_raffinamento":refinement_pool_count,
+            "documenti_selezionati_raffinamento":len(selected)
+                if refinement_used else None,
+            "chiamate_llm_stimate":len(planned)+2+(1 if refinement_used else 0),
+            **_accumulate(prior_usage,answer_usage)}
 
 
 # La misurazione delle chiamate usa lo stesso contatore degli altri motori.
