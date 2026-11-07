@@ -14,6 +14,7 @@ from tesi.contatore_llm import instrument_lotus, measured_engine
 from tesi.tag_budget import sem_filter_controlled, expand_selected
 from tesi.recupero_progressivo import (
     normalize_document_note_id, propose_empty_category_fallback,
+    propose_partial_center_expansion,
 )
 from tesi.pilota_tag_vs_sql import (
     _accumulate, _in_phase, _source_previews, _sql_schema,
@@ -25,7 +26,7 @@ MAX_NOTE_PAGES = 1200
 MAX_LOTUS_GROUPS = 12
 MAX_ANSWER_DOCUMENTS = 55
 MAX_ANSWER_CHARS = 44000
-TAG_AUTO_REVISION = "2026-11-07-r9-riconoscimento-note"
+TAG_AUTO_REVISION = "2026-11-07-r10-recupero-centri-progressivo"
 
 SQL_PROMPT = (
     "Genera UNA sola query SQLite SELECT che recuperi candidati da far "
@@ -43,6 +44,9 @@ SQL_PROMPT = (
     "già revisionate. NON usare INNER JOIN verso queste tabelle "
     "come requisito per trovare il documento, perché una nota "
     "senza relazione revisionata non deve scomparire. "
+    "Anche centri_candidati contiene MENZIONI e puo' essere incompleta: "
+    "non usarla come unica condizione per una ricerca DOCUMENTALE "
+    "esaustiva su una categoria, e non confondere menzione e abilitazione. "
     "Se ti servono valori aggiuntivi da tabelle curate e non vi "
     "applichi filtri obbligatori, usa LEFT JOIN; in assenza di "
     "relazione la nota resta candidata e il PDF fornisce l'evidenza. "
@@ -593,7 +597,36 @@ def automatic_tag(db, question, model):
     sql, fallback_sql, fallback_reason = sql_initial, None, "non_necessario"
     sql_attempts = 1
     fallback_used = False
-    if not records:
+    # Le tabelle di centri candidati non costituiscono un indice esaustivo.
+    # Se la SELECT li usa come unica fonte per elencare note relative a un
+    # centro, preserviamo i risultati originali e ampliamo con il TESTO dei
+    # PDF, senza liste manuali di malattie e senza ulteriori chiamate LLM.
+    expansion, expansion_reason = _in_phase(
+        "analisi copertura centri candidati TAG automatico",
+        propose_partial_center_expansion, sql_initial, question
+    )
+    if expansion:
+        fallback_sql = _in_phase(
+            "validazione SQL centri ampliati TAG automatico",
+            validate_sql, expansion
+        )
+        sql_attempts = 2
+        expanded_rows, expanded_partial = _in_phase(
+            "esecuzione recupero progressivo centri TAG automatico",
+            _run_generated_select, db, fallback_sql
+        )
+        old_ids = {str(row["nota_id"]) for row in records
+                   if row.get("nota_id") is not None}
+        new_ids = {str(row["nota_id"]) for row in expanded_rows
+                   if row.get("nota_id") is not None}
+        if new_ids - old_ids:
+            records, sql_partial = expanded_rows, expanded_partial
+            sql = fallback_sql
+            fallback_reason = expansion_reason
+            fallback_used = True
+        else:
+            fallback_reason = "nessun_nuovo_documento_da_centri"
+    if not records and not expansion:
         suggestion, fallback_reason = _in_phase(
             "analisi recupero SQL vuoto TAG automatico",
             propose_empty_category_fallback, sql_initial, question
