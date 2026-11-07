@@ -155,7 +155,7 @@ class CrossPageFallbackTests(unittest.TestCase):
         self.assertTrue(any("#p2" in ref for ref in result["fonti"]))
         self.assertEqual(len(calls),2)
         self.assertEqual(
-            result["tag_auto_revision"],"2026-11-07-r11-recupero-crosspage"
+            result["tag_auto_revision"],"2026-11-07-r12-raffinamento-documentale"
         )
 
     def test_snapshot_statico_documenti_gold_nei_candidati(self):
