@@ -742,8 +742,7 @@ def automatic_tag(db, question, model):
             plan_text, plan_usage = _in_phase(
                 "pianificazione strutturata recupero TAG automatico",
                 ask, model, PLAN_PROMPT,
-                {"domanda": question, "centri_candidati_sql": anchors,
-                 "sql_generato": sql_initial}
+                {"domanda": question, "centri_candidati_sql": anchors}
             )
             generation_usage = _accumulate(generation_usage, plan_usage)
             plan_llm_calls = 1
