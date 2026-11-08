@@ -15,6 +15,7 @@ from unittest.mock import patch
 import pandas as pd  # Evita re-import NumPy durante mock LOTUS.
 
 from tesi import tag_automatico as auto
+from tesi.recupero_due_fasi import DISCOVER_PROMPT, VERIFY_PROMPT
 from tesi.piano_documentale import (
     PLAN_PROMPT, document_center_anchors, validated_document_plan,
     sql_from_document_plan,
@@ -155,9 +156,19 @@ class StructuredPlanTests(unittest.TestCase):
                 return VALID_PLAN,{
                     "token_input":6,"token_output":2,"costo_usd":0
                 }
-            return "MED-A: nota a.pdf, pagina 2.",{
-                "token_input":5,"token_output":5,"costo_usd":0
-            }
+            if system==DISCOVER_PROMPT:
+                return '{"indici":[0],"incerto":false}',{
+                    "token_input":5,"token_output":5,"costo_usd":0
+                }
+            if system==VERIFY_PROMPT:
+                return json.dumps({"verificati":[{
+                    "documento_indice":0,"medicinale":"MED-A",
+                    "indicazione":"Malattia neurologica specifica",
+                    "pagina_indicazione":1,"pagina_centro":2
+                }],"incerto":False}),{
+                    "token_input":5,"token_output":5,"costo_usd":0
+                }
+            raise AssertionError("Chiamata inattesa")
         lotus=types.ModuleType("lotus")
         lotus.settings=types.SimpleNamespace(configure=lambda **_:None)
         models=types.ModuleType("lotus.models")
@@ -173,11 +184,15 @@ class StructuredPlanTests(unittest.TestCase):
         self.assertEqual(result["piano_documentale_centro"],"Federico II")
         self.assertEqual(result["chiamate_piano_documentale"],1)
         self.assertTrue(result["recupero_progressivo_usato"])
+        self.assertEqual(result["strategia_tag"],"due_fasi")
         self.assertEqual(result["righe_sql_primo_tentativo"],0)
-        self.assertEqual(result["sql_tentativi"],2)
+        self.assertEqual(result["sql_tentativi"],3)
+        self.assertEqual(result["documenti_fase1"],1)
+        self.assertEqual(result["documenti_fase2"],1)
+        self.assertEqual(result["coppie_documentate"],1)
         self.assertEqual(result["righe_sql"],1)
         self.assertEqual(result["note_nell_indice"],1)
-        self.assertEqual(len(calls),3)
+        self.assertEqual(len(calls),4)
         self.assertIn("note",result["sql"])
         self.assertEqual(result["tag_auto_revision"],
                          "2026-11-08-r18-recupero-due-fasi")
