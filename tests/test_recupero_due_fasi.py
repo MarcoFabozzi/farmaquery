@@ -756,6 +756,47 @@ class TwoStageTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             sql_second_stage([""])
 
+    def test_audit_gold_strutturato_holdout_20261108(self):
+        """Audit read-only sul DB congelato, branch temporaneo senza merge."""
+        root=Path(__file__).resolve().parents[1]
+        frozen=root/"risultati/tesi_statico_20261102.sqlite.gz"
+        db=sqlite3.connect(":memory:")
+        try:
+            db.deserialize(gzip.decompress(frozen.read_bytes()))
+            db.row_factory=sqlite3.Row
+            db.execute("PRAGMA query_only=ON")
+            print("=== GOLD-SQL-BLOCK ===")
+            for name in ("KAYFANDA","BESREMI","VOXZOGO"):
+                rows=db.execute(
+                    "SELECT ema_id,nome,principio_attivo,"
+                    "stato_ema,data_decisione_ue,indicazione_ema "
+                    "FROM ema_medicinali WHERE UPPER(nome)=? "
+                    "ORDER BY ema_id",(name,)
+                ).fetchall()
+                print("EMA",name,
+                      [dict(row) for row in rows])
+            for name in ("EMGALITY","PROCYSBI","HEMLIBRA"):
+                rows=db.execute(
+                    "SELECT aic,nome,principio_attivo,descrizione,"
+                    "classe_a_h_snapshot,classe_a_h_data "
+                    "FROM aifa_confezioni WHERE UPPER(nome)=? "
+                    "ORDER BY aic",(name,)
+                ).fetchall()
+                print("AIFA",name,"COUNT",len(rows),
+                      "ROWS",[dict(row) for row in rows])
+            for keyword in ("BIMZELX","EPIDYOLEX"):
+                rows=db.execute(
+                    "SELECT nome_file,percorso_zip,anno,protocollo_candidato "
+                    "FROM note WHERE UPPER(nome_file) LIKE ? "
+                    "ORDER BY anno,nome_file",("%"+keyword+"%",)
+                ).fetchall()
+                print("REGIONE",keyword,"COUNT",len(rows),
+                      "ROWS",[dict(row) for row in rows])
+            print("=== END-GOLD-SQL-BLOCK ===")
+        finally:
+            db.close()
+
+
 
 if __name__=="__main__":
     unittest.main()
