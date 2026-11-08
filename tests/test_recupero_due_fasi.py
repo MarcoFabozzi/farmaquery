@@ -84,6 +84,13 @@ SQL_R19_REAL = (
     "LIKE '%Federico II%'"
 )
 
+PLAN_WITH_FULL_CENTER=json.dumps({
+    "applicabile":True,
+    "centro":"AOU Federico II",
+    "criterio_semantico":"malattie neuromuscolari",
+    "vincoli_oggettivi_aggiuntivi":[],
+})
+
 PLAN=json.dumps({
     "applicabile":True,
     "centro":"Federico II",
@@ -193,7 +200,9 @@ class TwoStageTests(unittest.TestCase):
         executed=[]
         self.db.set_trace_callback(executed.append)
         try:
-            result,calls=self.run_pipeline(sql=SQL_UNKNOWN_TABLE)
+            result,calls=self.run_pipeline(
+                sql=SQL_UNKNOWN_TABLE,plan=PLAN_WITH_FULL_CENTER
+            )
         finally:
             self.db.set_trace_callback(None)
         self.assertEqual(result["tag_auto_revision"],
