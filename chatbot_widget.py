@@ -338,6 +338,26 @@ def assistant_dialog():
                             "Selezione TAG: "+str(item["modalita_selezione"])+
                             " · evidenze: "+str(item.get("righe_recuperate","?"))+
                             " · elementi LOTUS: "+str(item.get("righe_sem_filter","?")))
+                    if method=="TAG automatico" and item.get("strategia_tag")=="due_fasi":
+                        st.caption(
+                            "Metodo alternativo in due fasi · motivo: "+
+                            str(item.get("motivo_due_fasi","?"))+
+                            " · note prima fase: "+
+                            str(item.get("documenti_fase1","?"))+
+                            " · note seconda fase: "+
+                            str(item.get("documenti_fase2","?"))+
+                            " · coppie documentate: "+
+                            str(item.get("coppie_documentate","?"))+
+                            " · lotti prima fase: "+
+                            str(item.get("lotti_fase1_validi","?"))+"/"+
+                            str(item.get("lotti_fase1","?"))+".")
+                        with st.expander("SQL delle due fasi"):
+                            st.caption("Prima SELECT controllata (recupero documenti)")
+                            st.code(item.get("sql_fase1") or "Non eseguita",language="sql")
+                            st.caption("Seconda SELECT controllata (note selezionate)")
+                            st.code(item.get("sql_fase2") or "Non eseguita",language="sql")
+                    if method=="TAG automatico" and item.get("motivo_astensione"):
+                        st.caption("Astensione documentale: "+str(item["motivo_astensione"]))
                     if method=="TAG automatico" and item.get("raffinamento_documentale_usato"):
                         st.caption(
                             "Raffinamento documentale · candidati valutati: "+
@@ -439,6 +459,16 @@ def assistant_dialog():
                         "sql_normalizzato_join_documentali":result.get(
                             "sql_normalizzato_join_documentali"),
                         "tag_auto_revision":result.get("tag_auto_revision"),
+                        "strategia_tag":result.get("strategia_tag"),
+                        "motivo_due_fasi":result.get("motivo_due_fasi"),
+                        "sql_fase1":result.get("sql_fase1"),
+                        "sql_fase2":result.get("sql_fase2"),
+                        "documenti_fase1":result.get("documenti_fase1"),
+                        "documenti_fase2":result.get("documenti_fase2"),
+                        "coppie_documentate":result.get("coppie_documentate"),
+                        "lotti_fase1":result.get("lotti_fase1"),
+                        "lotti_fase1_validi":result.get("lotti_fase1_validi"),
+                        "motivo_astensione":result.get("motivo_astensione"),
                         "raffinamento_documentale_usato":result.get(
                             "raffinamento_documentale_usato"),
                         "raffinamento_documentale_incerto":result.get(
