@@ -1,5 +1,5 @@
 {
-  "generato_utc": "2026-11-07T08:04:20+00:00",
+  "generato_utc": "2026-11-08T08:05:53+00:00",
   "stato": "OK",
   "controlli_bloccanti": [],
   "avvertenze": [
@@ -52,7 +52,7 @@
     },
     "aifa_anagrafica": {
       "stato": "OK",
-      "ultima_acquisizione_utc": "2026-11-07T05:14:24+00:00"
+      "ultima_acquisizione_utc": "2026-11-08T05:15:36+00:00"
     },
     "aifa_ah": {
       "stato": "OK",
