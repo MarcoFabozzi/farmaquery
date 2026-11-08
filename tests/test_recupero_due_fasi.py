@@ -756,6 +756,25 @@ class TwoStageTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             sql_second_stage([""])
 
+    def test_validazione_gli_otto_gold_20261108(self):
+        from tesi.valida_gold import read, inspect
+        root=Path(__file__).resolve().parents[1]
+        dbfile=root/"risultati/tesi_statico_20261102.sqlite.gz"
+        goldfile=root/"tesi/HOLDOUT_FINALE_20_R24_GOLD_PARZIALE_20261108.csv"
+        connection=sqlite3.connect(":memory:")
+        try:
+            connection.deserialize(gzip.decompress(dbfile.read_bytes()))
+            connection.execute("PRAGMA query_only=ON")
+            report=inspect(read(goldfile),connection)
+            print("VERIFICA GOLD INTERMEDIO",json.dumps(report,ensure_ascii=False))
+            self.assertEqual(report["esito"],"OK")
+            self.assertEqual(report["totale"],20)
+            self.assertEqual(report["validati"],8)
+            self.assertEqual(report["da_verificare"],12)
+            self.assertEqual(report["scartati"],0)
+        finally:
+            connection.close()
+
 
 if __name__=="__main__":
     unittest.main()
