@@ -376,6 +376,19 @@ def assistant_dialog():
                             st.code(item.get("sql_fase1") or "Non eseguita",language="sql")
                             st.caption("Seconda SELECT controllata (note selezionate)")
                             st.code(item.get("sql_fase2") or "Non eseguita",language="sql")
+                    if method=="TAG automatico" and item.get("codice_errore_due_fasi"):
+                        st.caption(
+                            "Diagnostica interruzione TAG · causa: "+
+                            str(item.get("codice_errore_due_fasi"))+
+                            " · fase: "+
+                            str(item.get("fase_errore_due_fasi") or "sconosciuta")+
+                            " · tipo: "+
+                            str(item.get("tipo_errore_due_fasi") or "non disponibile")+
+                            " · lotto interrotto: "+
+                            str(item.get("lotto_verifica_interrotto") or "non applicabile")+
+                            ". Le informazioni già verificate non vengono inventate "
+                            "né presentate come elenco completo."
+                        )
                     if method=="TAG automatico" and item.get("lotti_verifica_finale"):
                         st.caption(
                             "Verifica finale distribuita · lotti completati: "+
@@ -546,6 +559,14 @@ def assistant_dialog():
                             "dettagli_rifiuto_verifica"),
                         "documenti_candidati_verifica":result.get(
                             "documenti_candidati_verifica"),
+                        "codice_errore_due_fasi":result.get(
+                            "codice_errore_due_fasi"),
+                        "fase_errore_due_fasi":result.get(
+                            "fase_errore_due_fasi"),
+                        "tipo_errore_due_fasi":result.get(
+                            "tipo_errore_due_fasi"),
+                        "lotto_verifica_interrotto":result.get(
+                            "lotto_verifica_interrotto"),
                         "lotti_verifica_finale":result.get(
                             "lotti_verifica_finale"),
                         "lotti_verifica_conclusi":result.get(
