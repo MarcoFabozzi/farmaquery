@@ -185,6 +185,24 @@ def verified_document_pairs(raw, documents, db, center):
             raise ValueError("La pagina non esiste nello snapshot")
         if anchor not in pages[p_center].casefold():
             raise ValueError("La pagina indicata non menziona la struttura")
+        # Controllo lessicale MINIMO della patologia sulla pagina citata.
+        # Non usa alcuna tassonomia clinica: impedisce semplicemente
+        # che la verifica inventi un'indicazione del tutto estranea.
+        generic={
+            "trattamento","terapia","medicinale","farmaco","pazienti",
+            "paziente","adulti","adulto","malattia","malattie",
+            "indicazione","terapeutica","terapeutico","sindrome",
+            "della","delle","degli","nella","nelle","del","con","per"
+        }
+        words=[
+            w.casefold() for w in re.findall(
+                r"[^\\W\\d_]{4,}",indication,flags=re.UNICODE
+            ) if w.casefold() not in generic
+        ]
+        if not words or not any(
+            w in pages[p_indication].casefold() for w in words
+        ):
+            raise ValueError("Indicazione non supportata dalla pagina citata")
         medicine=drug.strip()
         drug_lower=medicine.casefold()
         # Il nome deve figurare nel testo PDF o nel nome della nota.
