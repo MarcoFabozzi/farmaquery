@@ -369,6 +369,31 @@ def assistant_dialog():
                             st.code(item.get("sql_fase1") or "Non eseguita",language="sql")
                             st.caption("Seconda SELECT controllata (note selezionate)")
                             st.code(item.get("sql_fase2") or "Non eseguita",language="sql")
+                    if method=="TAG automatico" and item.get("asserzioni_verifica_proposte") is not None:
+                        st.caption(
+                            "Verifica delle associazioni · proposte: "+
+                            str(item["asserzioni_verifica_proposte"])+
+                            " · accettate: "+
+                            str(item.get("asserzioni_verifica_accettate",0))+
+                            " · respinte: "+
+                            str(item.get("asserzioni_verifica_respinte",0))+
+                            ". Ogni associazione è controllata separatamente."
+                        )
+                    if method=="TAG automatico" and (
+                            item.get("motivi_rifiuto_verifica")
+                            or item.get("documenti_candidati_verifica")):
+                        with st.expander("Diagnostica puntuale della seconda fase"):
+                            st.caption(
+                                "Documenti sottoposti alla verifica finale "
+                                "(l'elenco non dimostra la loro pertinenza clinica)."
+                            )
+                            for doc in item.get("documenti_candidati_verifica") or []:
+                                st.write(str(doc.get("documento") or "Documento privo di titolo"))
+                            reasons=item.get("motivi_rifiuto_verifica") or {}
+                            if reasons:
+                                st.caption("Cause dei riferimenti non accettati")
+                                for label,number in reasons.items():
+                                    st.write(str(label)+": "+str(number))
                     if method=="TAG automatico" and item.get("motivo_astensione"):
                         st.caption("Astensione documentale: "+str(item["motivo_astensione"]))
                     if method=="TAG automatico" and item.get("raffinamento_documentale_usato"):
@@ -482,6 +507,18 @@ def assistant_dialog():
                         "lotti_fase1":result.get("lotti_fase1"),
                         "lotti_fase1_validi":result.get("lotti_fase1_validi"),
                         "motivo_astensione":result.get("motivo_astensione"),
+                        "asserzioni_verifica_proposte":result.get(
+                            "asserzioni_verifica_proposte"),
+                        "asserzioni_verifica_accettate":result.get(
+                            "asserzioni_verifica_accettate"),
+                        "asserzioni_verifica_respinte":result.get(
+                            "asserzioni_verifica_respinte"),
+                        "motivi_rifiuto_verifica":result.get(
+                            "motivi_rifiuto_verifica"),
+                        "dettagli_rifiuto_verifica":result.get(
+                            "dettagli_rifiuto_verifica"),
+                        "documenti_candidati_verifica":result.get(
+                            "documenti_candidati_verifica"),
                         "sql_controllo_copertura":result.get(
                             "sql_controllo_copertura"),
                         "documenti_controllo_copertura":result.get(

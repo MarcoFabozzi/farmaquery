@@ -40,6 +40,9 @@ COLUMNS=("id","metodo","modello","snapshot_sha256","risposta","fonti",
          "documenti_fase1","documenti_fase2","lotti_fase1",
          "lotti_fase1_validi","lotti_fase1_non_validi",
          "coppie_documentate","motivo_astensione",
+         "asserzioni_verifica_proposte","asserzioni_verifica_accettate",
+         "asserzioni_verifica_respinte","motivi_rifiuto_verifica",
+         "documenti_candidati_verifica",
          "sql_controllo_copertura","documenti_controllo_copertura",
          "documenti_esclusi_primo_recupero",
          "controllo_copertura_eseguito","controllo_copertura_troncato")
@@ -157,6 +160,18 @@ def collect(gold_file,db_file,manifest_file,model,out,commit,answer_fn=answer_qu
                     "lotti_fase1_non_validi":result.get("lotti_fase1_non_validi"),
                     "coppie_documentate":result.get("coppie_documentate"),
                     "motivo_astensione":result.get("motivo_astensione"),
+                    "asserzioni_verifica_proposte":result.get(
+                        "asserzioni_verifica_proposte"),
+                    "asserzioni_verifica_accettate":result.get(
+                        "asserzioni_verifica_accettate"),
+                    "asserzioni_verifica_respinte":result.get(
+                        "asserzioni_verifica_respinte"),
+                    "motivi_rifiuto_verifica":json.dumps(
+                        result.get("motivi_rifiuto_verifica") or {},
+                        ensure_ascii=False,sort_keys=True),
+                    "documenti_candidati_verifica":json.dumps(
+                        result.get("documenti_candidati_verifica") or [],
+                        ensure_ascii=False),
                     "sql_controllo_copertura":result.get("sql_controllo_copertura"),
                     "documenti_controllo_copertura":result.get(
                         "documenti_controllo_copertura"),

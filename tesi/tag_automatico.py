@@ -23,7 +23,8 @@ from tesi.raffinamento_documentale import (
 from tesi.recupero_due_fasi import (
     DISCOVER_PROMPT, STAGE2_LOTUS_PROMPT, VERIFY_PROMPT,
     semantic_filter_warning, sql_second_stage,
-    verified_document_pairs, format_verified_pairs,
+    verified_document_pairs, audit_verified_document_pairs,
+    format_verified_pairs,
 )
 from tesi.verifica_copertura_tag import compare_center_coverage
 from tesi.recupero_progressivo import (
@@ -43,7 +44,7 @@ MAX_NOTE_PAGES = 1200
 MAX_LOTUS_GROUPS = 12
 MAX_ANSWER_DOCUMENTS = 55
 MAX_ANSWER_CHARS = 44000
-TAG_AUTO_REVISION = "2026-11-08-r20-controllo-copertura-documentale"
+TAG_AUTO_REVISION = "2026-11-08-r21-diagnostica-verifica-coppie"
 
 SQL_PROMPT = (
     "Genera UNA sola query SQLite SELECT che recuperi candidati da far "
@@ -646,6 +647,12 @@ def _two_stage_result(db, question, model, plan, previous_usage, base, issue):
         "lotti_fase1":0,"lotti_fase1_validi":0,
         "lotti_fase1_non_validi":0,
         "coppie_documentate":0,
+        "asserzioni_verifica_proposte":None,
+        "asserzioni_verifica_accettate":0,
+        "asserzioni_verifica_respinte":None,
+        "motivi_rifiuto_verifica":{},
+        "dettagli_rifiuto_verifica":[],
+        "documenti_candidati_verifica":[],
         "risultato_parziale":True,
     }
     usage=previous_usage
@@ -737,6 +744,11 @@ def _two_stage_result(db, question, model, plan, previous_usage, base, issue):
     )
     selected_groups=filtered[["chiave"]].to_dict("records")
     candidates=expand_selected(selected_groups,members)
+    diagnostics["documenti_candidati_verifica"]=[
+        {"nota_id":str(item.get("nota_id") or ""),
+         "documento":str(item.get("nome_file") or "")}
+        for item in candidates[:MAX_ANSWER_DOCUMENTS]
+    ]
     diagnostics["gruppi_lotus_fase2"]=len(planned)
     diagnostics["gruppi_lotus_selezionati_fase2"]=len(selected_groups)
     if not candidates:
@@ -757,13 +769,27 @@ def _two_stage_result(db, question, model, plan, previous_usage, base, issue):
     )
     usage=_accumulate(usage,verification_usage)
     try:
-        verified,verify_uncertain=verified_document_pairs(
-            verification,candidates,db,plan["centro"]
+        verified,verify_uncertain,verification_audit=(
+            audit_verified_document_pairs(
+                verification,candidates,db,plan["centro"]
+            )
         )
-    except ValueError:
+        diagnostics.update(verification_audit)
+    except ValueError as exc:
+        diagnostics["motivi_rifiuto_verifica"]={
+            "contratto_json_non_valido":1
+        }
+        diagnostics["dettagli_rifiuto_verifica"]=[{
+            "posizione":None,
+            "motivo":"Contratto JSON non valido"
+        }]
         return abstain("verifica_strutturata_non_valida")
     if not verified:
-        return abstain("nessuna_associazione_esplicitamente_verificata")
+        return abstain(
+            "verifica_strutturata_non_valida"
+            if diagnostics["asserzioni_verifica_respinte"]
+            else "nessuna_associazione_esplicitamente_verificata"
+        )
     diagnostics["coppie_documentate"]=len(verified)
     sources=list(dict.fromkeys(row["fonte"] for row in verified))
     response=format_verified_pairs(verified)
@@ -772,6 +798,12 @@ def _two_stage_result(db, question, model, plan, previous_usage, base, issue):
         "non costituiscono una verifica normativa indipendente e "
         "l'elenco non e' garantito esaustivo."
     )
+    if diagnostics["asserzioni_verifica_respinte"]:
+        response += (
+            "\n\nAvvertenza: alcune associazioni proposte sono "
+            "state respinte dalla verifica sui PDF. Sono riportate "
+            "soltanto le associazioni che hanno superato i controlli."
+        )
     if (uncertain or verify_uncertain or notes_partial or stage2_partial or clipped):
         response += (
             "\n\nAlcuni passaggi o classificazioni sono incerti o "

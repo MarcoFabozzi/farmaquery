@@ -238,6 +238,68 @@ def verified_document_pairs(raw, documents, db, center):
     return valid,uncertain
 
 
+def audit_verified_document_pairs(raw, documents, db, center):
+    """Valida ogni asserzione indipendentemente e rende visibile il motivo.
+
+    Il modello puo' produrre sia coppie supportate sia riferimenti
+    sbagliati. Un singolo errore non deve cancellare prove indipendenti,
+    ma nessuna coppia respinta deve arrivare alla risposta.
+
+    Un JSON non valido o un contratto globale incompleto rimangono errori:
+    non vengono interpretati come una lista vuota di associazioni.
+    Non invia richieste LLM e non modifica le regole di verifica.
+    """
+    obj=_parse_json(raw)
+    items=obj.get("verificati")
+    uncertain=obj.get("incerto")
+    if (not isinstance(items,list) or type(uncertain) is not bool
+            or len(items)>80):
+        raise ValueError("Campi verifica mancanti o numero eccessivo")
+    valid=[]
+    discarded=[]
+    reasons={}
+    seen=set()
+    for position,item in enumerate(items):
+        singleton=json.dumps(
+            {"verificati":[item],"incerto":uncertain},
+            ensure_ascii=False
+        )
+        try:
+            passed,_=verified_document_pairs(
+                singleton,documents,db,center
+            )
+        except ValueError as exc:
+            # Solo ragioni strutturate prodotte dal validatore locale;
+            # mai il testo integrale della risposta dell'LLM.
+            reason=str(exc)
+            reasons[reason]=reasons.get(reason,0)+1
+            record={"posizione":position,"motivo":reason}
+            if isinstance(item,dict):
+                idx=item.get("documento_indice")
+                if type(idx) is int and 0<=idx<len(documents):
+                    record["documento"]=documents[idx].get("nome_file")
+            discarded.append(record)
+            continue
+        for entry in passed:
+            key=(
+                str(entry["nota_id"]),
+                str(entry["medicinale"]).casefold(),
+                str(entry["indicazione"]).casefold(),
+                int(entry["pagina_centro"]),
+            )
+            if key not in seen:
+                seen.add(key)
+                valid.append(entry)
+    audit={
+        "asserzioni_verifica_proposte":len(items),
+        "asserzioni_verifica_accettate":len(valid),
+        "asserzioni_verifica_respinte":len(discarded),
+        "motivi_rifiuto_verifica":dict(sorted(reasons.items())),
+        "dettagli_rifiuto_verifica":discarded[:30],
+    }
+    return valid, bool(uncertain or discarded), audit
+
+
 def format_verified_pairs(rows):
     """Sintesi deterministica, senza ulteriore generazione di fatti."""
     if not rows:
