@@ -20,7 +20,7 @@ from tesi import tag_automatico as auto
 from tesi.contatore_llm import direct_attempt
 from tesi.recupero_due_fasi import (
     DISCOVER_PROMPT, VERIFY_PROMPT, semantic_filter_warning,
-    sql_second_stage,verified_document_pairs,
+    sql_second_stage,verified_document_pairs,final_verification_batches,
 )
 from tesi.piano_documentale import (
     PLAN_PROMPT, sql_from_document_plan, document_center_anchors,
@@ -165,6 +165,7 @@ class TwoStageTests(unittest.TestCase):
                 }],
                 "incerto":False
             }
+        verification_call=[0]
         def mock_ask(model,system,payload,**kwargs):
             direct_attempt()
             called.append((system,payload))
@@ -175,7 +176,12 @@ class TwoStageTests(unittest.TestCase):
             elif system==DISCOVER_PROMPT:
                 value=json.dumps(discover) if isinstance(discover,dict) else discover
             elif system==VERIFY_PROMPT:
-                value=json.dumps(verify) if isinstance(verify,dict) else verify
+                if isinstance(verify,list):
+                    value=verify[verification_call[0]]
+                    verification_call[0]+=1
+                else:
+                    value=verify
+                value=json.dumps(value) if isinstance(value,dict) else value
             else:
                 raise AssertionError("Chiamata inattesa: "+str(system)[:45])
             return value,{"token_input":1,"token_output":1,"costo_usd":0}
@@ -192,6 +198,117 @@ class TwoStageTests(unittest.TestCase):
             result=auto.automatic_tag(self.db,question,"mock")
         return result,called
 
+    def _aggiungi_due_note_con_centro(self):
+        self.db.execute("PRAGMA query_only=OFF")
+        self.db.executemany(
+            "INSERT INTO note VALUES (?,?,?,?,?,?,?,?,?)",[
+                ("n4","MED-D.pdf",2026,None,None,"MED-D",
+                 "Disturbo neuromuscolare delta","note/d.pdf",
+                 "https://example.org/d.zip"),
+                ("n5","MED-E.pdf",2026,None,None,"MED-E",
+                 "Disturbo neuromuscolare epsilon","note/e.pdf",
+                 "https://example.org/e.zip"),
+            ]
+        )
+        self.db.executemany(
+            "INSERT INTO pagine VALUES (?,?,?,?)",[
+                ("n4",1,"MED-D per disturbo neuromuscolare delta","TESTO"),
+                ("n4",2,"AOU Federico II centro prescrittore MED-D","TESTO"),
+                ("n5",1,"MED-E per disturbo neuromuscolare epsilon","TESTO"),
+                ("n5",2,"AOU Federico II centro prescrittore MED-E","TESTO"),
+            ]
+        )
+        self.db.commit()
+        self.db.execute("PRAGMA query_only=ON")
+
+    def test_suddivisione_finale_13_documenti_non_perde_id(self):
+        items=list(range(13))
+        chunks=final_verification_batches(items)
+        self.assertEqual(len(chunks),5)
+        self.assertEqual([len(chunk) for _,chunk in chunks],[3,3,3,3,1])
+        self.assertEqual(
+            [item for _,chunk in chunks for item in chunk],items
+        )
+        self.assertEqual(len(final_verification_batches(list(range(55)))),8)
+        with self.assertRaises(ValueError):
+            final_verification_batches([])
+        with self.assertRaises(ValueError):
+            final_verification_batches(list(range(56)))
+
+    def test_verifica_due_lotti_indici_locali_nessuna_omissione(self):
+        self._aggiungi_due_note_con_centro()
+        first={"verificati":[
+            {"documento_indice":0,"medicinale":"MED-A",
+             "indicazione":"Disturbo muscolare alfa",
+             "pagina_indicazione":1,"pagina_centro":2},
+            {"documento_indice":1,"medicinale":"MED-B",
+             "indicazione":"Malattia neurologica beta",
+             "pagina_indicazione":1,"pagina_centro":2},
+            {"documento_indice":2,"medicinale":"MED-C",
+             "indicazione":"Melanoma cutaneo",
+             "pagina_indicazione":1,"pagina_centro":2},
+        ],"incerto":False}
+        # Indici 0/1 del SECONDO lotto si riferiscono a n4/n5,
+        # non a n1/n2.
+        second={"verificati":[
+            {"documento_indice":0,"medicinale":"MED-D",
+             "indicazione":"Disturbo neuromuscolare delta",
+             "pagina_indicazione":1,"pagina_centro":2},
+            {"documento_indice":1,"medicinale":"MED-E",
+             "indicazione":"Disturbo neuromuscolare epsilon",
+             "pagina_indicazione":1,"pagina_centro":2},
+        ],"incerto":False}
+        result,calls=self.run_pipeline(
+            discover={"indici":[0,1,2,3,4],"incerto":False},
+            verify=[first,second]
+        )
+        self.assertEqual(result["strategia_tag"],"due_fasi")
+        self.assertEqual(result["documenti_fase2"],5)
+        self.assertEqual(result["lotti_verifica_finale"],2)
+        self.assertEqual(result["lotti_verifica_conclusi"],2)
+        self.assertEqual(result["lotti_verifica_non_validi"],0)
+        self.assertEqual(result["documenti_inviati_verifica"],5)
+        self.assertEqual(result["note_nel_contesto"],5)
+        self.assertEqual(result["asserzioni_verifica_proposte"],5)
+        self.assertEqual(result["asserzioni_verifica_accettate"],4)
+        self.assertEqual(result["asserzioni_verifica_respinte"],1)
+        self.assertEqual(result["coppie_documentate"],4)
+        self.assertEqual(len(result["fonti"]),4)
+        self.assertEqual(len(calls),5)
+        self.assertEqual(result["chiamate_llm_dirette"],5)
+        self.assertIn("MED-D",result["risposta"])
+        self.assertIn("MED-E",result["risposta"])
+        self.assertNotIn("MED-C",result["risposta"])
+        self.assertEqual(result["documenti_senza_associazione_verificata"],
+                         ["MED-C.pdf"])
+        verify_requests=[data for prompt,data in calls
+                         if prompt==VERIFY_PROMPT]
+        self.assertEqual([len(x["documenti"]) for x in verify_requests],
+                         [3,2])
+        self.assertEqual(verify_requests[1]["documenti"][0]["documento_indice"],0)
+
+    def test_un_lotto_json_invalido_non_cancella_lotto_valido(self):
+        self._aggiungi_due_note_con_centro()
+        accepted={"verificati":[
+            {"documento_indice":0,"medicinale":"MED-D",
+             "indicazione":"Disturbo neuromuscolare delta",
+             "pagina_indicazione":1,"pagina_centro":2},
+        ],"incerto":False}
+        result,calls=self.run_pipeline(
+            discover={"indici":[0,1,2,3,4],"incerto":False},
+            verify=["non JSON",accepted]
+        )
+        self.assertEqual(result["stato"],"RISULTATI_PARZIALI")
+        self.assertEqual(result["lotti_verifica_finale"],2)
+        self.assertEqual(result["lotti_verifica_non_validi"],1)
+        self.assertEqual(result["lotti_verifica_conclusi"],1)
+        self.assertEqual(result["coppie_documentate"],1)
+        self.assertEqual(result["motivi_rifiuto_verifica"],
+                         {"contratto_json_non_valido":1})
+        self.assertIn("uno o piu' lotti",result["risposta"])
+        self.assertIn("MED-D",result["risposta"])
+        self.assertEqual(len(calls),5)
+
     def test_tabella_inesistente_avvia_automaticamente_due_select(self):
         # La SQL inventata NON viene eseguita. Il centro viene recuperato
         # dalla domanda e confermato con le pagine nello snapshot.
@@ -206,7 +323,7 @@ class TwoStageTests(unittest.TestCase):
         finally:
             self.db.set_trace_callback(None)
         self.assertEqual(result["tag_auto_revision"],
-                         "2026-11-08-r22-recupero-sql-non-valida")
+                         "2026-11-08-r23-verifica-finale-per-lotti")
         self.assertEqual(result["strategia_tag"],"due_fasi")
         self.assertEqual(result["errore_sql_iniziale"],"tabella_non_consentita")
         self.assertFalse(result["sql_iniziale_validata"])
@@ -269,7 +386,7 @@ class TwoStageTests(unittest.TestCase):
     def test_r18_sql_vuoto_due_query_e_conferma_pagine(self):
         result,calls=self.run_pipeline()
         self.assertEqual(result["tag_auto_revision"],
-                         "2026-11-08-r22-recupero-sql-non-valida")
+                         "2026-11-08-r23-verifica-finale-per-lotti")
         self.assertEqual(result["strategia_tag"],"due_fasi")
         self.assertEqual(result["motivo_due_fasi"],"sql_vuoto")
         self.assertEqual(result["documenti_fase1"],3)

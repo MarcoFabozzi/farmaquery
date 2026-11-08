@@ -44,6 +44,9 @@ COLUMNS=("id","metodo","modello","snapshot_sha256","risposta","fonti",
          "asserzioni_verifica_proposte","asserzioni_verifica_accettate",
          "asserzioni_verifica_respinte","motivi_rifiuto_verifica",
          "documenti_candidati_verifica",
+         "lotti_verifica_finale","lotti_verifica_conclusi",
+         "lotti_verifica_non_validi","documenti_inviati_verifica",
+         "documenti_senza_associazione_verificata",
          "sql_controllo_copertura","documenti_controllo_copertura",
          "documenti_esclusi_primo_recupero",
          "controllo_copertura_eseguito","controllo_copertura_troncato")
@@ -174,6 +177,13 @@ def collect(gold_file,db_file,manifest_file,model,out,commit,answer_fn=answer_qu
                         ensure_ascii=False,sort_keys=True),
                     "documenti_candidati_verifica":json.dumps(
                         result.get("documenti_candidati_verifica") or [],
+                        ensure_ascii=False),
+                    "lotti_verifica_finale":result.get("lotti_verifica_finale"),
+                    "lotti_verifica_conclusi":result.get("lotti_verifica_conclusi"),
+                    "lotti_verifica_non_validi":result.get("lotti_verifica_non_validi"),
+                    "documenti_inviati_verifica":result.get("documenti_inviati_verifica"),
+                    "documenti_senza_associazione_verificata":json.dumps(
+                        result.get("documenti_senza_associazione_verificata") or [],
                         ensure_ascii=False),
                     "sql_controllo_copertura":result.get("sql_controllo_copertura"),
                     "documenti_controllo_copertura":result.get(

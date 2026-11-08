@@ -26,7 +26,7 @@ from tesi.recupero_due_fasi import (
     DISCOVER_PROMPT, STAGE2_LOTUS_PROMPT, VERIFY_PROMPT,
     semantic_filter_warning, sql_second_stage,
     verified_document_pairs, audit_verified_document_pairs,
-    format_verified_pairs,
+    format_verified_pairs, final_verification_batches,
 )
 from tesi.verifica_copertura_tag import compare_center_coverage
 from tesi.recupero_progressivo import (
@@ -46,7 +46,7 @@ MAX_NOTE_PAGES = 1200
 MAX_LOTUS_GROUPS = 12
 MAX_ANSWER_DOCUMENTS = 55
 MAX_ANSWER_CHARS = 44000
-TAG_AUTO_REVISION = "2026-11-08-r22-recupero-sql-non-valida"
+TAG_AUTO_REVISION = "2026-11-08-r23-verifica-finale-per-lotti"
 
 SQL_PROMPT = (
     "Genera UNA sola query SQLite SELECT che recuperi candidati da far "
@@ -655,6 +655,11 @@ def _two_stage_result(db, question, model, plan, previous_usage, base, issue):
         "motivi_rifiuto_verifica":{},
         "dettagli_rifiuto_verifica":[],
         "documenti_candidati_verifica":[],
+        "lotti_verifica_finale":0,
+        "lotti_verifica_conclusi":0,
+        "lotti_verifica_non_validi":0,
+        "documenti_inviati_verifica":0,
+        "documenti_senza_associazione_verificata":[],
         "risultato_parziale":True,
     }
     usage=previous_usage
@@ -755,44 +760,96 @@ def _two_stage_result(db, question, model, plan, previous_usage, base, issue):
     diagnostics["gruppi_lotus_selezionati_fase2"]=len(selected_groups)
     if not candidates:
         return abstain("nessuna_relazione_selezionata_da_lotus")
-    contextual,clipped=_balanced_answer_evidence(candidates)
-    # La verifica usa la stessa numerazione delle schede nel payload.
-    verification,verification_usage=_in_phase(
-        "verifica documentale centro e pagine seconda fase TAG",
-        ask,model,VERIFY_PROMPT,
-        {"domanda":question,"struttura":plan["centro"],
-         "categoria_clinica":plan["criterio_semantico"],
-         "documenti":[{
-             "documento_indice":i,
-             "nome_file":candidates[i].get("nome_file"),
-             "testo":chunk["testo"]
-         } for i,chunk in enumerate(contextual)]},
-        timeout=75,max_tokens=3700
-    )
-    usage=_accumulate(usage,verification_usage)
-    try:
-        verified,verify_uncertain,verification_audit=(
-            audit_verified_document_pairs(
-                verification,candidates,db,plan["centro"]
-            )
+    # In un singolo prompt con 13+ PDF il modello tende a citare solo
+    # pochi documenti. Manteniamo il filtro LOTUS ma verifichiamo OGNI
+    # nota in lotti indipendenti, con indici locali e contesto meno tagliato.
+    # Il budget massimo di 8 chiamate finali e' esplicito e misurabile.
+    chunks=final_verification_batches(candidates)
+    diagnostics["lotti_verifica_finale"]=len(chunks)
+    verified=[]
+    seen_verified=set()
+    verify_uncertain=False
+    clipped=False
+    contextual_count=0
+    for batch_index,(offset,batch) in enumerate(chunks,1):
+        contextual,clipped_batch=_balanced_answer_evidence(batch)
+        clipped=bool(clipped or clipped_batch)
+        if len(contextual)!=len(batch):
+            diagnostics["lotti_verifica_non_validi"]+=1
+            continue
+        contextual_count+=len(contextual)
+        diagnostics["documenti_inviati_verifica"]+=len(contextual)
+        verification,used=_in_phase(
+            "verifica documentale centro e pagine TAG lotto "+
+            str(batch_index),ask,model,VERIFY_PROMPT,
+            {"domanda":question,"struttura":plan["centro"],
+             "categoria_clinica":plan["criterio_semantico"],
+             "lotto":batch_index,
+             "totale_lotti":len(chunks),
+             "documenti":[{
+                 "documento_indice":i,
+                 "nome_file":batch[i].get("nome_file"),
+                 "testo":chunk["testo"]
+             } for i,chunk in enumerate(contextual)]},
+            timeout=75,max_tokens=3700
         )
-        diagnostics.update(verification_audit)
-    except ValueError as exc:
-        diagnostics["motivi_rifiuto_verifica"]={
-            "contratto_json_non_valido":1
-        }
-        diagnostics["dettagli_rifiuto_verifica"]=[{
-            "posizione":None,
-            "motivo":"Contratto JSON non valido"
-        }]
-        return abstain("verifica_strutturata_non_valida")
+        usage=_accumulate(usage,used)
+        try:
+            accepted,batch_uncertain,audit=audit_verified_document_pairs(
+                verification,batch,db,plan["centro"]
+            )
+        except ValueError:
+            diagnostics["lotti_verifica_non_validi"]+=1
+            reasons=diagnostics["motivi_rifiuto_verifica"]
+            reasons["contratto_json_non_valido"]=(
+                reasons.get("contratto_json_non_valido",0)+1
+            )
+            diagnostics["dettagli_rifiuto_verifica"].append({
+                "lotto":batch_index,"posizione":None,
+                "motivo":"Contratto JSON non valido"
+            })
+            verify_uncertain=True
+            continue
+        diagnostics["lotti_verifica_conclusi"]+=1
+        verify_uncertain=bool(verify_uncertain or batch_uncertain)
+        for counter in (
+            "asserzioni_verifica_proposte",
+            "asserzioni_verifica_respinte"
+        ):
+            value=diagnostics[counter]
+            diagnostics[counter]=(0 if value is None else value)+audit[counter]
+        reasons=diagnostics["motivi_rifiuto_verifica"]
+        for reason,n in audit["motivi_rifiuto_verifica"].items():
+            reasons[reason]=reasons.get(reason,0)+n
+        for rejected in audit["dettagli_rifiuto_verifica"]:
+            if len(diagnostics["dettagli_rifiuto_verifica"])>=30:
+                break
+            diagnostics["dettagli_rifiuto_verifica"].append({
+                **rejected,"lotto":batch_index
+            })
+        for entry in accepted:
+            key=(str(entry["nota_id"]),
+                 str(entry["medicinale"]).casefold(),
+                 str(entry["indicazione"]).casefold(),
+                 int(entry["pagina_centro"]))
+            if key not in seen_verified:
+                seen_verified.add(key)
+                verified.append(entry)
+    diagnostics["asserzioni_verifica_accettate"]=len(verified)
+    diagnostics["coppie_documentate"]=len(verified)
+    verified_note_ids={str(row["nota_id"]) for row in verified}
+    diagnostics["documenti_senza_associazione_verificata"]=[
+        str(doc.get("nome_file") or "")
+        for doc in candidates
+        if str(doc.get("nota_id")) not in verified_note_ids
+    ]
     if not verified:
         return abstain(
             "verifica_strutturata_non_valida"
-            if diagnostics["asserzioni_verifica_respinte"]
+            if (diagnostics["asserzioni_verifica_respinte"] or
+                diagnostics["lotti_verifica_non_validi"])
             else "nessuna_associazione_esplicitamente_verificata"
         )
-    diagnostics["coppie_documentate"]=len(verified)
     sources=list(dict.fromkeys(row["fonte"] for row in verified))
     response=format_verified_pairs(verified)
     response += (
@@ -800,6 +857,11 @@ def _two_stage_result(db, question, model, plan, previous_usage, base, issue):
         "non costituiscono una verifica normativa indipendente e "
         "l'elenco non e' garantito esaustivo."
     )
+    if diagnostics["lotti_verifica_non_validi"]:
+        response += (
+            "\n\nAvvertenza: uno o piu' lotti di verifica non sono "
+            "stati completati correttamente; la risposta e' parziale."
+        )
     if diagnostics["asserzioni_verifica_respinte"]:
         response += (
             "\n\nAvvertenza: alcune associazioni proposte sono "
@@ -819,7 +881,7 @@ def _two_stage_result(db, question, model, plan, previous_usage, base, issue):
         "sql_tentativi":base.get("sql_tentativi",1)+2,
         "righe_sql":len(r2),"righe_recuperate":len(notes),
         "note_nell_indice":len(candidates),
-        "note_nel_contesto":len(contextual),
+        "note_nel_contesto":contextual_count,
         "righe_sem_filter":len(planned),
         "righe_selezionate_lotus":len(selected_groups),
         "modalita_selezione":"due fasi documentali con verifica",

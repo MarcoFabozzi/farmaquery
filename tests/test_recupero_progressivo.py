@@ -166,7 +166,7 @@ class ProgressiveRetrievalTests(unittest.TestCase):
         self.assertEqual(len(calls), 2)
         self.assertIn("indice_documentale", calls[-1][1])
         self.assertEqual(result["tag_auto_revision"],
-                         "2026-11-08-r22-recupero-sql-non-valida")
+                         "2026-11-08-r23-verifica-finale-per-lotti")
 
     def test_non_amplia_filtri_autorizzativi_o_farmaci_precisi(self):
         for sql in [
@@ -375,7 +375,7 @@ class ProgressiveRetrievalTests(unittest.TestCase):
         self.assertIn("nota_id", result["sql"])
         self.assertEqual(result["note_nell_indice"], 1)
         self.assertEqual(result["tag_auto_revision"],
-                         "2026-11-08-r22-recupero-sql-non-valida")
+                         "2026-11-08-r23-verifica-finale-per-lotti")
         self.assertEqual(len(calls), 2)  # SQL + sintesi; LOTUS simulato.
 
 

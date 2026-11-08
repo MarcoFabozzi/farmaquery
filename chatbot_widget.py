@@ -376,6 +376,16 @@ def assistant_dialog():
                             st.code(item.get("sql_fase1") or "Non eseguita",language="sql")
                             st.caption("Seconda SELECT controllata (note selezionate)")
                             st.code(item.get("sql_fase2") or "Non eseguita",language="sql")
+                    if method=="TAG automatico" and item.get("lotti_verifica_finale"):
+                        st.caption(
+                            "Verifica finale distribuita · lotti completati: "+
+                            str(item.get("lotti_verifica_conclusi",0))+"/"+
+                            str(item["lotti_verifica_finale"])+
+                            " · lotti non validi: "+
+                            str(item.get("lotti_verifica_non_validi",0))+
+                            " · schede inviate al verificatore: "+
+                            str(item.get("documenti_inviati_verifica",0))+"."
+                        )
                     if method=="TAG automatico" and item.get("asserzioni_verifica_proposte") is not None:
                         st.caption(
                             "Verifica delle associazioni · proposte: "+
@@ -396,6 +406,14 @@ def assistant_dialog():
                             )
                             for doc in item.get("documenti_candidati_verifica") or []:
                                 st.write(str(doc.get("documento") or "Documento privo di titolo"))
+                            uncovered=item.get("documenti_senza_associazione_verificata") or []
+                            if uncovered:
+                                st.caption(
+                                    "Documenti senza associazione accettata "
+                                    "(non significa che il medicinale non sia pertinente):"
+                                )
+                                for name in uncovered:
+                                    st.write(str(name))
                             reasons=item.get("motivi_rifiuto_verifica") or {}
                             if reasons:
                                 st.caption("Cause dei riferimenti non accettati")
@@ -528,6 +546,16 @@ def assistant_dialog():
                             "dettagli_rifiuto_verifica"),
                         "documenti_candidati_verifica":result.get(
                             "documenti_candidati_verifica"),
+                        "lotti_verifica_finale":result.get(
+                            "lotti_verifica_finale"),
+                        "lotti_verifica_conclusi":result.get(
+                            "lotti_verifica_conclusi"),
+                        "lotti_verifica_non_validi":result.get(
+                            "lotti_verifica_non_validi"),
+                        "documenti_inviati_verifica":result.get(
+                            "documenti_inviati_verifica"),
+                        "documenti_senza_associazione_verificata":result.get(
+                            "documenti_senza_associazione_verificata"),
                         "sql_controllo_copertura":result.get(
                             "sql_controllo_copertura"),
                         "documenti_controllo_copertura":result.get(
