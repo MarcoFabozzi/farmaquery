@@ -32,6 +32,8 @@ Le categorie sono: **DIRETTE (4), RELAZIONALI (4), SEMANTICHE (4), TEMPORALI (4)
 
 La versione iniziale `HOLDOUT_FINALE_20_R24_DA_VALIDARE_20261108.csv` conserva tutti i gold vuoti per tracciabilità. La copia di lavoro `HOLDOUT_FINALE_20_R24_GOLD_PARZIALE_20261108.csv` contiene le prime otto risposte controllate direttamente sui record EMA, AIFA e sul titolo/anno dei PDF. **Non** sono state ancora eseguite chiamate LLM sui quesiti finali.
 
+**Avanzamento del controllo documentale (08/11/2026):** le altre 12 risposte sono state ricostruite mediante lettura completa del testo delle note in `pagine`, analisi delle differenze fra provvedimenti e controllo delle tabelle disponibili per i casi negativi. Vedi `LE_20_DOMANDE_E_RISPOSTE_GOLD_DATABASE_20261108.md` (lettura per domanda) e `20_DOMANDE_GOLD_PROPOSTI_DAL_DATABASE_20261108.csv` (campi di evidenza separati e stato di validazione). Un audit ha confermato l'esistenza nel database di **3 riferimenti EMA, 16 AIC AIFA e 47 pagine regionali non vuote** citate dal questionario. La validità SEMANTICA delle note OCR richiede comunque revisione visiva; i 12 non vengono promossi automaticamente da `DA_VERIFICARE` a `VALIDATO`. La domanda F12 distingue filename `ALIFTREK` e nome del medicinale `ALYFTREK`, senza modifiche ai motori.
+
 | Categoria | Candidati | Gold controllati | Ancora da verificare |
 |---|---:|---:|---:|
 | Dirette | 4 | 4 | 0 |
