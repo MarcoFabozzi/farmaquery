@@ -192,12 +192,13 @@ def verified_document_pairs(raw, documents, db, center):
                 and drug_lower not in str(doc.get("nome_file") or "").casefold()):
             # La lettura di pagina in tag_automatico tronca testi molto lunghi.
             # Qui consultiamo il testo originale di tutte le pagine.
-            found=db.execute(
-                "SELECT 1 FROM pagine WHERE nota_id=? AND "
-                "testo LIKE ? COLLATE NOCASE LIMIT 1",
-                (note_id,"%"+medicine.replace("%",r"\%").replace("_",r"\_")+"%")
-            ).fetchone()
-            if not found:
+            full_pages=db.execute(
+                "SELECT testo FROM pagine WHERE nota_id=? "
+                "AND metodo IN ('TESTO','OCR')",
+                (note_id,)
+            ).fetchall()
+            if not any(drug_lower in str(p["testo"] or "").casefold()
+                       for p in full_pages):
                 raise ValueError("Medicinale assente dalla nota")
         key=(str(note_id),drug_lower,indication.casefold(),p_center)
         if key in keys:
