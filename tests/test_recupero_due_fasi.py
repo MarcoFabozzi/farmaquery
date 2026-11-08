@@ -66,6 +66,17 @@ SQL_R18_REAL = (
     "WHERE patologia COLLATE NOCASE LIKE '%neuromuscolar%'))"
 )
 
+SQL_R19_REAL = (
+    "SELECT DISTINCT note.farmaco_candidato AS nome, "
+    "note.indicazione_candidata AS indicazione, note.id AS documento_id, "
+    "pagine.numero_pagina AS pagina_id FROM note "
+    "JOIN pagine ON note.id = pagine.nota_id "
+    "JOIN nota_centro_documentato ON note.id = nota_centro_documentato.nota_id "
+    "AND pagine.numero_pagina = nota_centro_documentato.numero_pagina "
+    "WHERE nota_centro_documentato.centro COLLATE NOCASE "
+    "LIKE '%Federico II%'"
+)
+
 PLAN=json.dumps({
     "applicabile":True,
     "centro":"Federico II",
@@ -116,6 +127,8 @@ class TwoStageTests(unittest.TestCase):
              ('n3',2,'AOU Federico II centro prescrittore MED-C','TESTO');
            INSERT INTO centri_candidati VALUES
              ('n1',2,'AOU Federico II','sospeso');
+           INSERT INTO nota_centro_documentato VALUES
+             ('n1','AOU Federico II',2);
         """)
         self.db.execute("PRAGMA query_only=ON")
 
@@ -170,7 +183,7 @@ class TwoStageTests(unittest.TestCase):
     def test_r18_sql_vuoto_due_query_e_conferma_pagine(self):
         result,calls=self.run_pipeline()
         self.assertEqual(result["tag_auto_revision"],
-                         "2026-11-08-r19-ancore-documentali-robuste")
+                         "2026-11-08-r20-controllo-copertura-documentale")
         self.assertEqual(result["strategia_tag"],"due_fasi")
         self.assertEqual(result["motivo_due_fasi"],"sql_vuoto")
         self.assertEqual(result["documenti_fase1"],3)
@@ -234,6 +247,63 @@ class TwoStageTests(unittest.TestCase):
         self.assertEqual(recovery_center_anchors(
             SQL_R18_REAL,QUESTION.replace("Federico II","altra struttura")),
             [])
+
+    def test_sql_reale_r19_con_righe_attiva_due_fasi_per_copertura(self):
+        """Una SELECT con 1 nota non prova completezza sui 3 PDF del centro."""
+        original, partial=auto._run_generated_select(
+            self.db,auto.validate_sql(SQL_R19_REAL))
+        self.assertFalse(partial)
+        self.assertEqual(len(original),1)
+        result,calls=self.run_pipeline(sql=SQL_R19_REAL)
+        self.assertEqual(result["righe_sql_primo_tentativo"],1)
+        self.assertEqual(result["strategia_tag"],"due_fasi")
+        self.assertEqual(result["motivo_due_fasi"],
+                         "join_centri_documenti_potenzialmente_esclusi")
+        self.assertTrue(result["controllo_copertura_eseguito"])
+        self.assertEqual(result["documenti_controllo_copertura"],3)
+        self.assertEqual(result["documenti_esclusi_primo_recupero"],2)
+        self.assertIn("p.testo LIKE",result["sql_controllo_copertura"])
+        self.assertEqual(result["documenti_fase1"],3)
+        self.assertEqual(result["documenti_fase2"],2)
+        self.assertEqual(result["coppie_documentate"],2)
+        self.assertEqual(result["sql_tentativi"],4)  # SQL, gate, SQL1, SQL2
+        self.assertEqual(result["chiamate_llm_dirette"],4)
+        self.assertEqual(len(calls),4)
+        self.assertIn("MED-A",result["risposta"])
+        self.assertIn("MED-B",result["risposta"])
+
+    def test_copertura_ristretta_senza_piano_valido_resta_segnalata(self):
+        """Non si sopprime la diagnosi anche se il piano e' rifiutato."""
+        rejected=json.dumps({"applicabile":False,"centro":None,
+            "criterio_semantico":None,
+            "vincoli_oggettivi_aggiuntivi":["filtro oggettivo"]})
+        # L'LLM di sintesi normale riceve una risposta simulata: non
+        # dev'essere spacciata per risultato esaustivo.
+        call=[]
+        def fake_ask(model,system,payload,**kwargs):
+            direct_attempt()
+            call.append(system)
+            if system==auto.SQL_PROMPT:
+                value=SQL_R19_REAL
+            elif system==PLAN_PROMPT:
+                value=rejected
+            else:
+                value="MED-A documentato."
+            return value,{"token_input":1,"token_output":1,"costo_usd":0}
+        lotus=types.ModuleType("lotus")
+        lotus.settings=types.SimpleNamespace(configure=lambda **_:None)
+        models=types.ModuleType("lotus.models")
+        models.LM=lambda *_,**__:types.SimpleNamespace()
+        with patch.dict(sys.modules,{"lotus":lotus,"lotus.models":models}), \\
+             patch.object(auto,"ask",side_effect=fake_ask), \\
+             patch.object(auto,"sem_filter_controlled",
+                          side_effect=lambda frame,instruction:frame):
+            result=auto.automatic_tag(self.db,QUESTION,"mock")
+        self.assertEqual(result["strategia_tag"],"normale")
+        self.assertTrue(result["risultato_parziale"])
+        self.assertEqual(result["stato"],"RISULTATI_PARZIALI")
+        self.assertIn("copertura della risposta",result["risposta"])
+        self.assertEqual(result["documenti_esclusi_primo_recupero"],2)
 
     def test_query_parziale_attiva_secondo_metodo(self):
         self.assertEqual(
