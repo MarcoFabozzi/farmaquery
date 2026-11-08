@@ -800,7 +800,7 @@ def _two_stage_result(db, question, model, plan, previous_usage, base, issue):
     )
     if diagnostics["asserzioni_verifica_respinte"]:
         response += (
-            "\\n\\nAvvertenza: alcune associazioni proposte sono "
+            "\n\nAvvertenza: alcune associazioni proposte sono "
             "state respinte dalla verifica sui PDF. Sono riportate "
             "soltanto le associazioni che hanno superato i controlli."
         )
