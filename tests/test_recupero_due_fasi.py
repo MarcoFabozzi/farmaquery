@@ -756,6 +756,53 @@ class TwoStageTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             sql_second_stage([""])
 
+    def test_audit_candidati_indipendenti_20261108(self):
+        root=Path(__file__).resolve().parents[1]
+        dbfile=root/"risultati/tesi_statico_20261102.sqlite.gz"
+        con=sqlite3.connect(":memory:")
+        try:
+            con.deserialize(gzip.decompress(dbfile.read_bytes()))
+            con.row_factory=sqlite3.Row
+            con.execute("PRAGMA query_only=ON")
+            names=[
+                "VOXZOGO","PROCYSBI","FINTEPLA","HEMLIBRA",
+                "KAFTRIO","EPIDYOLEX","EMGALITY","KISQALI",
+                "IMFINZI","OPDIVO","MOUNJARO","VYNDAMAX","UPLIZNA",
+                "SIVEXTRO","KISUNLA","LEQEMBI","KAYFANDA",
+                "ZYNTEGLO","HEMGENIX","ROCTAVIAN","ZOLGENSMA",
+                "ENHERTU","BIMZELX","TECFIDERA","KISQALI",
+                "LIVMARLI","WAINZUA","JIVI","BEYONTTRA","RYBREVANT",
+                "VYVGART","DUPIXENT","TRODELVY","TALVEY",
+                "CASGEVY","BESREMI","FETCROJA","REZZAYO",
+                "ONPATTRO","ELAFIBRANOR","MYALEPTA",
+            ]
+            print("=== CANDIDATI DB ===")
+            for med in names:
+                notes=con.execute(
+                    "SELECT nome_file,anno FROM note "
+                    "WHERE UPPER(nome_file) LIKE ? ORDER BY anno",
+                    ("%"+med+"%",)
+                ).fetchall()
+                ema=con.execute(
+                    "SELECT COUNT(*) FROM ema_medicinali "
+                    "WHERE UPPER(nome) LIKE ?",("%"+med+"%",)
+                ).fetchone()[0]
+                aifa=con.execute(
+                    "SELECT COUNT(*) FROM aifa_confezioni "
+                    "WHERE UPPER(nome) LIKE ?",("%"+med+"%",)
+                ).fetchone()[0]
+                print("CAND",med,"NOTE",len(notes),"EMA",ema,"AIFA",aifa,
+                      "FILES",[(r["nome_file"],r["anno"]) for r in notes[:3]])
+            print("=== NOTE 2026 sample ===")
+            rows=con.execute(
+                "SELECT DISTINCT nome_file FROM note "
+                "WHERE anno>=2025 ORDER BY nome_file LIMIT 175"
+            ).fetchall()
+            for row in rows:print("F",row[0])
+        finally:
+            con.close()
+
+
 
 if __name__=="__main__":
     unittest.main()
