@@ -459,7 +459,7 @@ class TwoStageTests(unittest.TestCase):
     def test_r18_sql_vuoto_due_query_e_conferma_pagine(self):
         result,calls=self.run_pipeline()
         self.assertEqual(result["tag_auto_revision"],
-                         "2026-11-08-r23-verifica-finale-per-lotti")
+                         "2026-11-08-r24-errore-lotti-diagnosticabile")
         self.assertEqual(result["strategia_tag"],"due_fasi")
         self.assertEqual(result["motivo_due_fasi"],"sql_vuoto")
         self.assertEqual(result["documenti_fase1"],3)
