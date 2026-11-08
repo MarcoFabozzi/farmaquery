@@ -219,6 +219,49 @@ def recovery_center_anchors(sql, question):
     ]
 
 
+def question_center_anchors(db, question):
+    """Ricava un'ancora dalla domanda, NON dalla SQL non valida dell'LLM.
+
+    Rete di sicurezza usata soltanto per errori di TABELLA non ammessa:
+    il primo SELECT non viene eseguito. Sono ammesse espressioni esplicite
+    «presso [articolo] struttura»; l'ancora deve avere piu' parole e
+    un termine distintivo effettivamente presente nei PDF dello snapshot.
+    Non e' un riconoscimento di autorizzazione o pertinenza clinica.
+    Non contiene nomi di centri, farmaci o patologie codificati.
+    """
+    if not isinstance(question, str) or len(question)>4000:
+        return []
+    if not db.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='pagine'"
+    ).fetchone():
+        return []
+    candidates=[]
+    pattern=(
+        r"\bpresso\s+(?:l['’]\s*|(?:il|lo|la|un|una)\s+)?"
+        r"(?P<centro>[^\n?,;:!]{6,110})"
+    )
+    for hit in re.finditer(pattern, question, flags=re.I):
+        center=hit.group("centro").strip().rstrip(". ")
+        if not (7<=len(center)<=110):
+            continue
+        # Nessuna ricerca libera: il centro deve comparire come sintagma
+        # esplicito. Si sceglie solo il token significativo piu' lungo.
+        tokens=re.findall(r"[^\W\d_]{5,}",center,flags=re.UNICODE)
+        if not tokens or len(center.split())<2:
+            continue
+        strongest=sorted(tokens,key=lambda x:(-len(x),x.casefold()))[0]
+        if not db.execute(
+            "SELECT 1 FROM pagine WHERE testo LIKE ? COLLATE NOCASE LIMIT 1",
+            ("%"+strongest+"%",)
+        ).fetchone():
+            continue
+        if center.casefold() not in {x.casefold() for x in candidates}:
+            candidates.append(center)
+    # Un ospedale ambivalente non puo' essere indovinato in assenza di
+    # riferimenti documentali: il piano deve scegliere una sola ancora.
+    return candidates[:MAX_CENTER_CANDIDATES]
+
+
 def _strip_json_fence(value):
     text=str(value or "").strip()
     if text.startswith("```"):
