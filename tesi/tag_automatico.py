@@ -12,8 +12,8 @@ import time
 
 from tesi.contatore_llm import instrument_lotus, measured_engine
 from tesi.piano_documentale import (
-    PLAN_PROMPT, document_center_anchors, validated_document_plan,
-    sql_from_document_plan,
+    PLAN_PROMPT, document_center_anchors, recovery_center_anchors,
+    validated_document_plan, sql_from_document_plan,
 )
 from tesi.tag_budget import sem_filter_controlled, expand_selected, preserve_category_recall
 from tesi.raffinamento_documentale import (
@@ -42,7 +42,7 @@ MAX_NOTE_PAGES = 1200
 MAX_LOTUS_GROUPS = 12
 MAX_ANSWER_DOCUMENTS = 55
 MAX_ANSWER_CHARS = 44000
-TAG_AUTO_REVISION = "2026-11-08-r18-recupero-due-fasi"
+TAG_AUTO_REVISION = "2026-11-08-r19-ancore-documentali-robuste"
 
 SQL_PROMPT = (
     "Genera UNA sola query SQLite SELECT che recuperi candidati da far "
@@ -804,7 +804,7 @@ def _try_two_stage(db, question, model, initial_sql, base, usage, issue):
     """
     anchors=_in_phase(
         "ancore centro per eventuale seconda strategia TAG",
-        document_center_anchors,initial_sql,question
+        recovery_center_anchors,initial_sql,question
     )
     if not anchors:
         base["piano_documentale_esito"]="nessun_centro_ancorato"
@@ -990,9 +990,15 @@ def automatic_tag(db, question, model):
         if alternative is not None:
             return alternative
     if not records:
-        return {**base, "risposta":"La query SQL non ha restituito righe. "
-                "Questo non dimostra che l'informazione sia assente dalle fonti.",
-                "fonti":[],"stato":"NESSUNA_EVIDENZA",**generation_usage}
+        return {**base,
+                "risposta":"La prima SELECT non ha restituito righe e "
+                           "il recupero alternativo non e' risultato "
+                           "applicabile o verificabile. "
+                           "Mi astengo: non e' dimostrata l'assenza "
+                           "dell'informazione nelle fonti.",
+                "motivo_astensione":base.get("piano_documentale_esito"),
+                "fonti":[],"stato":"ASTENSIONE_DUE_FASI",
+                "risultato_parziale":True,**generation_usage}
     if any("nota_id" in r and r["nota_id"] is not None for r in records):
         candidates, page_partial = _in_phase(
             "recupero pagine TAG automatico", _note_candidates, db, records)

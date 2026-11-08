@@ -213,7 +213,7 @@ class CrossPageFallbackTests(unittest.TestCase):
         self.assertTrue(any("#p2" in f for f in result["fonti"]))
         self.assertEqual(len(calls),2)
         self.assertEqual(result["tag_auto_revision"],
-                         "2026-11-08-r18-recupero-due-fasi")
+                         "2026-11-08-r19-ancore-documentali-robuste")
 
     def test_snapshot_query_llm_r13_copertura_referenze_documentali(self):
         root=Path(__file__).resolve().parents[1]
@@ -322,7 +322,7 @@ class CrossPageFallbackTests(unittest.TestCase):
         self.assertTrue(any("#p2" in x for x in result["fonti"]))
         self.assertEqual(len(calls),2)
         self.assertEqual(result["tag_auto_revision"],
-                         "2026-11-08-r18-recupero-due-fasi")
+                         "2026-11-08-r19-ancore-documentali-robuste")
 
     def test_snapshot_sql_note_pagine_ricopre_gold(self):
         root=Path(__file__).resolve().parents[1]
@@ -515,7 +515,7 @@ class CrossPageFallbackTests(unittest.TestCase):
         self.assertEqual(result["note_nel_contesto"],2)
         self.assertEqual(len(calls),2)
         self.assertEqual(result["tag_auto_revision"],
-                         "2026-11-08-r18-recupero-due-fasi")
+                         "2026-11-08-r19-ancore-documentali-robuste")
 
     def test_non_amplia_query_con_vincoli_aggiuntivi(self):
         for altered in (
@@ -593,7 +593,7 @@ class CrossPageFallbackTests(unittest.TestCase):
         self.assertTrue(any("#p2" in ref for ref in result["fonti"]))
         self.assertEqual(len(calls),2)
         self.assertEqual(
-            result["tag_auto_revision"],"2026-11-08-r18-recupero-due-fasi"
+            result["tag_auto_revision"],"2026-11-08-r19-ancore-documentali-robuste"
         )
 
     def test_snapshot_statico_documenti_gold_nei_candidati(self):

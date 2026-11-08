@@ -195,7 +195,7 @@ class StructuredPlanTests(unittest.TestCase):
         self.assertEqual(len(calls),4)
         self.assertIn("note",result["sql"])
         self.assertEqual(result["tag_auto_revision"],
-                         "2026-11-08-r18-recupero-due-fasi")
+                         "2026-11-08-r19-ancore-documentali-robuste")
 
     def test_piano_non_applicabile_non_inventa_fonti(self):
         calls=[]
@@ -218,7 +218,7 @@ class StructuredPlanTests(unittest.TestCase):
         self.assertFalse(result["piano_documentale_usato"])
         self.assertEqual(result["chiamate_piano_documentale"],1)
         self.assertEqual(result["righe_sql"],0)
-        self.assertEqual(result["stato"],"NESSUNA_EVIDENZA")
+        self.assertEqual(result["stato"],"ASTENSIONE_DUE_FASI")
 
     def test_snapshot_20261102_piano_copre_riferimento(self):
         base=Path(__file__).resolve().parents[1]

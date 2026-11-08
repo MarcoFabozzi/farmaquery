@@ -130,6 +130,95 @@ def document_center_anchors(sql, question):
     return found[:MAX_CENTER_CANDIDATES]
 
 
+def recovery_center_anchors(sql, question):
+    """Ancore di struttura senza dipendere dalle JOIN scelte dall'LLM.
+
+    Per il RECUPERO ALTERNATIVO soltanto: il normale recupero SQL resta
+    invariato. Accetta SELECT documentali con JOIN a pagine oppure a una
+    tabella di centri, anche se il filtro clinico contiene sottoquery.
+    Le ancore provengono SOLO da LIKE sui campi delle strutture o dal testo
+    delle pagine e devono comparire letteralmente nella domanda.
+    Non legge un LIKE clinico come centro (anche se p.testo e' usato per
+    entrambe le condizioni); preferisce sempre campi di centro tipizzati.
+    """
+    existing=document_center_anchors(sql,question)
+    if existing:
+        return existing
+    try:
+        tree=parse_one(sql,read="sqlite")
+    except Exception:
+        return []
+    if not isinstance(tree,exp.Select):
+        return []
+    if any(tree.args.get(k) is not None for k in (
+            "with_", "group", "having", "qualify", "limit", "offset",
+            "order", "windows", "intersect", "except")):
+        return []
+    source=tree.args.get("from_") or tree.args.get("from")
+    if not source or not isinstance(source.this,exp.Table):
+        return []
+    if str(source.this.name).casefold()!="note":
+        return []
+    joins=tree.args.get("joins") or []
+    if not joins:
+        return []
+    names={
+        str(source.this.alias_or_name).casefold():"note"
+    }
+    approved={"pagine","centri_candidati","nota_centro_documentato"}
+    for join in joins:
+        if (not isinstance(join.this,exp.Table)
+                or join.args.get("side") or join.args.get("kind")):
+            return []
+        table=str(join.this.name).casefold()
+        if table not in approved:
+            return []
+        alias=str(join.this.alias_or_name).casefold()
+        if alias in names:
+            return []
+        names[alias]=table
+    where=tree.args.get("where")
+    if where is None:
+        return []
+    structured=[]
+    page_text=[]
+    for node in where.find_all(exp.Like):
+        # Non trattare LIKE contenuti in sottoquery come ancore della
+        # SELECT principale, nemmeno se gli alias coincidono.
+        if node.find_ancestor(exp.Select) is not tree:
+            continue
+        column=node.this
+        literal=node.expression
+        while isinstance(column,(exp.Paren,exp.Collate)):
+            column=column.this
+        while isinstance(literal,(exp.Paren,exp.Collate)):
+            literal=literal.this
+        if (not isinstance(column,exp.Column)
+                or not isinstance(literal,exp.Literal)
+                or not literal.is_string):
+            continue
+        table=names.get(str(column.table).casefold())
+        name=str(column.name).casefold()
+        if (table,name) not in {
+                ("pagine","testo"),("centri_candidati","menzione"),
+                ("nota_centro_documentato","centro")}:
+            continue
+        value=str(literal.this)
+        if not (value.startswith("%") and value.endswith("%")):
+            continue
+        value=value[1:-1]
+        if (len(value.strip())<5 or "%" in value or "_" in value
+                or value.casefold() not in question.casefold()):
+            continue
+        target=page_text if table=="pagine" else structured
+        if value.casefold() not in {x.casefold() for x in target}:
+            target.append(value)
+    anchors=structured if structured else page_text
+    return sorted(anchors,key=lambda x:(-len(x),x.casefold()))[
+        :MAX_CENTER_CANDIDATES
+    ]
+
+
 def _strip_json_fence(value):
     text=str(value or "").strip()
     if text.startswith("```"):
