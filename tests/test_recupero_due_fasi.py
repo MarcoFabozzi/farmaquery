@@ -802,7 +802,7 @@ class TwoStageTests(unittest.TestCase):
                         self.assertIsNotNone(match,(item["id"],ref))
                         numbers["AIFA"]+=1
                     else:
-                        match=re.fullmatch(r"(.+\\.pdf)#p([1-9][0-9]*)",ref)
+                        match=re.fullmatch(r"(.+[.]pdf)#p([1-9][0-9]*)",ref)
                         self.assertIsNotNone(match,(item["id"],ref))
                         exists=db.execute(
                             "SELECT 1 FROM note AS n JOIN pagine AS p "
