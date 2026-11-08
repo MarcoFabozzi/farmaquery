@@ -35,7 +35,11 @@ COLUMNS=("id","metodo","modello","snapshot_sha256","risposta","fonti",
          "lotti_raffinamento","lotti_raffinamento_completati",
          "lotti_raffinamento_non_validi","chiamate_dirette_raffinamento",
          "piano_documentale_usato","piano_documentale_centro",
-         "piano_documentale_esito","chiamate_piano_documentale")
+         "piano_documentale_esito","chiamate_piano_documentale",
+         "strategia_tag","motivo_due_fasi","sql_fase1","sql_fase2",
+         "documenti_fase1","documenti_fase2","lotti_fase1",
+         "lotti_fase1_validi","lotti_fase1_non_validi",
+         "coppie_documentate","motivo_astensione")
 METHODS=("Text-to-SQL","TAG","TAG automatico")
 
 
@@ -139,6 +143,17 @@ def collect(gold_file,db_file,manifest_file,model,out,commit,answer_fn=answer_qu
                     "piano_documentale_centro":result.get("piano_documentale_centro"),
                     "piano_documentale_esito":result.get("piano_documentale_esito"),
                     "chiamate_piano_documentale":result.get("chiamate_piano_documentale"),
+                    "strategia_tag":result.get("strategia_tag"),
+                    "motivo_due_fasi":result.get("motivo_due_fasi"),
+                    "sql_fase1":result.get("sql_fase1"),
+                    "sql_fase2":result.get("sql_fase2"),
+                    "documenti_fase1":result.get("documenti_fase1"),
+                    "documenti_fase2":result.get("documenti_fase2"),
+                    "lotti_fase1":result.get("lotti_fase1"),
+                    "lotti_fase1_validi":result.get("lotti_fase1_validi"),
+                    "lotti_fase1_non_validi":result.get("lotti_fase1_non_validi"),
+                    "coppie_documentate":result.get("coppie_documentate"),
+                    "motivo_astensione":result.get("motivo_astensione"),
                     "sql_normalizzato_nome":result.get("sql_normalizzato_nome"),
                     "sql_normalizzato_ambito_regione":result.get(
                         "sql_normalizzato_ambito_regione"),
