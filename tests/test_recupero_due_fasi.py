@@ -294,8 +294,8 @@ class TwoStageTests(unittest.TestCase):
         lotus.settings=types.SimpleNamespace(configure=lambda **_:None)
         models=types.ModuleType("lotus.models")
         models.LM=lambda *_,**__:types.SimpleNamespace()
-        with patch.dict(sys.modules,{"lotus":lotus,"lotus.models":models}), \\
-             patch.object(auto,"ask",side_effect=fake_ask), \\
+        with patch.dict(sys.modules,{"lotus":lotus,"lotus.models":models}), \
+             patch.object(auto,"ask",side_effect=fake_ask), \
              patch.object(auto,"sem_filter_controlled",
                           side_effect=lambda frame,instruction:frame):
             result=auto.automatic_tag(self.db,QUESTION,"mock")
