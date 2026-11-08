@@ -24,8 +24,9 @@ from tesi.recupero_due_fasi import (
 )
 from tesi.piano_documentale import (
     PLAN_PROMPT, sql_from_document_plan, document_center_anchors,
-    recovery_center_anchors,
+    recovery_center_anchors, question_center_anchors,
 )
+from errori_chatbot import EnginePhaseError
 from tesi.raffinamento_documentale import refinement_batches
 
 QUESTION=(
@@ -66,6 +67,12 @@ SQL_R18_REAL = (
     "WHERE patologia COLLATE NOCASE LIKE '%neuromuscolar%'))"
 )
 
+SQL_UNKNOWN_TABLE=(
+    "SELECT n.id AS nota_id FROM note AS n "
+    "JOIN centri_prescrittori_inventati AS c ON c.nota_id=n.id "
+    "WHERE c.centro LIKE '%Federico II%'"
+)
+
 SQL_R19_REAL = (
     "SELECT DISTINCT note.farmaco_candidato AS nome, "
     "note.indicazione_candidata AS indicazione, note.id AS documento_id, "
@@ -76,6 +83,13 @@ SQL_R19_REAL = (
     "WHERE nota_centro_documentato.centro COLLATE NOCASE "
     "LIKE '%Federico II%'"
 )
+
+PLAN_WITH_FULL_CENTER=json.dumps({
+    "applicabile":True,
+    "centro":"AOU Federico II",
+    "criterio_semantico":"malattie neuromuscolari",
+    "vincoli_oggettivi_aggiuntivi":[],
+})
 
 PLAN=json.dumps({
     "applicabile":True,
@@ -134,7 +148,7 @@ class TwoStageTests(unittest.TestCase):
         self.db.close()
 
     def run_pipeline(self,sql=SQL_EMPTY,discover=None,verify=None,plan=PLAN,
-                     lotus_selected=True):
+                     lotus_selected=True,question=QUESTION):
         called=[]
         if discover is None:
             discover={"indici":[0,1],"incerto":False}
@@ -175,13 +189,87 @@ class TwoStageTests(unittest.TestCase):
                 "lotus":lotus,"lotus.models":models}), \
              patch.object(auto,"ask",side_effect=mock_ask), \
              patch.object(auto,"sem_filter_controlled",side_effect=mock_filter):
-            result=auto.automatic_tag(self.db,QUESTION,"mock")
+            result=auto.automatic_tag(self.db,question,"mock")
         return result,called
+
+    def test_tabella_inesistente_avvia_automaticamente_due_select(self):
+        # La SQL inventata NON viene eseguita. Il centro viene recuperato
+        # dalla domanda e confermato con le pagine nello snapshot.
+        self.assertEqual(question_center_anchors(self.db,QUESTION),
+                         ["AOU Federico II"])
+        executed=[]
+        self.db.set_trace_callback(executed.append)
+        try:
+            result,calls=self.run_pipeline(
+                sql=SQL_UNKNOWN_TABLE,plan=PLAN_WITH_FULL_CENTER
+            )
+        finally:
+            self.db.set_trace_callback(None)
+        self.assertEqual(result["tag_auto_revision"],
+                         "2026-11-08-r22-recupero-sql-non-valida")
+        self.assertEqual(result["strategia_tag"],"due_fasi")
+        self.assertEqual(result["errore_sql_iniziale"],"tabella_non_consentita")
+        self.assertFalse(result["sql_iniziale_validata"])
+        self.assertIsNone(result["sql_primo_tentativo"])
+        self.assertEqual(result["sql_originale_llm"],SQL_UNKNOWN_TABLE)
+        self.assertEqual(result["sql_tentativi_due_fasi"],2)
+        self.assertEqual(result["sql_tentativi"],2)
+        self.assertEqual(result["documenti_fase1"],3)
+        self.assertEqual(result["documenti_fase2"],2)
+        self.assertEqual(result["coppie_documentate"],2)
+        self.assertEqual(result["chiamate_piano_documentale"],1)
+        self.assertEqual(result["chiamate_llm_dirette"],4)
+        self.assertEqual(len(calls),4)
+        self.assertIn("MED-A",result["risposta"])
+        self.assertIn("MED-B",result["risposta"])
+        self.assertEqual(len(result["fonti"]),2)
+        self.assertTrue(all("centri_prescrittori_inventati" not in q
+                            for q in executed))
+
+    def test_sql_tabella_inventata_senza_centro_documentato_si_astiene(self):
+        question=("Quali medicinali hanno un principio attivo? "
+                  "Indica le confezioni AIFA.")
+        result,calls=self.run_pipeline(
+            sql=SQL_UNKNOWN_TABLE,question=question
+        )
+        self.assertEqual(result["stato"],"ASTENSIONE_SQL_NON_VALIDA")
+        self.assertEqual(result["chiamate_piano_documentale"],0)
+        self.assertEqual(result["sql_tentativi"],0)
+        self.assertEqual(len(calls),1)
+        self.assertFalse(result["fonti"])
+        self.assertEqual(result["piano_documentale_esito"],
+                         "nessuna_ancora_documentale_verificata")
+
+    def test_sql_tabella_inventata_piano_non_applicabile_si_astiene(self):
+        rejected=json.dumps({
+            "applicabile":False,"centro":None,
+            "criterio_semantico":None,
+            "vincoli_oggettivi_aggiuntivi":["vincolo oggettivo"]
+        })
+        result,calls=self.run_pipeline(
+            sql=SQL_UNKNOWN_TABLE,plan=rejected
+        )
+        self.assertEqual(result["stato"],"ASTENSIONE_SQL_NON_VALIDA")
+        self.assertEqual(result["piano_documentale_esito"],
+                         "piano_non_applicabile")
+        self.assertEqual(result["chiamate_piano_documentale"],1)
+        self.assertEqual(result["sql_tentativi"],0)
+        self.assertEqual(len(calls),2)
+        self.assertFalse(result["fonti"])
+
+    def test_sql_dml_o_multipla_resta_bloccata_senza_fallback(self):
+        for query in (
+            "DELETE FROM note",
+            "SELECT id FROM note; DROP TABLE note",
+            "SELECT * FROM note JOIN pagine",
+        ):
+            with self.assertRaises(EnginePhaseError):
+                self.run_pipeline(sql=query)
 
     def test_r18_sql_vuoto_due_query_e_conferma_pagine(self):
         result,calls=self.run_pipeline()
         self.assertEqual(result["tag_auto_revision"],
-                         "2026-11-08-r21-diagnostica-verifica-coppie")
+                         "2026-11-08-r22-recupero-sql-non-valida")
         self.assertEqual(result["strategia_tag"],"due_fasi")
         self.assertEqual(result["motivo_due_fasi"],"sql_vuoto")
         self.assertEqual(result["documenti_fase1"],3)

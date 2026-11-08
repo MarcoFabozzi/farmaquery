@@ -10,10 +10,12 @@ import json
 import re
 import time
 
+from errori_chatbot import EnginePhaseError
 from tesi.contatore_llm import instrument_lotus, measured_engine
 from tesi.piano_documentale import (
     PLAN_PROMPT, document_center_anchors, recovery_center_anchors,
     validated_document_plan, sql_from_document_plan,
+    question_center_anchors,
 )
 from tesi.tag_budget import sem_filter_controlled, expand_selected, preserve_category_recall
 from tesi.raffinamento_documentale import (
@@ -44,7 +46,7 @@ MAX_NOTE_PAGES = 1200
 MAX_LOTUS_GROUPS = 12
 MAX_ANSWER_DOCUMENTS = 55
 MAX_ANSWER_CHARS = 44000
-TAG_AUTO_REVISION = "2026-11-08-r21-diagnostica-verifica-coppie"
+TAG_AUTO_REVISION = "2026-11-08-r22-recupero-sql-non-valida"
 
 SQL_PROMPT = (
     "Genera UNA sola query SQLite SELECT che recuperi candidati da far "
@@ -829,16 +831,18 @@ def _two_stage_result(db, question, model, plan, previous_usage, base, issue):
     }
 
 
-def _try_two_stage(db, question, model, initial_sql, base, usage, issue):
+def _try_two_stage(db, question, model, initial_sql, base, usage, issue,
+                   anchors_override=None):
     """Piano JSON solo su intento documentale; rifiuta vincoli espliciti extra.
 
     Nessun recupero esteso se il pianificatore non conferma l'applicabilita'.
     Conserva le metriche anche per un piano rifiutato o malformato.
     """
-    anchors=_in_phase(
-        "ancore centro per eventuale seconda strategia TAG",
-        recovery_center_anchors,initial_sql,question
-    )
+    anchors=(anchors_override if anchors_override is not None else
+             _in_phase(
+                 "ancore centro per eventuale seconda strategia TAG",
+                 recovery_center_anchors,initial_sql,question
+             ))
     if not anchors:
         base["piano_documentale_esito"]="nessun_centro_ancorato"
         return None,usage
@@ -891,9 +895,64 @@ def automatic_tag(db, question, model):
         "generazione SQL TAG automatico", ask, model, SQL_PROMPT,
         {"schema": _sql_schema(db), "domanda": question}
     )
-    sql_originale_llm = _in_phase(
-        "validazione SQL TAG automatico", validate_sql, generated
-    )
+    try:
+        sql_originale_llm = _in_phase(
+            "validazione SQL TAG automatico", validate_sql, generated
+        )
+    except EnginePhaseError as exc:
+        cause=exc.__cause__
+        # Se il modello ha INVENTATO una tabella, non eseguiamo la query e
+        # non rendiamo piu' permissivo il validatore. Solo per questo errore
+        # circoscritto valutiamo un nuovo piano dalle parole dell'utente.
+        # DML, SQL multipla, JOIN non sicure e sintassi invalida rimangono
+        # errori del validatore senza percorsi alternativi.
+        if (not isinstance(cause,ValueError) or not
+                str(cause).startswith("Tabella o schema non consentito:")):
+            raise
+        anchors=_in_phase(
+            "ancora documentale da domanda TAG dopo SQL non ammessa",
+            question_center_anchors,db,question
+        )
+        base={
+            "sql":None,"sql_originale_llm":generated,
+            "sql_primo_tentativo":None,"sql_fallback":None,
+            "errore_sql_iniziale":"tabella_non_consentita",
+            "sql_iniziale_validata":False,
+            "righe_sql_primo_tentativo":None,
+            "sql_tentativi":0,"righe_sql":0,
+            "recupero_progressivo_usato":False,
+            "motivo_recupero_progressivo":"sql_iniziale_non_eseguita",
+            "piano_documentale_usato":False,
+            "piano_documentale_centro":None,
+            "piano_documentale_esito":"non_eseguito",
+            "chiamate_piano_documentale":0,
+            "strategia_tag":"non_avviata",
+            "motivo_due_fasi":"tabella_sql_iniziale_non_consentita",
+            "tag_auto_revision":TAG_AUTO_REVISION,
+            "versione_tag":"automatico-v1",
+            "recupero":"SQL-rifiutata-documenti-alternativi",
+        }
+        if anchors:
+            alternative,generation_usage=_try_two_stage(
+                db,question,model,generated,base,generation_usage,
+                "tabella_sql_iniziale_non_consentita",
+                anchors_override=anchors
+            )
+            if alternative is not None:
+                return alternative
+        else:
+            base["piano_documentale_esito"]="nessuna_ancora_documentale_verificata"
+        return {
+            **base,**generation_usage,
+            "stato":"ASTENSIONE_SQL_NON_VALIDA",
+            "motivo_astensione":base["piano_documentale_esito"],
+            "risultato_parziale":True,"fonti":[],
+            "risposta":"La SQL iniziale conteneva una tabella non "
+                       "consentita e non e' stata eseguita. "
+                       "Il recupero documentale alternativo non e' "
+                       "applicabile o non e' verificabile. "
+                       "Non posso fornire una risposta supportata dalle fonti.",
+        }
     sql_with_name = _normalize_exact_name_comparisons(sql_originale_llm)
     sql_with_scope, scope_changed = _in_phase(
         "normalizzazione ambito regionale TAG automatico",
