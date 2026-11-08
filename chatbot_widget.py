@@ -338,6 +338,13 @@ def assistant_dialog():
                             "Selezione TAG: "+str(item["modalita_selezione"])+
                             " · evidenze: "+str(item.get("righe_recuperate","?"))+
                             " · elementi LOTUS: "+str(item.get("righe_sem_filter","?")))
+                    if method=="TAG automatico" and item.get("errore_sql_iniziale"):
+                        st.caption(
+                            "La SQL iniziale e' stata rifiutata prima "
+                            "dell'esecuzione (tabella non consentita). "+
+                            "Le SELECT alternative, se presenti, sono "
+                            "state generate da codice e validate separatamente."
+                        )
                     if method=="TAG automatico" and item.get("controllo_copertura_eseguito"):
                         st.caption(
                             "Controllo copertura documentale · note candidate: "+
@@ -497,6 +504,8 @@ def assistant_dialog():
                         "sql_normalizzato_join_documentali":result.get(
                             "sql_normalizzato_join_documentali"),
                         "tag_auto_revision":result.get("tag_auto_revision"),
+                        "errore_sql_iniziale":result.get("errore_sql_iniziale"),
+                        "sql_iniziale_validata":result.get("sql_iniziale_validata"),
                         "strategia_tag":result.get("strategia_tag"),
                         "motivo_due_fasi":result.get("motivo_due_fasi"),
                         "sql_fase1":result.get("sql_fase1"),
