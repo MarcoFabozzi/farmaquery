@@ -20,6 +20,11 @@ from tesi.raffinamento_documentale import (
     MIN_DOCS_FOR_REFINEMENT, REFINEMENT_PROMPT,
     refinement_payload, parse_refinement_result, refinement_batches,
 )
+from tesi.recupero_due_fasi import (
+    DISCOVER_PROMPT, STAGE2_LOTUS_PROMPT, VERIFY_PROMPT,
+    semantic_filter_warning, sql_second_stage,
+    verified_document_pairs, format_verified_pairs,
+)
 from tesi.recupero_progressivo import (
     normalize_document_note_id, propose_empty_category_fallback,
     propose_partial_center_expansion,
@@ -37,7 +42,7 @@ MAX_NOTE_PAGES = 1200
 MAX_LOTUS_GROUPS = 12
 MAX_ANSWER_DOCUMENTS = 55
 MAX_ANSWER_CHARS = 44000
-TAG_AUTO_REVISION = "2026-11-07-r17-piano-documentale-strutturato"
+TAG_AUTO_REVISION = "2026-11-08-r18-recupero-due-fasi"
 
 SQL_PROMPT = (
     "Genera UNA sola query SQLite SELECT che recuperi candidati da far "
@@ -619,6 +624,177 @@ def _document_index(selected):
         "data_candidata_da_verificare": item.get("data_candidata"),
         "fonte": item.get("fonte"),
     } for item in selected if item.get("nota_id") is not None]
+
+
+def _two_stage_result(db, question, model, plan, previous_usage, base, issue):
+    """Due SELECT consecutive, con selezione clinica e verifica del centro.
+
+    Metodo alternativo: 1) note che menzionano la struttura + classificazione
+    LLM per categoria su lotti; 2) SELECT per ID trovati + LOTUS + verifica
+    strutturata delle prove. Se non verificabile, astensione tracciata.
+    """
+    import pandas as pd
+    import lotus
+    from lotus.models import LM
+
+    diagnostics = {
+        "strategia_tag":"due_fasi",
+        "motivo_due_fasi":issue,
+        "sql_fase1":None,"sql_fase2":None,
+        "documenti_fase1":0,"documenti_fase2":0,
+        "lotti_fase1":0,"lotti_fase1_validi":0,
+        "lotti_fase1_non_validi":0,
+        "coppie_documentate":0,
+        "risultato_parziale":True,
+    }
+    usage=previous_usage
+    def abstain(reason):
+        return {
+            **base,**diagnostics,**usage,
+            "risposta":"Non e' possibile verificare in modo sufficiente "
+                      "le associazioni fra medicinali, indicazioni e centri "
+                      "prescrittori nelle fonti disponibili. "
+                      "Il metodo alternativo non ha prodotto evidenze "
+                      "documentali affidabili per rispondere.",
+            "fonti":[],"stato":"ASTENSIONE_DUE_FASI",
+            "motivo_astensione":reason,
+        }
+    sql1=_in_phase("compilazione SQL prima fase TAG",sql_from_document_plan,plan)
+    sql1=_in_phase("validazione SQL prima fase TAG",validate_sql,sql1)
+    diagnostics["sql_fase1"]=sql1
+    r1,trunc1=_in_phase("SQL prima fase TAG",_run_generated_select,db,sql1)
+    diagnostics["documenti_fase1"]=len(r1)
+    diagnostics["sql_tentativi_due_fasi"]=1
+    if not r1 or trunc1:
+        return abstain("prima_select_vuota_o_incompleta")
+    notes,notes_partial=_in_phase(
+        "estrazione note prima fase TAG",_note_candidates,db,r1
+    )
+    if not notes or len(notes)!=len(r1):
+        return abstain("pagine_note_prima_fase_mancanti")
+    chunks=_in_phase("preparazione lotti prima fase TAG",refinement_batches,notes)
+    diagnostics["lotti_fase1"]=len(chunks)
+    chosen_indexes=set()
+    uncertain=False
+    for offset,batch in chunks:
+        payload,reason=_in_phase(
+            "campione note prima fase TAG",refinement_payload,
+            batch, question, len(batch),offset
+        )
+        if payload is None:
+            diagnostics["lotti_fase1_non_validi"]+=1
+            continue
+        payload["categoria_clinica"]=plan["criterio_semantico"]
+        reply,used=_in_phase(
+            "identificazione medicinale indicazione TAG",ask,
+            model,DISCOVER_PROMPT,payload,timeout=75,max_tokens=1400
+        )
+        usage=_accumulate(usage,used)
+        try:
+            indices,batch_uncertain=parse_refinement_result(
+                reply,len(batch),len(batch)
+            )
+        except ValueError:
+            diagnostics["lotti_fase1_non_validi"]+=1
+            continue
+        diagnostics["lotti_fase1_validi"]+=1
+        uncertain|=batch_uncertain
+        chosen_indexes.update(offset+i for i in indices)
+    if diagnostics["lotti_fase1_non_validi"]:
+        return abstain("classificazione_prima_fase_non_completa")
+    if not chosen_indexes:
+        return abstain("nessuna_nota_pertinente_alla_categoria")
+    selected=[notes[i] for i in sorted(chosen_indexes)]
+    if len(selected)>MAX_ANSWER_DOCUMENTS:
+        return abstain("troppe_note_da_verificare_senza_troncamenti")
+    sql2=_in_phase("compilazione SQL seconda fase TAG",sql_second_stage,
+                   [x["nota_id"] for x in selected])
+    sql2=_in_phase("validazione SQL seconda fase TAG",validate_sql,sql2)
+    diagnostics["sql_fase2"]=sql2
+    diagnostics["sql_tentativi_due_fasi"]=2
+    r2,trunc2=_in_phase("SQL seconda fase TAG",_run_generated_select,db,sql2)
+    if trunc2 or len(r2)!=len(selected):
+        return abstain("seconda_select_incompleta")
+    diagnostics["documenti_fase2"]=len(r2)
+    stage2,stage2_partial=_in_phase(
+        "evidenze secondo passaggio TAG",_note_candidates,db,r2
+    )
+    if len(stage2)!=len(r2) or not stage2:
+        return abstain("pagine_seconda_fase_mancanti")
+    lm=_in_phase("inizializzazione LOTUS seconda fase TAG",
+                 LM,model,max_batch_size=3)
+    instrument_lotus(lm)
+    _in_phase("configurazione LOTUS seconda fase TAG",
+              lotus.settings.configure,lm=lm,enable_cache=False)
+    planned,members=_lotus_plan(stage2)
+    filtered=_in_phase(
+        "verifica semantica centro LOTUS seconda fase TAG",
+        sem_filter_controlled,pd.DataFrame(planned),
+        STAGE2_LOTUS_PROMPT.format(
+            testo="{testo}",domanda=json.dumps(question,ensure_ascii=False)
+        )
+    )
+    selected_groups=filtered[["chiave"]].to_dict("records")
+    candidates=expand_selected(selected_groups,members)
+    diagnostics["gruppi_lotus_fase2"]=len(planned)
+    diagnostics["gruppi_lotus_selezionati_fase2"]=len(selected_groups)
+    if not candidates:
+        return abstain("nessuna_relazione_selezionata_da_lotus")
+    contextual,clipped=_balanced_answer_evidence(candidates)
+    # La verifica usa la stessa numerazione delle schede nel payload.
+    verification,verification_usage=_in_phase(
+        "verifica documentale centro e pagine seconda fase TAG",
+        ask,model,VERIFY_PROMPT,
+        {"domanda":question,"struttura":plan["centro"],
+         "categoria_clinica":plan["criterio_semantico"],
+         "documenti":[{
+             "documento_indice":i,
+             "nome_file":candidates[i].get("nome_file"),
+             "testo":chunk["testo"]
+         } for i,chunk in enumerate(contextual)]},
+        timeout=75,max_tokens=3700
+    )
+    usage=_accumulate(usage,verification_usage)
+    try:
+        verified,verify_uncertain=_in_phase(
+            "controllo pagine e medicinali sul database TAG",
+            verified_document_pairs,verification,candidates,db,plan["centro"]
+        )
+    except ValueError:
+        return abstain("verifica_strutturata_non_valida")
+    if not verified:
+        return abstain("nessuna_associazione_esplicitamente_verificata")
+    diagnostics["coppie_documentate"]=len(verified)
+    sources=list(dict.fromkeys(row["fonte"] for row in verified))
+    response=format_verified_pairs(verified)
+    response += (
+        "\n\nAvvertenza: il recupero e la verifica sono automatici, "
+        "non costituiscono una verifica normativa indipendente e "
+        "l'elenco non e' garantito esaustivo."
+    )
+    if (uncertain or verify_uncertain or notes_partial or stage2_partial or clipped):
+        response += (
+            "\n\nAlcuni passaggi o classificazioni sono incerti o "
+            "abbreviati: controllare i PDF originali."
+        )
+    return {
+        **base,**diagnostics,**usage,
+        "risposta":response,"fonti":sources,
+        "stato":"RISULTATI_PARZIALI",
+        "sql":sql2,"sql_fallback":sql1,
+        "sql_tentativi":base.get("sql_tentativi",1)+2,
+        "righe_sql":len(r2),"righe_recuperate":len(notes),
+        "note_nell_indice":len(candidates),
+        "note_nel_contesto":len(contextual),
+        "righe_sem_filter":len(planned),
+        "righe_selezionate_lotus":len(selected_groups),
+        "modalita_selezione":"due fasi documentali con verifica",
+        "recupero_progressivo_usato":True,
+        "motivo_recupero_progressivo":"recupero_due_fasi",
+        "piano_documentale_usato":True,
+        "piano_documentale_centro":plan["centro"],
+        "piano_documentale_esito":"ok",
+    }
 
 
 def automatic_tag(db, question, model):
