@@ -10,7 +10,7 @@ import json
 import re
 import time
 
-from errori_chatbot import EnginePhaseError
+from errori_chatbot import EnginePhaseError, diagnose_error
 from tesi.contatore_llm import instrument_lotus, measured_engine
 from tesi.piano_documentale import (
     PLAN_PROMPT, document_center_anchors, recovery_center_anchors,
@@ -46,7 +46,7 @@ MAX_NOTE_PAGES = 1200
 MAX_LOTUS_GROUPS = 12
 MAX_ANSWER_DOCUMENTS = 55
 MAX_ANSWER_CHARS = 44000
-TAG_AUTO_REVISION = "2026-11-08-r23-verifica-finale-per-lotti"
+TAG_AUTO_REVISION = "2026-11-08-r24-errore-lotti-diagnosticabile"
 
 SQL_PROMPT = (
     "Genera UNA sola query SQLite SELECT che recuperi candidati da far "
@@ -630,7 +630,8 @@ def _document_index(selected):
     } for item in selected if item.get("nota_id") is not None]
 
 
-def _two_stage_result(db, question, model, plan, previous_usage, base, issue):
+def _two_stage_result(db, question, model, plan, previous_usage, base, issue,
+                      diagnostics=None):
     """Due SELECT consecutive, con selezione clinica e verifica del centro.
 
     Metodo alternativo: 1) note che menzionano la struttura + classificazione
@@ -641,7 +642,9 @@ def _two_stage_result(db, question, model, plan, previous_usage, base, issue):
     import lotus
     from lotus.models import LM
 
-    diagnostics = {
+    if diagnostics is None:
+        diagnostics={}
+    diagnostics.update({
         "strategia_tag":"due_fasi",
         "motivo_due_fasi":issue,
         "sql_fase1":None,"sql_fase2":None,
@@ -661,7 +664,11 @@ def _two_stage_result(db, question, model, plan, previous_usage, base, issue):
         "documenti_inviati_verifica":0,
         "documenti_senza_associazione_verificata":[],
         "risultato_parziale":True,
-    }
+        "codice_errore_due_fasi":None,
+        "fase_errore_due_fasi":None,
+        "tipo_errore_due_fasi":None,
+        "lotto_verifica_interrotto":None,
+    })
     usage=previous_usage
     def abstain(reason):
         return {
@@ -779,20 +786,34 @@ def _two_stage_result(db, question, model, plan, previous_usage, base, issue):
             continue
         contextual_count+=len(contextual)
         diagnostics["documenti_inviati_verifica"]+=len(contextual)
-        verification,used=_in_phase(
-            "verifica documentale centro e pagine TAG lotto "+
-            str(batch_index),ask,model,VERIFY_PROMPT,
-            {"domanda":question,"struttura":plan["centro"],
-             "categoria_clinica":plan["criterio_semantico"],
-             "lotto":batch_index,
-             "totale_lotti":len(chunks),
-             "documenti":[{
-                 "documento_indice":i,
-                 "nome_file":batch[i].get("nome_file"),
-                 "testo":chunk["testo"]
-             } for i,chunk in enumerate(contextual)]},
-            timeout=75,max_tokens=3700
-        )
+        try:
+            verification,used=_in_phase(
+                "verifica documentale centro e pagine TAG lotto "+
+                str(batch_index),ask,model,VERIFY_PROMPT,
+                {"domanda":question,"struttura":plan["centro"],
+                 "categoria_clinica":plan["criterio_semantico"],
+                 "lotto":batch_index,
+                 "totale_lotti":len(chunks),
+                 "documenti":[{
+                     "documento_indice":i,
+                     "nome_file":batch[i].get("nome_file"),
+                     "testo":chunk["testo"]
+                 } for i,chunk in enumerate(contextual)]},
+                timeout=75,max_tokens=3700
+            )
+        except EnginePhaseError as exc:
+            # Un errore del provider non invalida le coppie verificate nei
+            # lotti precedenti. NON tentare altri lotti dopo un errore API:
+            # potrebbe essere una quota esaurita o un problema di servizio.
+            diagnostic=diagnose_error(exc)
+            diagnostics["codice_errore_due_fasi"]=diagnostic["codice"]
+            diagnostics["fase_errore_due_fasi"]=(
+                "verifica documentale finale TAG lotto "+str(batch_index)
+            )
+            diagnostics["tipo_errore_due_fasi"]=diagnostic["tipo"]
+            diagnostics["lotto_verifica_interrotto"]=batch_index
+            diagnostics["lotti_verifica_non_validi"]+=1
+            break
         usage=_accumulate(usage,used)
         try:
             accepted,batch_uncertain,audit=audit_verified_document_pairs(
@@ -845,10 +866,14 @@ def _two_stage_result(db, question, model, plan, previous_usage, base, issue):
     ]
     if not verified:
         return abstain(
-            "verifica_strutturata_non_valida"
-            if (diagnostics["asserzioni_verifica_respinte"] or
-                diagnostics["lotti_verifica_non_validi"])
-            else "nessuna_associazione_esplicitamente_verificata"
+            "errore_llm_verifica_finale"
+            if diagnostics["codice_errore_due_fasi"]
+            else (
+                "verifica_strutturata_non_valida"
+                if (diagnostics["asserzioni_verifica_respinte"] or
+                    diagnostics["lotti_verifica_non_validi"])
+                else "nessuna_associazione_esplicitamente_verificata"
+            )
         )
     sources=list(dict.fromkeys(row["fonte"] for row in verified))
     response=format_verified_pairs(verified)
@@ -857,6 +882,12 @@ def _two_stage_result(db, question, model, plan, previous_usage, base, issue):
         "non costituiscono una verifica normativa indipendente e "
         "l'elenco non e' garantito esaustivo."
     )
+    if diagnostics["codice_errore_due_fasi"]:
+        response += (
+            "\n\nAvvertenza: la verifica si e' interrotta per un errore "
+            "tecnico del modello; le associazioni citate provengono solo "
+            "dai lotti completati e verificati."
+        )
     if diagnostics["lotti_verifica_non_validi"]:
         response += (
             "\n\nAvvertenza: uno o piu' lotti di verifica non sono "
@@ -927,21 +958,33 @@ def _try_two_stage(db, question, model, initial_sql, base, usage, issue,
         return None,usage
     base["piano_documentale_usato"]=True
     base["piano_documentale_centro"]=plan["centro"]
+    diagnostics={}
     try:
-        result=_two_stage_result(db,question,model,plan,usage,base,issue)
+        result=_two_stage_result(
+            db,question,model,plan,usage,base,issue,
+            diagnostics=diagnostics
+        )
     except Exception as exc:
-        # Ritorniamo un'astensione e la causa tecnica, non una falsa
-        # asserzione di assenza. Il contatore request-safe registra gli
-        # invii effettivi anche in caso di eccezione.
+        # Un errore prima della verifica finale e' distinto dal fallimento
+        # di un lotto. Manteniamo metriche SQL gia' raccolte, senza esporre
+        # il testo grezzo dell'eccezione o attribuire un'assenza alle fonti.
+        info=diagnose_error(exc)
+        reason=("errore_llm_o_servizio"
+                if info["codice"] in {"QUOTA","SERVIZIO","AUTH",
+                                     "MODELLO","CONNESSIONE","RICHIESTA"}
+                else "errore_tecnico")
         result={
-            **base,**usage,"strategia_tag":"due_fasi",
+            **base,**diagnostics,**usage,
+            "strategia_tag":"due_fasi",
             "motivo_due_fasi":issue,
             "risposta":"Il recupero documentale in due fasi non e' stato "
-                      "completato. Non e' possibile fornire una risposta "
-                      "verificata dalle fonti.",
+                      "completato per un errore tecnico. Nessuna "
+                      "associazione e' stata presentata come verificata.",
             "stato":"ASTENSIONE_DUE_FASI","fonti":[],
-            "motivo_astensione":"errore_tecnico_"+
-                type(exc).__name__,
+            "motivo_astensione":reason,
+            "codice_errore_due_fasi":info["codice"],
+            "fase_errore_due_fasi":info["fase"],
+            "tipo_errore_due_fasi":info["tipo"],
             "risultato_parziale":True,
         }
     return result,usage
