@@ -184,6 +184,8 @@ class TwoStageTests(unittest.TestCase):
                 value=json.dumps(value) if isinstance(value,dict) else value
             else:
                 raise AssertionError("Chiamata inattesa: "+str(system)[:45])
+            if isinstance(value,Exception):
+                raise value
             return value,{"token_input":1,"token_output":1,"costo_usd":0}
         lotus=types.ModuleType("lotus")
         lotus.settings=types.SimpleNamespace(configure=lambda **_:None)
@@ -287,6 +289,77 @@ class TwoStageTests(unittest.TestCase):
                          [3,2])
         self.assertEqual(verify_requests[1]["documenti"][0]["documento_indice"],0)
 
+    def test_quota_lotto_finale_conserva_prova_prima_del_guasto(self):
+        self._aggiungi_due_note_con_centro()
+        good={"verificati":[{
+            "documento_indice":0,"medicinale":"MED-A",
+            "indicazione":"Disturbo muscolare alfa",
+            "pagina_indicazione":1,"pagina_centro":2,
+        }],"incerto":False}
+        class RateLimitError(Exception):
+            pass
+        error=EnginePhaseError(
+            "connessione LLM",RateLimitError("errore fittizio")
+        )
+        result,calls=self.run_pipeline(
+            discover={"indici":[0,1,2,3,4],"incerto":False},
+            verify=[good,error]
+        )
+        self.assertEqual(result["stato"],"RISULTATI_PARZIALI")
+        self.assertEqual(result["lotti_verifica_finale"],2)
+        self.assertEqual(result["lotti_verifica_conclusi"],1)
+        self.assertEqual(result["lotti_verifica_non_validi"],1)
+        self.assertEqual(result["lotto_verifica_interrotto"],2)
+        self.assertEqual(result["codice_errore_due_fasi"],"QUOTA")
+        self.assertEqual(result["tipo_errore_due_fasi"],"RateLimitError")
+        self.assertEqual(result["coppie_documentate"],1)
+        self.assertEqual(result["documenti_inviati_verifica"],5)
+        self.assertEqual(len(result["fonti"]),1)
+        self.assertIn("MED-A",result["risposta"])
+        self.assertIn("errore tecnico del modello",result["risposta"])
+        self.assertEqual(len(calls),5)
+        self.assertEqual(result["chiamate_llm_dirette"],5)
+
+    def test_guasto_al_primo_lotto_si_astiene_con_diagnostica(self):
+        class ServiceUnavailableError(Exception):
+            pass
+        error=EnginePhaseError(
+            "connessione LLM",ServiceUnavailableError("fittizio")
+        )
+        result,calls=self.run_pipeline(verify=error)
+        self.assertEqual(result["stato"],"ASTENSIONE_DUE_FASI")
+        self.assertEqual(result["motivo_astensione"],
+                         "errore_llm_verifica_finale")
+        self.assertEqual(result["documenti_fase1"],3)
+        self.assertEqual(result["documenti_fase2"],2)
+        self.assertEqual(result["lotti_fase1_validi"],1)
+        self.assertEqual(result["lotti_verifica_finale"],1)
+        self.assertEqual(result["lotto_verifica_interrotto"],1)
+        self.assertEqual(result["codice_errore_due_fasi"],"SERVIZIO")
+        self.assertEqual(result["lotti_verifica_conclusi"],0)
+        self.assertEqual(result["fonti"],[])
+        self.assertEqual(len(calls),4)
+
+    def test_guasto_classificazione_prima_fase_preserva_metriche_sql(self):
+        class RateLimitError(Exception):
+            pass
+        error=EnginePhaseError(
+            "connessione LLM",RateLimitError("fittizio")
+        )
+        result,calls=self.run_pipeline(discover=error)
+        self.assertEqual(result["stato"],"ASTENSIONE_DUE_FASI")
+        self.assertEqual(result["motivo_astensione"],"errore_llm_o_servizio")
+        self.assertEqual(result["documenti_fase1"],3)
+        self.assertEqual(result["lotti_fase1"],1)
+        self.assertEqual(result["lotti_fase1_validi"],0)
+        self.assertEqual(result["codice_errore_due_fasi"],"QUOTA")
+        self.assertEqual(result["fase_errore_due_fasi"],"connessione LLM")
+        self.assertEqual(result["tipo_errore_due_fasi"],"RateLimitError")
+        self.assertIsNotNone(result["sql_fase1"])
+        self.assertIsNone(result["sql_fase2"])
+        self.assertEqual(result["fonti"],[])
+        self.assertEqual(len(calls),3)
+
     def test_un_lotto_json_invalido_non_cancella_lotto_valido(self):
         self._aggiungi_due_note_con_centro()
         accepted={"verificati":[
@@ -323,7 +396,7 @@ class TwoStageTests(unittest.TestCase):
         finally:
             self.db.set_trace_callback(None)
         self.assertEqual(result["tag_auto_revision"],
-                         "2026-11-08-r23-verifica-finale-per-lotti")
+                         "2026-11-08-r24-errore-lotti-diagnosticabile")
         self.assertEqual(result["strategia_tag"],"due_fasi")
         self.assertEqual(result["errore_sql_iniziale"],"tabella_non_consentita")
         self.assertFalse(result["sql_iniziale_validata"])
