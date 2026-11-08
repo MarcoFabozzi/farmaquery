@@ -127,8 +127,6 @@ class TwoStageTests(unittest.TestCase):
              ('n3',2,'AOU Federico II centro prescrittore MED-C','TESTO');
            INSERT INTO centri_candidati VALUES
              ('n1',2,'AOU Federico II','sospeso');
-           INSERT INTO nota_centro_documentato VALUES
-             ('n1','AOU Federico II',2);
         """)
         self.db.execute("PRAGMA query_only=ON")
 
@@ -248,8 +246,20 @@ class TwoStageTests(unittest.TestCase):
             SQL_R18_REAL,QUESTION.replace("Federico II","altra struttura")),
             [])
 
+    def _abilita_relazione_curata_per_r19(self):
+        # Fixture della sola SELECT r19: non alterare la prova r18,
+        # che richiede un risultato iniziale davvero vuoto.
+        self.db.execute("PRAGMA query_only=OFF")
+        self.db.execute(
+            "INSERT INTO nota_centro_documentato "
+            "(nota_id,centro,numero_pagina) VALUES (?,?,?)",
+            ("n1","AOU Federico II",2)
+        )
+        self.db.execute("PRAGMA query_only=ON")
+
     def test_sql_reale_r19_con_righe_attiva_due_fasi_per_copertura(self):
         """Una SELECT con 1 nota non prova completezza sui 3 PDF del centro."""
+        self._abilita_relazione_curata_per_r19()
         original, partial=auto._run_generated_select(
             self.db,auto.validate_sql(SQL_R19_REAL))
         self.assertFalse(partial)
@@ -274,6 +284,7 @@ class TwoStageTests(unittest.TestCase):
 
     def test_copertura_ristretta_senza_piano_valido_resta_segnalata(self):
         """Non si sopprime la diagnosi anche se il piano e' rifiutato."""
+        self._abilita_relazione_curata_per_r19()
         rejected=json.dumps({"applicabile":False,"centro":None,
             "criterio_semantico":None,
             "vincoli_oggettivi_aggiuntivi":["filtro oggettivo"]})
