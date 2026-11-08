@@ -6,6 +6,7 @@ verificare che i risultati non si inventino e che il costo sia misurato.
 from __future__ import annotations
 
 import gzip
+import re
 import json
 import sqlite3
 import sys
@@ -755,6 +756,65 @@ class TwoStageTests(unittest.TestCase):
             sql_second_stage([])
         with self.assertRaises(ValueError):
             sql_second_stage([""])
+
+
+    def test_audit_temporaneo_pagine_regionali_tesi(self):
+        """Solo audit su branch temporaneo, senza cambiare database statico."""
+        root=Path(__file__).resolve().parents[1]
+        dbfile=root/"risultati/tesi_statico_20261102.sqlite.gz"
+        self.assertTrue(dbfile.is_file())
+        database=sqlite3.connect(":memory:")
+        try:
+            database.deserialize(gzip.decompress(dbfile.read_bytes()))
+            database.row_factory=sqlite3.Row
+            database.execute("PRAGMA query_only=ON")
+            targets=[
+                ("VYVGART.pdf",[1,3],["miasten","refratt","Federico"]),
+                ("AMVUTTRA.pdf",[1,2],["polineurop","amiloidos","Federico"]),
+                ("NEXVIADYME.pdf",[1,2],["Pompe","Federico"]),
+                ("POMBILITI-OPFOLDA.pdf",[1,2],["Pombiliti","Opfolda","Pompe","Federico"]),
+                ("DUVYZAT  Prot.N.0368583-2026.pdf",[1,2],["Duchenne","Federico"]),
+                ("SOLIRIS.pdf",[1,3,4],["miasten","neuromiel","Federico"]),
+                ("HYQVIA CIDP.pdf",[1,2],["Hizentra","CIDP","Federico"]),
+                ("SKYCLARYS  Prot.N.0143659-2026.pdf",[1,2],["Friedreich","Federico"]),
+                ("AGAMREE  Prot.N.0663946-2026.pdf",[1,2],["Duchenne","Federico"]),
+            ]
+            print("=== AUDIT TESTI DA SNAPSHOT SQLITE (READ ONLY) ===")
+            for filename,pages,terms in targets:
+                stem=filename.split(".pdf")[0].split("  Prot.N.")[0]
+                matches=database.execute(
+                    "SELECT id,nome_file,percorso_zip FROM note "
+                    "WHERE nome_file=? OR nome_file LIKE ? "
+                    "ORDER BY nome_file",(filename,stem+"%")
+                ).fetchall()
+                print("\\n### FILE",filename,"MATCHES",len(matches))
+                for note in matches[:2]:
+                    print("NOTA",note["nome_file"],"PATH",note["percorso_zip"])
+                    for page_num in pages:
+                        pg=database.execute(
+                            "SELECT testo FROM pagine WHERE nota_id=? "
+                            "AND numero_pagina=?",(note["id"],page_num)
+                        ).fetchone()
+                        if not pg:
+                            print("PAGE",page_num,"ASSENTE")
+                            continue
+                        raw=str(pg["testo"] or "")
+                        cleaned=" ".join(raw.split())
+                        print("PAGE",page_num,"CHARS",len(raw),
+                              "PREVIEW",cleaned[:1350])
+                        for term in terms:
+                            hits=list(re.finditer(re.escape(term),raw,re.I))
+                            if hits:
+                                chosen=hits[:3]
+                                parts=[]
+                                for hit in chosen:
+                                    snippet=" ".join(raw[max(0,hit.start()-220):
+                                                         min(len(raw),hit.end()+340)].split())
+                                    parts.append(snippet)
+                                print("MATCH",term,"n",len(hits),
+                                      " ".join(parts)[:1700])
+        finally:
+            database.close()
 
 
 if __name__=="__main__":
