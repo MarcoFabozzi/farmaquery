@@ -17,7 +17,7 @@ Le domande pilota già usate e i quesiti F01-F20 della prima proposta rimangono 
 
 Il farmacista controlla classe, forma o via di somministrazione, tipo di prescrizione, canale di distribuzione e piano terapeutico su un record o una nota ben identificata.
 
-**FAR01.** Devo verificare la dispensazione di XEMBIFY: qual è la classe di rimborsabilità, quale via di somministrazione è prevista e che tipo di prescrizione richiede la nota campana?
+**FAR01.** Per XEMBIFY qual è la classe di rimborsabilità? Quale via di somministrazione è prevista? Che tipo di prescrizione richiede la nota campana?
 
 <details><summary>Fonti previste e controllo da eseguire</summary>
 
@@ -25,7 +25,7 @@ REGIONE — XEMBIFY.pdf, pp. 1-2: classe, via e regime di fornitura; non confond
 
 </details>
 
-**FAR02.** Per KAYFANDA, la nota regionale prevede distribuzione diretta oppure convenzionata? Quali canale File F e sistema di piani terapeutici indica?
+**FAR02.** Per KAYFANDA, la nota regionale prevede distribuzione diretta oppure convenzionata? Quale canale File F e quale sistema di piani terapeutici indica?
 
 <details><summary>Fonti previste e controllo da eseguire</summary>
 
@@ -41,7 +41,7 @@ AIFA+REGIONE — AIFA AIC 046130047, lista A/H 30/06/2026; HEMLIBRA.pdf, p. 1.
 
 </details>
 
-**FAR04.** Per SIVEXTRO, quale classe A/H risulta nello snapshot per la confezione in compresse AIC 044020016 e per quella endovenosa AIC 044020030? Le due formulazioni hanno la stessa classe documentata?
+**FAR04.** Per SIVEXTRO, quale classe risulta per la confezione in compresse AIC 044020016? Invece per quella endovenosa AIC 044020030? Le due formulazioni hanno la stessa classe documentata?
 
 <details><summary>Fonti previste e controllo da eseguire</summary>
 
