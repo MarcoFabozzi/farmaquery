@@ -797,6 +797,58 @@ def _two_stage_result(db, question, model, plan, previous_usage, base, issue):
     }
 
 
+def _try_two_stage(db, question, model, initial_sql, base, usage, issue):
+    """Piano JSON solo su intento documentale; rifiuta vincoli espliciti extra.
+
+    Nessun recupero esteso se il pianificatore non conferma l'applicabilita'.
+    Conserva le metriche anche per un piano rifiutato o malformato.
+    """
+    anchors=_in_phase(
+        "ancore centro per eventuale seconda strategia TAG",
+        document_center_anchors,initial_sql,question
+    )
+    if not anchors:
+        base["piano_documentale_esito"]="nessun_centro_ancorato"
+        return None,usage
+    response,used=_in_phase(
+        "classificazione del piano TAG doppio recupero",
+        ask,model,PLAN_PROMPT,
+        {"domanda":question,"centri_candidati_sql":anchors},
+        timeout=65,max_tokens=750
+    )
+    usage=_accumulate(usage,used)
+    base["chiamate_piano_documentale"]=(
+        base.get("chiamate_piano_documentale",0)+1
+    )
+    plan,why=_in_phase(
+        "validazione piano documentale TAG due fasi",
+        validated_document_plan,response,anchors,question
+    )
+    base["piano_documentale_esito"]=why
+    if plan is None:
+        return None,usage
+    base["piano_documentale_usato"]=True
+    base["piano_documentale_centro"]=plan["centro"]
+    try:
+        result=_two_stage_result(db,question,model,plan,usage,base,issue)
+    except Exception as exc:
+        # Ritorniamo un'astensione e la causa tecnica, non una falsa
+        # asserzione di assenza. Il contatore request-safe registra gli
+        # invii effettivi anche in caso di eccezione.
+        result={
+            **base,**usage,"strategia_tag":"due_fasi",
+            "motivo_due_fasi":issue,
+            "risposta":"Il recupero documentale in due fasi non e' stato "
+                      "completato. Non e' possibile fornire una risposta "
+                      "verificata dalle fonti.",
+            "stato":"ASTENSIONE_DUE_FASI","fonti":[],
+            "motivo_astensione":"errore_tecnico_"+
+                type(exc).__name__,
+            "risultato_parziale":True,
+        }
+    return result,usage
+
+
 def automatic_tag(db, question, model):
     """LLM -> SQL -> DB -> LOTUS sem_filter -> LLM; niente dizionari clinici."""
     import pandas as pd
@@ -900,63 +952,18 @@ def automatic_tag(db, question, model):
                 fallback_used = True
             else:
                 fallback_reason = "fallback_senza_risultati"
-    # Rete di sicurezza architetturale quando la SQL inventa filtri e le
-    # regole AST non riescono a riconoscere un recupero documentale valido.
-    # L'LLM formula solo un PIANO tipizzato; la SELECT e' costruita in Python.
-    # In una domanda con altri vincoli oggettivi (anno, protocollo, farmaco
-    # specifico, stato esplicitamente richiesto) il piano viene rifiutato.
+    # Dopo il primo metodo, valutiamo segnali OSSERVABILI: nessuna riga,
+    # oppure LIKE clinici non sufficienti a garantire il recall. Se il
+    # recupero AST ha gia' allargato la copertura, usiamo il percorso normale.
+    quality_issue = (
+        "sql_vuoto" if not records
+        else (None if fallback_used else
+              semantic_filter_warning(sql_initial, question))
+    )
     plan_used = False
     plan_center = None
     plan_reason = "non_necessario"
     plan_llm_calls = 0
-    if not fallback_used and not records:
-        anchors = _in_phase(
-            "individuazione ancore documentali piano TAG automatico",
-            document_center_anchors, sql_initial, question
-        )
-        if anchors:
-            plan_text, plan_usage = _in_phase(
-                "pianificazione strutturata recupero TAG automatico",
-                ask, model, PLAN_PROMPT,
-                {"domanda": question, "centri_candidati_sql": anchors}
-            )
-            generation_usage = _accumulate(generation_usage, plan_usage)
-            plan_llm_calls = 1
-            plan, plan_reason = _in_phase(
-                "validazione piano documentale TAG automatico",
-                validated_document_plan, plan_text, anchors, question
-            )
-            if plan:
-                plan_center = plan["centro"]
-                document_sql = _in_phase(
-                    "compilazione SQL piano documentale TAG automatico",
-                    sql_from_document_plan, plan
-                )
-                document_sql = _in_phase(
-                    "validazione SELECT piano documentale TAG automatico",
-                    validate_sql, document_sql
-                )
-                # Solo due SELECT in totale: quella dell'LLM e la forma
-                # verificata su note/pagine. Non modifica lo snapshot.
-                sql_attempts = 2
-                plan_rows, plan_partial = _in_phase(
-                    "esecuzione piano documentale TAG automatico",
-                    _run_generated_select, db, document_sql
-                )
-                old_ids = {str(row["nota_id"]) for row in records
-                           if row.get("nota_id") is not None}
-                new_ids = {str(row["nota_id"]) for row in plan_rows
-                           if row.get("nota_id") is not None}
-                if plan_rows and (not records or old_ids <= new_ids):
-                    records, sql_partial = plan_rows, plan_partial
-                    sql, fallback_sql = document_sql, document_sql
-                    fallback_reason = "piano_strutturato_centro_e_categoria"
-                    fallback_used = True
-                    plan_used = True
-                else:
-                    plan_reason = ("nessun_documento_nel_piano"
-                                   if not plan_rows else
-                                   "piano_non_contiene_candidati_originali")
     base = {"sql":sql, "sql_originale_llm":sql_originale_llm,
             "sql_primo_tentativo":sql_initial,
             "sql_fallback":fallback_sql,
@@ -966,6 +973,8 @@ def automatic_tag(db, question, model):
             "piano_documentale_centro":plan_center,
             "piano_documentale_esito":plan_reason,
             "chiamate_piano_documentale":plan_llm_calls,
+            "strategia_tag":"normale",
+            "motivo_due_fasi":quality_issue,
             "righe_sql_primo_tentativo":initial_rows,
             "sql_normalizzato_nota_id":note_id_changed,
             "sql_normalizzato_nome":sql_with_name != sql_originale_llm,
@@ -975,6 +984,12 @@ def automatic_tag(db, question, model):
             "versione_tag":"automatico-v1",
             "recupero":"LLM-SQL-progressivo" if fallback_used else "LLM-SQL",
             "sql_tentativi":sql_attempts, "righe_sql":len(records)}
+    if quality_issue is not None:
+        alternative, generation_usage = _try_two_stage(
+            db,question,model,sql_initial,base,generation_usage,quality_issue
+        )
+        if alternative is not None:
+            return alternative
     if not records:
         return {**base, "risposta":"La query SQL non ha restituito righe. "
                 "Questo non dimostra che l'informazione sia assente dalle fonti.",
@@ -1069,6 +1084,13 @@ def automatic_tag(db, question, model):
             refinement_skipped_reason = "nessuno"
     prior_usage = direct_usage
     if not selected:
+        if quality_issue is None:
+            alternative, direct_usage = _try_two_stage(
+                db,question,model,sql_initial,base,direct_usage,
+                "lotus_non_ha_selezionato_evidenze"
+            )
+            if alternative is not None:
+                return alternative
         # Mantieni la diagnostica storica se e' stato LOTUS a non
         # selezionare alcun gruppo (senza raffinamento successivo).
         missing_message = (
