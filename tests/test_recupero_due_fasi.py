@@ -17,6 +17,7 @@ from unittest.mock import patch
 import pandas as pd
 
 from tesi import tag_automatico as auto
+from tesi.contatore_llm import direct_attempt
 from tesi.recupero_due_fasi import (
     DISCOVER_PROMPT, VERIFY_PROMPT, semantic_filter_warning,
     sql_second_stage,verified_document_pairs,
@@ -115,6 +116,7 @@ class TwoStageTests(unittest.TestCase):
                 "incerto":False
             }
         def mock_ask(model,system,payload,**kwargs):
+            direct_attempt()
             called.append((system,payload))
             if system==auto.SQL_PROMPT:
                 value=sql
