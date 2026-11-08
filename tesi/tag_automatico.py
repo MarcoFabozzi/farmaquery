@@ -25,6 +25,7 @@ from tesi.recupero_due_fasi import (
     semantic_filter_warning, sql_second_stage,
     verified_document_pairs, format_verified_pairs,
 )
+from tesi.verifica_copertura_tag import compare_center_coverage
 from tesi.recupero_progressivo import (
     normalize_document_note_id, propose_empty_category_fallback,
     propose_partial_center_expansion,
@@ -42,7 +43,7 @@ MAX_NOTE_PAGES = 1200
 MAX_LOTUS_GROUPS = 12
 MAX_ANSWER_DOCUMENTS = 55
 MAX_ANSWER_CHARS = 44000
-TAG_AUTO_REVISION = "2026-11-08-r19-ancore-documentali-robuste"
+TAG_AUTO_REVISION = "2026-11-08-r20-controllo-copertura-documentale"
 
 SQL_PROMPT = (
     "Genera UNA sola query SQLite SELECT che recuperi candidati da far "
@@ -951,13 +952,33 @@ def automatic_tag(db, question, model):
                 fallback_used = True
             else:
                 fallback_reason = "fallback_senza_risultati"
+    # Il controllo di copertura confronta ID reali: una JOIN con una
+    # tabella curata non prova che siano state recuperate tutte le note
+    # che menzionano il centro. Non classifica farmaci o patologie.
+    coverage_issue = None
+    coverage_audit = {
+        "sql_controllo_copertura":None,
+        "documenti_controllo_copertura":None,
+        "documenti_esclusi_primo_recupero":None,
+        "controllo_copertura_troncato":False,
+        "controllo_copertura_eseguito":False,
+    }
+    if records and not fallback_used:
+        coverage_issue, coverage_audit = _in_phase(
+            "verifica differenziale della copertura documentale TAG",
+            compare_center_coverage, db, sql, question, records,
+            _run_generated_select, validate_sql
+        )
+        if coverage_audit["controllo_copertura_eseguito"]:
+            sql_attempts += 1
     # Dopo il primo metodo, valutiamo segnali OSSERVABILI: nessuna riga,
     # oppure LIKE clinici non sufficienti a garantire il recall. Se il
     # recupero AST ha gia' allargato la copertura, usiamo il percorso normale.
     quality_issue = (
         "sql_vuoto" if not records
         else (None if fallback_used else
-              semantic_filter_warning(sql_initial, question))
+              (coverage_issue or
+               semantic_filter_warning(sql_initial, question)))
     )
     plan_used = False
     plan_center = None
@@ -974,6 +995,7 @@ def automatic_tag(db, question, model):
             "chiamate_piano_documentale":plan_llm_calls,
             "strategia_tag":"normale",
             "motivo_due_fasi":quality_issue,
+            **coverage_audit,
             "righe_sql_primo_tentativo":initial_rows,
             "sql_normalizzato_nota_id":note_id_changed,
             "sql_normalizzato_nome":sql_with_name != sql_originale_llm,
@@ -1125,6 +1147,7 @@ def automatic_tag(db, question, model):
     index_notes = _document_index(selected[:MAX_ANSWER_DOCUMENTS])
     # La selezione semantica per nota richiede una verifica indipendente.
     partial = (sql_partial or page_partial or truncated_answer
+               or quality_issue is not None
                or refinement_used or refinement_uncertain
                or bool(refinement_skipped_reason
                    and refinement_skipped_reason not in ("nessuno", "")))
@@ -1143,6 +1166,13 @@ def automatic_tag(db, question, model):
     elif truncated_answer:
         answer += ("\n\nAvvertenza: alcuni testi di pagina sono abbreviati "
                    "per limiti di contesto; verificare i dettagli sui documenti originali.")
+    if coverage_issue is not None:
+        answer += (
+            "\n\nAvvertenza: il primo recupero ha escluso note che "
+            "menzionano la stessa struttura. La copertura della risposta "
+            "non e' dimostrata e il percorso alternativo non e' stato "
+            "completato o applicabile."
+        )
     if refinement_used:
         answer += ("\n\nAvvertenza: la selezione dei singoli documenti "
                    "e' stata effettuata semanticamente dall'LLM; "

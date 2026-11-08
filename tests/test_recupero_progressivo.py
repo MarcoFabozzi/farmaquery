@@ -156,7 +156,9 @@ class ProgressiveRetrievalTests(unittest.TestCase):
         self.assertTrue(result["sql_normalizzato_nota_id"])
         # Il recupero ampliato viene verificato anche quando la prima SELECT
         # e' non vuota, ma non sostituisce la query se non aggiunge nuove note.
-        self.assertEqual(result["sql_tentativi"], 2)
+        self.assertEqual(result["sql_tentativi"], 3)
+        self.assertTrue(result["controllo_copertura_eseguito"])
+        self.assertEqual(result["documenti_esclusi_primo_recupero"],0)
         self.assertEqual(result["righe_sql"], 1)
         self.assertEqual(result["note_nell_indice"], 1)
         self.assertEqual(result["note_nel_contesto"], 1)
@@ -164,7 +166,7 @@ class ProgressiveRetrievalTests(unittest.TestCase):
         self.assertEqual(len(calls), 2)
         self.assertIn("indice_documentale", calls[-1][1])
         self.assertEqual(result["tag_auto_revision"],
-                         "2026-11-08-r19-ancore-documentali-robuste")
+                         "2026-11-08-r20-controllo-copertura-documentale")
 
     def test_non_amplia_filtri_autorizzativi_o_farmaci_precisi(self):
         for sql in [
@@ -373,7 +375,7 @@ class ProgressiveRetrievalTests(unittest.TestCase):
         self.assertIn("nota_id", result["sql"])
         self.assertEqual(result["note_nell_indice"], 1)
         self.assertEqual(result["tag_auto_revision"],
-                         "2026-11-08-r19-ancore-documentali-robuste")
+                         "2026-11-08-r20-controllo-copertura-documentale")
         self.assertEqual(len(calls), 2)  # SQL + sintesi; LOTUS simulato.
 
 

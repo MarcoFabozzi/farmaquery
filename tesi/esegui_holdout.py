@@ -39,7 +39,10 @@ COLUMNS=("id","metodo","modello","snapshot_sha256","risposta","fonti",
          "strategia_tag","motivo_due_fasi","sql_fase1","sql_fase2",
          "documenti_fase1","documenti_fase2","lotti_fase1",
          "lotti_fase1_validi","lotti_fase1_non_validi",
-         "coppie_documentate","motivo_astensione")
+         "coppie_documentate","motivo_astensione",
+         "sql_controllo_copertura","documenti_controllo_copertura",
+         "documenti_esclusi_primo_recupero",
+         "controllo_copertura_eseguito","controllo_copertura_troncato")
 METHODS=("Text-to-SQL","TAG","TAG automatico")
 
 
@@ -154,6 +157,15 @@ def collect(gold_file,db_file,manifest_file,model,out,commit,answer_fn=answer_qu
                     "lotti_fase1_non_validi":result.get("lotti_fase1_non_validi"),
                     "coppie_documentate":result.get("coppie_documentate"),
                     "motivo_astensione":result.get("motivo_astensione"),
+                    "sql_controllo_copertura":result.get("sql_controllo_copertura"),
+                    "documenti_controllo_copertura":result.get(
+                        "documenti_controllo_copertura"),
+                    "documenti_esclusi_primo_recupero":result.get(
+                        "documenti_esclusi_primo_recupero"),
+                    "controllo_copertura_eseguito":result.get(
+                        "controllo_copertura_eseguito"),
+                    "controllo_copertura_troncato":result.get(
+                        "controllo_copertura_troncato"),
                     "sql_normalizzato_nome":result.get("sql_normalizzato_nome"),
                     "sql_normalizzato_ambito_regione":result.get(
                         "sql_normalizzato_ambito_regione"),
