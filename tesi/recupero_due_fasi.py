@@ -17,6 +17,34 @@ from sqlglot import exp, parse_one
 from tesi.piano_documentale import document_center_anchors
 
 MAX_SECOND_STAGE_NOTES = 55
+TARGET_FINAL_VERIFY_BATCH_SIZE = 3
+MAX_FINAL_VERIFY_BATCHES = 8
+
+
+def final_verification_batches(documents):
+    """Suddivide la verifica finale in lotti disgiunti e con budget massimo.
+
+    Per pochi documenti usa lotti di tre; per insiemi maggiori amplia
+    gradualmente i lotti, evitando un numero incontrollato di invii LLM.
+    Indici locali del verificatore, zero duplicazioni o omissioni.
+    """
+    if not isinstance(documents, list) or not documents:
+        raise ValueError("Nessun documento per la verifica finale")
+    if len(documents)>MAX_SECOND_STAGE_NOTES:
+        raise ValueError("Troppi documenti per la verifica finale")
+    batch_size=max(
+        TARGET_FINAL_VERIFY_BATCH_SIZE,
+        (len(documents)+MAX_FINAL_VERIFY_BATCHES-1)//MAX_FINAL_VERIFY_BATCHES
+    )
+    batches=[
+        (offset,documents[offset:offset+batch_size])
+        for offset in range(0,len(documents),batch_size)
+    ]
+    if (len(batches)>MAX_FINAL_VERIFY_BATCHES or
+            sum(len(batch) for _,batch in batches)!=len(documents)):
+        raise ValueError("Copertura lotti verifica non completa")
+    return batches
+
 
 DISCOVER_PROMPT = (
     "Fase 1 di un recupero documentale. Sei un classificatore di NOTE, "
@@ -47,7 +75,10 @@ STAGE2_LOTUS_PROMPT = (
 
 VERIFY_PROMPT = (
     "Fase 2 di verifica documentale per un elenco di farmaci. Usa SOLO "
-    "le evidenze in input e la domanda. Per ogni medicinale registra una "
+    "le evidenze in input e la domanda. "
+    "Esamina OGNI documento del lotto indipendentemente, senza "
+    "sceglierne solo i piu' evidenti o limitarne arbitrariamente il numero. "
+    "Per ogni medicinale registra una "
     "coppia indicazione-centro SOLTANTO se la NOTA individua realmente "
     "la struttura richiesta come centro di prescrizione per QUELLA "
     "indicazione; non basta menzionare la struttura o parlare del farmaco "
@@ -62,6 +93,9 @@ VERIFY_PROMPT = (
     "documento_indice e' l'indice della scheda nell'input e le pagine "
     "sono interi positivi. Se nessuna prova e' adeguata, restituisci "
     '"verificati":[]; imposta incerto=true per incertezza o prove troncate. '
+    "Gli indici dei documenti sono LOCALI al lotto ricevuto. "
+    "Se una nota contiene piu' medicinali, verifica separatamente ciascuno; "
+    "se non emergono associazioni supportate, restituisci verificati vuoto. "
     "Non affermare completezza rispetto a tutti i PDF non consultati."
 )
 
