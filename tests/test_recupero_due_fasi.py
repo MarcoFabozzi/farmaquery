@@ -757,5 +757,47 @@ class TwoStageTests(unittest.TestCase):
             sql_second_stage([""])
 
 
+    def test_audit_testi_integrali_gold_12_20261108(self):
+        """Audit temporaneo, sola lettura, per gold indipendenti F09-F20."""
+        root=Path(__file__).resolve().parents[1]
+        path=root/"risultati/tesi_statico_20261102.sqlite.gz"
+        db=sqlite3.connect(":memory:")
+        try:
+            db.deserialize(gzip.decompress(path.read_bytes()))
+            db.row_factory=sqlite3.Row
+            db.execute("PRAGMA query_only=ON")
+            names=["KAYFANDA","XEMBIFY","DUPIXENT","ALIFTREK",
+                   "VOXZOGO","ENHERTU","KAFTRIO","LIVMARLI","HEMLIBRA"]
+            print("=== GOLD-12-AUDIT-BEGIN ===")
+            for name in names:
+                docs=db.execute(
+                    "SELECT id,nome_file,anno,percorso_zip,"
+                    "protocollo_candidato,indicazione_candidata "
+                    "FROM note WHERE UPPER(nome_file) LIKE ? "
+                    "ORDER BY anno,nome_file",("%"+name+"%",)
+                ).fetchall()
+                print("GOLD-NAME|"+name+"|COUNT|"+str(len(docs)))
+                for note in docs:
+                    print("GOLD-DOC|"+name+"|"+note["nome_file"]+
+                          "|YEAR|"+str(note["anno"])+
+                          "|PATH|"+str(note["percorso_zip"])+
+                          "|PROTOCOL|"+str(note["protocollo_candidato"])+
+                          "|INDICATION|"+str(note["indicazione_candidata"]))
+                    pages=db.execute(
+                        "SELECT numero_pagina,testo,metodo FROM pagine "
+                        "WHERE nota_id=? ORDER BY numero_pagina",
+                        (note["id"],)
+                    ).fetchall()
+                    for page in pages:
+                        excerpt=" ".join(str(page["testo"] or "").split())
+                        print("GOLD-PAGE|"+name+"|"+note["nome_file"]+
+                              "|P|"+str(page["numero_pagina"])+
+                              "|METHOD|"+str(page["metodo"])+
+                              "|LEN|"+str(len(excerpt))+"|TEXT|"+excerpt[:15000])
+            print("=== GOLD-12-AUDIT-END ===")
+        finally:
+            db.close()
+
+
 if __name__=="__main__":
     unittest.main()
