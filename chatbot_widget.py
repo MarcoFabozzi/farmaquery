@@ -338,6 +338,19 @@ def assistant_dialog():
                             "Selezione TAG: "+str(item["modalita_selezione"])+
                             " · evidenze: "+str(item.get("righe_recuperate","?"))+
                             " · elementi LOTUS: "+str(item.get("righe_sem_filter","?")))
+                    if method=="TAG automatico" and item.get("controllo_copertura_eseguito"):
+                        st.caption(
+                            "Controllo copertura documentale · note candidate: "+
+                            str(item.get("documenti_controllo_copertura","?"))+
+                            " · note escluse dalla prima SELECT: "+
+                            str(item.get("documenti_esclusi_primo_recupero","?"))+
+                            ". I documenti aggiuntivi non sono automaticamente "
+                            "pertinenti alla domanda.")
+                        with st.expander("SQL del controllo di copertura"):
+                            st.code(
+                                item.get("sql_controllo_copertura")
+                                or "Non disponibile",language="sql"
+                            )
                     if method=="TAG automatico" and item.get("strategia_tag")=="due_fasi":
                         st.caption(
                             "Metodo alternativo in due fasi · motivo: "+
@@ -469,6 +482,14 @@ def assistant_dialog():
                         "lotti_fase1":result.get("lotti_fase1"),
                         "lotti_fase1_validi":result.get("lotti_fase1_validi"),
                         "motivo_astensione":result.get("motivo_astensione"),
+                        "sql_controllo_copertura":result.get(
+                            "sql_controllo_copertura"),
+                        "documenti_controllo_copertura":result.get(
+                            "documenti_controllo_copertura"),
+                        "documenti_esclusi_primo_recupero":result.get(
+                            "documenti_esclusi_primo_recupero"),
+                        "controllo_copertura_eseguito":result.get(
+                            "controllo_copertura_eseguito"),
                         "raffinamento_documentale_usato":result.get(
                             "raffinamento_documentale_usato"),
                         "raffinamento_documentale_incerto":result.get(
