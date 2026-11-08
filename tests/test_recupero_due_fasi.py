@@ -757,5 +757,66 @@ class TwoStageTests(unittest.TestCase):
             sql_second_stage([""])
 
 
+    def test_audit_gold_20_references_exists_sqlite_20261108(self):
+        import csv
+        import re
+        from collections import Counter
+        root=Path(__file__).resolve().parents[1]
+        goldfile=root/"tesi/20_DOMANDE_GOLD_PROPOSTI_DAL_DATABASE_20261108.csv"
+        with goldfile.open(encoding="utf-8-sig",newline="") as f:
+            rows=list(csv.DictReader(f,delimiter=";"))
+        self.assertEqual(len(rows),20)
+        self.assertEqual(len({x["id"] for x in rows}),20)
+        self.assertEqual(sum(x["stato_validazione"]=="VALIDATO" for x in rows),8)
+        self.assertEqual(sum(x["stato_validazione"]=="DA_VERIFICARE" for x in rows),12)
+        self.assertTrue(all(x["risposta_gold_proposta_da_testo_sqlite"] for x in rows))
+        self.assertTrue(all(not x["risposta_gold"] for x in rows
+                            if x["stato_validazione"]=="DA_VERIFICARE"))
+        self.assertEqual(Counter(x["categoria"] for x in rows),{
+            "DIRETTE":4,"RELAZIONALI":4,"SEMANTICHE":4,
+            "TEMPORALI":4,"ASSENZA_DOCUMENTALE":4})
+        self.assertIn("ALYFTREK",next(x["domanda"] for x in rows
+                                     if x["id"]=="F12"))
+        db=sqlite3.connect(":memory:")
+        try:
+            db.deserialize(gzip.decompress(
+                (root/"risultati/tesi_statico_20261102.sqlite.gz").read_bytes()
+            ))
+            db.execute("PRAGMA query_only=ON")
+            numbers={"EMA":0,"AIFA":0,"PAGE":0}
+            for item in rows:
+                for ref in item["fonti_gold_proposte"].split("|"):
+                    self.assertTrue(ref, "empty ref "+item["id"])
+                    if ref.startswith("EMA:"):
+                        match=db.execute(
+                            "SELECT 1 FROM ema_medicinali WHERE ema_id=?",
+                            (ref[4:],)
+                        ).fetchone()
+                        self.assertIsNotNone(match,(item["id"],ref))
+                        numbers["EMA"]+=1
+                    elif ref.startswith("AIFA:"):
+                        match=db.execute(
+                            "SELECT 1 FROM aifa_confezioni WHERE aic=?",
+                            (ref[5:],)
+                        ).fetchone()
+                        self.assertIsNotNone(match,(item["id"],ref))
+                        numbers["AIFA"]+=1
+                    else:
+                        match=re.fullmatch(r"(.+\\.pdf)#p([1-9][0-9]*)",ref)
+                        self.assertIsNotNone(match,(item["id"],ref))
+                        exists=db.execute(
+                            "SELECT 1 FROM note AS n JOIN pagine AS p "
+                            "ON p.nota_id=n.id "
+                            "WHERE n.percorso_zip=? AND p.numero_pagina=? "
+                            "AND LENGTH(TRIM(p.testo))>0",
+                            (match.group(1),int(match.group(2)))
+                        ).fetchone()
+                        self.assertIsNotNone(exists,(item["id"],ref))
+                        numbers["PAGE"]+=1
+            print("GOLD-TWENTY-REF-VERIFIED",numbers)
+        finally:
+            db.close()
+
+
 if __name__=="__main__":
     unittest.main()
