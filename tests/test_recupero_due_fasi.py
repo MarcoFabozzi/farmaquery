@@ -212,6 +212,21 @@ class TwoStageTests(unittest.TestCase):
                          "verifica_strutturata_non_valida")
         self.assertFalse(result["fonti"])
 
+    def test_indicazione_inventata_non_supera_verifica(self):
+        forged={
+            "verificati":[{
+                "documento_indice":0,"medicinale":"MED-A",
+                "indicazione":"Melanoma cutaneo",
+                "pagina_indicazione":1,"pagina_centro":2
+            }],"incerto":False
+        }
+        result,_=self.run_pipeline(verify=forged)
+        self.assertEqual(result["stato"],"ASTENSIONE_DUE_FASI")
+        self.assertEqual(result["motivo_astensione"],
+                         "verifica_strutturata_non_valida")
+        self.assertEqual(result["coppie_documentate"],0)
+        self.assertFalse(result["fonti"])
+
     def test_json_malformato_si_astiene_senza_citazioni(self):
         result,_=self.run_pipeline(discover="RISPOSTA LIBERA")
         self.assertEqual(result["stato"],"ASTENSIONE_DUE_FASI")
