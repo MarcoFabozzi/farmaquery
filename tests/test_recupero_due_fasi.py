@@ -22,7 +22,8 @@ from tesi.recupero_due_fasi import (
     DISCOVER_PROMPT, VERIFY_PROMPT, semantic_filter_warning,
     sql_second_stage,verified_document_pairs,
 )
-from tesi.piano_documentale import PLAN_PROMPT
+from tesi.piano_documentale import PLAN_PROMPT, sql_from_document_plan
+from tesi.raffinamento_documentale import refinement_batches
 
 QUESTION=(
     "Quali medicinali citati nelle note regionali della Campania "
@@ -228,6 +229,39 @@ class TwoStageTests(unittest.TestCase):
         self.assertEqual(result["stato"],"NESSUNA_EVIDENZA")
         self.assertEqual(result["chiamate_piano_documentale"],1)
         self.assertEqual(len(calls),2)
+
+    def test_snapshot_fase1_tutti_pdf_gold_senza_dizionario(self):
+        root=Path(__file__).resolve().parents[1]
+        dbfile=root/"risultati/tesi_statico_20261102.sqlite.gz"
+        goldfile=root/"tesi/riferimento_neuromuscolari_federico_ii_2026-11-03.json"
+        if not dbfile.is_file() or not goldfile.is_file():
+            self.skipTest("Snapshot statico o riferimento non disponibile")
+        db=sqlite3.connect(":memory:")
+        try:
+            db.deserialize(gzip.decompress(dbfile.read_bytes()))
+            db.row_factory=sqlite3.Row
+            db.execute("PRAGMA query_only=ON")
+            sql=sql_from_document_plan({"centro":"Federico II"})
+            self.assertNotIn("neuromuscolari",sql.casefold())
+            records,partial=auto._run_generated_select(
+                db,auto.validate_sql(sql))
+            self.assertFalse(partial)
+            self.assertEqual(len(records),161)
+            docs,partial_notes=auto._note_candidates(db,records)
+            self.assertEqual(len(docs),161)
+            batches=refinement_batches(docs)
+            self.assertEqual(len(batches),9)
+            self.assertEqual(sum(len(part) for _,part in batches),161)
+            expected=json.loads(goldfile.read_text(encoding="utf-8"))
+            expected_ids={c["sha256_pdf"] for c in expected["casi_positivi"]}
+            found_ids={c["nota_id"] for c in docs}
+            self.assertTrue(expected_ids<=found_ids)
+            self.assertEqual(len(expected_ids),13)
+            print("R18 fase 1:",len(docs),
+                  "documenti, lotti",len(batches),
+                  "PDF distinti del riferimento",len(expected_ids))
+        finally:
+            db.close()
 
     def test_seconda_sql_usa_solo_identificativi_validi(self):
         sql=sql_second_stage(["a' OR 1=1 --","b"])
