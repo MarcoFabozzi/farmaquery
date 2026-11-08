@@ -196,7 +196,7 @@ def verified_document_pairs(raw, documents, db, center):
         }
         words=[
             w.casefold() for w in re.findall(
-                r"[^\\W\\d_]{4,}",indication,flags=re.UNICODE
+                r"[^\W\d_]{4,}",indication,flags=re.UNICODE
             ) if w.casefold() not in generic
         ]
         if not words or not any(
