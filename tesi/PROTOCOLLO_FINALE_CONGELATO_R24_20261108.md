@@ -30,16 +30,18 @@ Le categorie sono: **DIRETTE (4), RELAZIONALI (4), SEMANTICHE (4), TEMPORALI (4)
 
 ### Stato di preparazione del gold
 
-| Categoria | Candidate | Gold compilati | Stato |
-|---|---:|---:|---|
-| Dirette | 4 | 0 | DA_VERIFICARE |
-| Relazionali | 4 | 0 | DA_VERIFICARE |
-| Semantiche | 4 | 0 | DA_VERIFICARE |
-| Temporali | 4 | 0 | DA_VERIFICARE |
-| Assenza documentale | 4 | 0 | DA_VERIFICARE |
-| **Totale** | **20** | **0** | **Nessuna accuracy calcolabile** |
+La versione iniziale `HOLDOUT_FINALE_20_R24_DA_VALIDARE_20261108.csv` conserva tutti i gold vuoti per tracciabilità. La copia di lavoro `HOLDOUT_FINALE_20_R24_GOLD_PARZIALE_20261108.csv` contiene le prime otto risposte controllate direttamente sui record EMA, AIFA e sul titolo/anno dei PDF. **Non** sono state ancora eseguite chiamate LLM sui quesiti finali.
 
-La presenza dei medicinali nei record regionali/EMA/AIFA è stata esaminata nello snapshot; **non** costituisce approvazione del gold né dimostrazione di esaustività documentale.
+| Categoria | Candidati | Gold controllati | Ancora da verificare |
+|---|---:|---:|---:|
+| Dirette | 4 | 4 | 0 |
+| Relazionali | 4 | 4 | 0 |
+| Semantiche | 4 | 0 | 4 |
+| Temporali | 4 | 0 | 4 |
+| Assenza documentale | 4 | 0 | 4 |
+| **Totale** | **20** | **8** | **12** |
+
+Il controllo automatico `tesi.valida_gold.inspect`, effettuato sullo stesso SQLite decompresso, ha confermato **8 record validati, 12 da verificare, zero errori strutturali**. Questo controllo dimostra che le citazioni esistono, non attribuisce un giudizio clinico alle note e non produce accuracy per i modelli. Le 12 domande rimanenti richiedono revisione documentale indipendente.
 
 ## 3. Condizioni identiche per i motori
 
