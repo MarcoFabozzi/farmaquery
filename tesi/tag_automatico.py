@@ -756,9 +756,8 @@ def _two_stage_result(db, question, model, plan, previous_usage, base, issue):
     )
     usage=_accumulate(usage,verification_usage)
     try:
-        verified,verify_uncertain=_in_phase(
-            "controllo pagine e medicinali sul database TAG",
-            verified_document_pairs,verification,candidates,db,plan["centro"]
+        verified,verify_uncertain=verified_document_pairs(
+            verification,candidates,db,plan["centro"]
         )
     except ValueError:
         return abstain("verifica_strutturata_non_valida")
