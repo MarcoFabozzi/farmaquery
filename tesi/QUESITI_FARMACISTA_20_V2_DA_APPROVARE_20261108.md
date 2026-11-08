@@ -54,7 +54,7 @@ AIFA — AIFA confezioni, AIC 044020016 e 044020030, campi classe_a_h_snapshot e
 
 La domanda parte da una patologia o da un servizio ospedaliero, non dal nome del farmaco. Il sistema deve individuare i documenti pertinenti, non scambiare l'indicazione di una tabella con quella di un'altra e controllare le pagine.
 
-**FAR05.** Dobbiamo verificare le terapie per miastenia gravis generalizzata prescrivibili presso l'AOU Federico II: quali medicinali sono individuati dalle note campane per questa indicazione? Per ciascuno indica il documento e la pagina del centro, senza confondere le tabelle per neuromielite ottica.
+**FAR05.** Quali sono le terapie per miastenia gravis generalizzata prescrivibili presso l'AOU Federico II? Quali medicinali sono individuati dalle note campane per questa indicazione? Per ciascuno indica il documento e la pagina del centro, senza confondere le tabelle per neuromielite ottica.
 
 <details><summary>Fonti previste e controllo da eseguire</summary>
 
@@ -62,7 +62,7 @@ REGIONE — Riferimenti da controllare: VYVGART, SOLIRIS, ULTOMIRIS, ZILBRYSQ e 
 
 </details>
 
-**FAR06.** Per una richiesta relativa alla polineuropatia demielinizzante infiammatoria cronica (CIDP), quali medicinali citati nelle note regionali indicano l'AOU Federico II tra i centri prescrittori? Specifica se una nota aggiorna anche i centri di un altro medicinale.
+**FAR06.** Per una richiesta relativa alla polineuropatia demielinizzante infiammatoria cronica (CIDP), quali medicinali citati nelle note regionali indicano l'AOU Federico II tra i centri prescrittori?
 
 <details><summary>Fonti previste e controllo da eseguire</summary>
 
