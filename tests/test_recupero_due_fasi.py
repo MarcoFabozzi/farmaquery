@@ -799,5 +799,49 @@ class TwoStageTests(unittest.TestCase):
             db.close()
 
 
+    def test_gold_assenze_documentali_schema_20261108(self):
+        root=Path(__file__).resolve().parents[1]
+        db=sqlite3.connect(":memory:")
+        try:
+            db.deserialize(gzip.decompress(
+                (root/"risultati/tesi_statico_20261102.sqlite.gz").read_bytes()
+            ))
+            db.row_factory=sqlite3.Row
+            db.execute("PRAGMA query_only=ON")
+            tables=db.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' "
+                "AND name NOT LIKE 'sqlite_%' ORDER BY name"
+            ).fetchall()
+            print("GOLD-NEGATIVE-SCHEMA|"+
+                  "|".join(row["name"] for row in tables))
+            for name in ("KAYFANDA","XEMBIFY","HEMLIBRA","ENHERTU"):
+                rows=db.execute(
+                    "SELECT DISTINCT n.nome_file,p.numero_pagina,p.testo "
+                    "FROM note n JOIN pagine p ON p.nota_id=n.id "
+                    "WHERE UPPER(p.testo) LIKE ? ORDER BY n.nome_file,p.numero_pagina",
+                    ("%"+name+"%",)
+                ).fetchall()
+                print("GOLD-NEGATIVE|"+name+"|PAGES_MENTION|"+str(len(rows)))
+                import re
+                patterns={
+                    "KAYFANDA":r"(?i)(?:pazient.{0,100}(?:trattat|iniziat|effettiv|numero)|numero.{0,100}pazient)",
+                    "XEMBIFY":r"(?i)(?:prima.{0,90}somministr|somministr.{0,90}effettiv|data.{0,90}somministr)",
+                    "HEMLIBRA":r"(?i)(?:confezion.{0,110}(?:dispensat|effettiv)|dispensat.{0,100}(?:2025|confezion)|quantit.{0,90}dispens)",
+                    "ENHERTU":r"(?i)(?:spesa.{0,120}(?:2025|euro|sostenut)|fatturat.{0,80}2025|costo.{0,90}2025)"
+                }
+                hitcount=0
+                for row in rows:
+                    textvalue=str(row["testo"] or "")
+                    for hit in re.finditer(patterns[name],textvalue):
+                        hitcount+=1
+                        print("GOLD-NEGATIVE-HIT|"+name+"|"+
+                              row["nome_file"]+"|p"+str(row["numero_pagina"])+
+                              "|"+ " ".join(textvalue[max(0,hit.start()-85):
+                                                    min(len(textvalue),hit.end()+135)].split())[:340])
+                print("GOLD-NEGATIVE-SUMMARY|"+name+"|CONTEXT_HITS|"+str(hitcount))
+        finally:
+            db.close()
+
+
 if __name__=="__main__":
     unittest.main()
