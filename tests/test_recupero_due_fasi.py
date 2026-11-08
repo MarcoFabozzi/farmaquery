@@ -181,7 +181,7 @@ class TwoStageTests(unittest.TestCase):
     def test_r18_sql_vuoto_due_query_e_conferma_pagine(self):
         result,calls=self.run_pipeline()
         self.assertEqual(result["tag_auto_revision"],
-                         "2026-11-08-r20-controllo-copertura-documentale")
+                         "2026-11-08-r21-diagnostica-verifica-coppie")
         self.assertEqual(result["strategia_tag"],"due_fasi")
         self.assertEqual(result["motivo_due_fasi"],"sql_vuoto")
         self.assertEqual(result["documenti_fase1"],3)
@@ -356,6 +356,52 @@ class TwoStageTests(unittest.TestCase):
         self.assertEqual(result["motivo_astensione"],
                          "verifica_strutturata_non_valida")
         self.assertFalse(result["fonti"])
+        self.assertEqual(result["motivi_rifiuto_verifica"],{
+            "La pagina indicata non menziona la struttura":1
+        })
+        self.assertEqual(result["asserzioni_verifica_respinte"],1)
+
+    def test_associazione_falsa_non_elimina_quella_verificata(self):
+        mixed={
+            "verificati":[{
+                "documento_indice":0,"medicinale":"MED-A",
+                "indicazione":"Disturbo muscolare alfa",
+                "pagina_indicazione":1,"pagina_centro":2
+            },{
+                "documento_indice":1,"medicinale":"MED-B",
+                "indicazione":"Melanoma cutaneo",
+                "pagina_indicazione":1,"pagina_centro":2
+            }],
+            "incerto":False,
+        }
+        result,calls=self.run_pipeline(verify=mixed)
+        self.assertEqual(result["stato"],"RISULTATI_PARZIALI")
+        self.assertEqual(result["strategia_tag"],"due_fasi")
+        self.assertEqual(result["coppie_documentate"],1)
+        self.assertEqual(result["asserzioni_verifica_proposte"],2)
+        self.assertEqual(result["asserzioni_verifica_accettate"],1)
+        self.assertEqual(result["asserzioni_verifica_respinte"],1)
+        self.assertEqual(result["motivi_rifiuto_verifica"],{
+            "Indicazione non supportata dalla pagina citata":1})
+        self.assertEqual(len(result["documenti_candidati_verifica"]),2)
+        self.assertEqual(result["documenti_fase2"],2)
+        self.assertEqual(len(calls),4)
+        self.assertEqual(result["chiamate_llm_dirette"],4)
+        self.assertEqual(len(result["fonti"]),1)
+        self.assertIn("MED-A",result["risposta"])
+        self.assertNotIn("MED-B",result["risposta"])
+        self.assertNotIn("Melanoma",result["risposta"])
+        self.assertIn("associazioni proposte",result["risposta"])
+
+    def test_verifica_json_non_valido_registra_causa(self):
+        result,calls=self.run_pipeline(verify="testo libero anziche JSON")
+        self.assertEqual(result["stato"],"ASTENSIONE_DUE_FASI")
+        self.assertEqual(result["motivo_astensione"],
+                         "verifica_strutturata_non_valida")
+        self.assertEqual(result["motivi_rifiuto_verifica"],
+                         {"contratto_json_non_valido":1})
+        self.assertFalse(result["fonti"])
+        self.assertEqual(len(calls),4)
 
     def test_indicazione_inventata_non_supera_verifica(self):
         forged={
