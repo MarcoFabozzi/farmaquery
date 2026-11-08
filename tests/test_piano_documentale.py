@@ -195,7 +195,7 @@ class StructuredPlanTests(unittest.TestCase):
         self.assertEqual(len(calls),4)
         self.assertIn("note",result["sql"])
         self.assertEqual(result["tag_auto_revision"],
-                         "2026-11-08-r22-recupero-sql-non-valida")
+                         "2026-11-08-r23-verifica-finale-per-lotti")
 
     def test_piano_non_applicabile_non_inventa_fonti(self):
         calls=[]
