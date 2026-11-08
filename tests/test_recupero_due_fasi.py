@@ -22,7 +22,10 @@ from tesi.recupero_due_fasi import (
     DISCOVER_PROMPT, VERIFY_PROMPT, semantic_filter_warning,
     sql_second_stage,verified_document_pairs,
 )
-from tesi.piano_documentale import PLAN_PROMPT, sql_from_document_plan
+from tesi.piano_documentale import (
+    PLAN_PROMPT, sql_from_document_plan, document_center_anchors,
+    recovery_center_anchors,
+)
 from tesi.raffinamento_documentale import refinement_batches
 
 QUESTION=(
@@ -48,6 +51,21 @@ SQL_PARTIAL=(
     "WHERE p.testo LIKE '%Federico II%' "
     "AND n.indicazione_candidata LIKE '%neuromuscolari%'"
 )
+SQL_R18_REAL = (
+    "SELECT DISTINCT n.farmaco_candidato AS nome, "
+    "COALESCE(n.indicazione_candidata, 'Malattie neuromuscolari') "
+    "AS patologia_o_indicazione, n.id AS documento_id, c.numero_pagina "
+    "FROM note AS n JOIN nota_centro_documentato AS c "
+    "ON n.id = c.nota_id "
+    "WHERE (c.centro COLLATE NOCASE LIKE '%Federico II%' "
+    "OR c.centro COLLATE NOCASE LIKE '%AOU%') "
+    "AND (n.farmaco_candidato COLLATE NOCASE LIKE '%neuromuscolar%' "
+    "OR n.indicazione_candidata COLLATE NOCASE LIKE '%neuromuscolar%' "
+    "OR n.farmaco_candidato COLLATE NOCASE IN "
+    "(SELECT DISTINCT medicinale FROM strutture_registri "
+    "WHERE patologia COLLATE NOCASE LIKE '%neuromuscolar%'))"
+)
+
 PLAN=json.dumps({
     "applicabile":True,
     "centro":"Federico II",
@@ -72,6 +90,12 @@ class TwoStageTests(unittest.TestCase):
            );
            CREATE TABLE centri_candidati(
                nota_id TEXT,numero_pagina INTEGER,menzione TEXT,stato TEXT
+           );
+           CREATE TABLE nota_centro_documentato(
+               nota_id TEXT,centro TEXT,numero_pagina INTEGER
+           );
+           CREATE TABLE strutture_registri(
+               medicinale TEXT,patologia TEXT
            );
            INSERT INTO note VALUES
              ('n1','MED-A.pdf',2026,NULL,NULL,'MED-A',
@@ -146,7 +170,7 @@ class TwoStageTests(unittest.TestCase):
     def test_r18_sql_vuoto_due_query_e_conferma_pagine(self):
         result,calls=self.run_pipeline()
         self.assertEqual(result["tag_auto_revision"],
-                         "2026-11-08-r18-recupero-due-fasi")
+                         "2026-11-08-r19-ancore-documentali-robuste")
         self.assertEqual(result["strategia_tag"],"due_fasi")
         self.assertEqual(result["motivo_due_fasi"],"sql_vuoto")
         self.assertEqual(result["documenti_fase1"],3)
@@ -170,6 +194,46 @@ class TwoStageTests(unittest.TestCase):
         self.assertEqual([system for system,_ in calls],
                          [auto.SQL_PROMPT,PLAN_PROMPT,DISCOVER_PROMPT,VERIFY_PROMPT])
         self.assertEqual(result["chiamate_llm_dirette"],4)
+
+    def test_sql_esatta_r18_con_centro_revisionato_e_sottoquery(self):
+        # SQL originale del test nell'app: prima recupero vuoto,
+        # quindi PLAN + SQL1 + classificazione + SQL2 + LOTUS.
+        original,partial=auto._run_generated_select(
+            self.db,auto.validate_sql(SQL_R18_REAL))
+        self.assertFalse(partial)
+        self.assertEqual(original,[])
+        self.assertEqual(document_center_anchors(SQL_R18_REAL,QUESTION),[])
+        self.assertEqual(recovery_center_anchors(SQL_R18_REAL,QUESTION),
+                         ["Federico II"])
+        result,calls=self.run_pipeline(sql=SQL_R18_REAL)
+        self.assertEqual(result["strategia_tag"],"due_fasi")
+        self.assertEqual(result["motivo_due_fasi"],"sql_vuoto")
+        self.assertEqual(result["documenti_fase1"],3)
+        self.assertEqual(result["documenti_fase2"],2)
+        self.assertEqual(result["coppie_documentate"],2)
+        self.assertEqual(result["chiamate_piano_documentale"],1)
+        self.assertEqual(result["sql_tentativi_due_fasi"],2)
+        self.assertEqual(result["chiamate_llm_dirette"],4)
+        self.assertEqual(len(calls),4)
+        self.assertIn("MED-A",result["risposta"])
+        self.assertTrue(all("#p2" in url for url in result["fonti"]))
+
+    def test_ancore_generiche_non_prendono_filtri_clinici_della_sottoquery(self):
+        # La query scelta dall'LLM puo' contenere sottoquery semantiche
+        # irrilevanti. Non diventano mai un'ancora di struttura.
+        self.assertNotIn("neuromuscolar",
+                         recovery_center_anchors(SQL_R18_REAL,QUESTION))
+        altered=SQL_R18_REAL.replace(
+            "c.centro COLLATE NOCASE LIKE '%Federico II%'",
+            "n.farmaco_candidato COLLATE NOCASE LIKE '%Federico II%'"
+        ).replace(
+            "c.centro COLLATE NOCASE LIKE '%AOU%'",
+            "n.indicazione_candidata COLLATE NOCASE LIKE '%AOU%'"
+        )
+        self.assertEqual(recovery_center_anchors(altered,QUESTION),[])
+        self.assertEqual(recovery_center_anchors(
+            SQL_R18_REAL,QUESTION.replace("Federico II","altra struttura")),
+            [])
 
     def test_query_parziale_attiva_secondo_metodo(self):
         self.assertEqual(
@@ -241,7 +305,7 @@ class TwoStageTests(unittest.TestCase):
                       "vincoli_oggettivi_aggiuntivi":["farmaco preciso"]})
         result,calls=self.run_pipeline(plan=p)
         self.assertNotEqual(result.get("strategia_tag"),"due_fasi")
-        self.assertEqual(result["stato"],"NESSUNA_EVIDENZA")
+        self.assertEqual(result["stato"],"ASTENSIONE_DUE_FASI")
         self.assertEqual(result["chiamate_piano_documentale"],1)
         self.assertEqual(len(calls),2)
 
