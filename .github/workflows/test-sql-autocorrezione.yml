@@ -1,0 +1,31 @@
+name: Test Text-to-SQL con auto-correzione
+
+on:
+  pull_request:
+    paths:
+      - 'tesi/sql_autocorrezione.py'
+      - 'tesi/tests/test_sql_autocorrezione.py'
+      - 'chatbot_farmaquery.py'
+      - '.github/workflows/test-sql-autocorrezione.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Installa librerie del motore
+        run: |
+          python -m pip install --disable-pip-version-check -r requirements.txt
+          python -m pip check
+      - name: Compilazione e test senza API
+        run: |
+          python -m py_compile tesi/sql_autocorrezione.py chatbot_farmaquery.py chatbot_widget.py
+          python -m unittest -v tesi.tests.test_sql_autocorrezione tests.test_chatbot_farmaquery
