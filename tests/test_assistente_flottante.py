@@ -71,7 +71,7 @@ class FloatingAssistantTests(unittest.TestCase):
                  ]}
             ]}
         csv_bytes=widget._export_csv(groups)
-        self.assertTrue(csv_bytes.startswith(b"\\xef\\xbb\\xbf"))
+        self.assertEqual(csv_bytes[:3], bytes([239,187,191]))
         rows=list(csv.DictReader(StringIO(csv_bytes.decode("utf-8-sig")),delimiter=";"))
         self.assertEqual(len(rows),2)
         self.assertEqual(rows[0]["domanda"],"Domanda 1?")
