@@ -112,6 +112,49 @@ class Gold35SnapshotEvidenceAudit(unittest.TestCase):
             table_names={r[0] for r in db.execute(
                 "SELECT name FROM sqlite_master WHERE type='table'")}
             print("GOLD_AUDIT_TABLES",sorted(table_names),flush=True)
+            # Riscontri mirati per le fonti strutturate e le assenze operative.
+            xembify=db.execute(
+                "SELECT aic,classe_a_h_snapshot FROM aifa_confezioni "
+                "WHERE UPPER(nome)='XEMBIFY' ORDER BY aic").fetchall()
+            print("STRUTTURATO_XEMBIFY", [tuple(x) for x in xembify],flush=True)
+            self.assertEqual(len(xembify),9)
+            self.assertEqual(sum(x["classe_a_h_snapshot"]=="H" for x in xembify),4)
+            self.assertEqual(sum(x["classe_a_h_snapshot"] is None for x in xembify),5)
+            sivextro=db.execute(
+                "SELECT aic,classe_a_h_snapshot FROM aifa_confezioni "
+                "WHERE aic IN ('044020016','044020030') ORDER BY aic").fetchall()
+            print("STRUTTURATO_SIVEXTRO",[tuple(x) for x in sivextro],flush=True)
+            self.assertEqual(
+                {x["aic"]:x["classe_a_h_snapshot"] for x in sivextro},
+                {"044020016":"A","044020030":"H"})
+            for medicine in ("WEGOVY","DUVYZAT","PLUVICTO"):
+                rec=db.execute("SELECT ema_id,stato_ema,data_decisione_ue "
+                               "FROM ema_medicinali WHERE UPPER(nome)=?",
+                               (medicine,)).fetchall()
+                print("STRUTTURATO_EMA",medicine,
+                      [tuple(x) for x in rec],flush=True)
+                self.assertTrue(rec,medicine)
+            gu=db.execute("SELECT codice FROM gu_atti WHERE codice=?",
+                          ("23A02767",)).fetchall()
+            print("STRUTTURATO_GU_23A02767", [tuple(x) for x in gu],flush=True)
+            self.assertTrue(gu)
+            enhertu=db.execute("SELECT percorso_zip FROM note "
+                               "WHERE nome_file LIKE '%ENHERTU%'").fetchall()
+            print("STRUTTURATO_ENHERTU_NOTE",
+                  [x["percorso_zip"] for x in enhertu],flush=True)
+            self.assertTrue(enhertu)
+            operative=("pazienti","trattamenti","somministrazioni",
+                       "giacenze","fatture","acquisti","dispensazioni")
+            existing={name for name in table_names
+                      if any(word in name.casefold() for word in operative)}
+            print("STRUTTURATO_TABELLE_OPERATIVE",sorted(existing),flush=True)
+            self.assertFalse(existing)
+            rys=db.execute(
+                "SELECT struttura FROM strutture_registri "
+                "WHERE UPPER(medicinale)='RYSTIGGO' "
+                "AND LOWER(struttura) LIKE '%federico%'").fetchall()
+            print("RYSTIGGO_AIFA_FEDERICO",[x[0] for x in rys],flush=True)
+            self.assertTrue(rys)
             print("GOLD_AUDIT_SUMMARY",json.dumps(stats,ensure_ascii=False),
                   "ERRORS",failures,flush=True)
             self.assertEqual(failures,[])
