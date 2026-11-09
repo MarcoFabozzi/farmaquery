@@ -646,46 +646,52 @@ def render_assistant():
     # vera si apre nel dialog Streamlit (portal indipendente dal layout).
     st.markdown("""
     <style>
+    /* Solo estetica: il dialog Streamlit rimane nativo e sempre editabile. */
     .st-key-farmaquery_floating {
         position:fixed!important;
-        right:22px!important;
-        bottom:72px!important;
+        right:23px!important;
+        bottom:70px!important;
         z-index:99999!important;
-        width:94px!important;
-        max-width:94px!important;
+        width:92px!important;
+        max-width:92px!important;
         padding:0!important;
     }
     .st-key-farmaquery_floating button {
-        width:88px!important;
-        min-width:88px!important;
-        max-width:88px!important;
-        height:88px!important;
-        min-height:88px!important;
+        width:86px!important;
+        min-width:86px!important;
+        max-width:86px!important;
+        height:86px!important;
+        min-height:86px!important;
         border-radius:50%!important;
         padding:0!important;
         font-size:2rem!important;
         color:white!important;
-        background:#116b70!important;
-        border:2px solid white!important;
-        box-shadow:0 7px 26px rgba(0,0,0,.24)!important;
+        background:linear-gradient(145deg,#096f80,#13a28c)!important;
+        border:3px solid #fff!important;
+        box-shadow:0 10px 32px rgba(12,77,95,.28)!important;
     }
     .st-key-farmaquery_floating button:hover {
-        background:#098f85!important;
+        background:linear-gradient(145deg,#075969,#0e8577)!important;
+        box-shadow:0 12px 34px rgba(12,77,95,.35)!important;
+        transform:translateY(-2px);
     }
     @media(max-width:650px) {
         .st-key-farmaquery_floating {
-            right:13px!important;
-            bottom:56px!important;
-            width:84px!important;
-            max-width:84px!important;
+            right:12px!important;
+            bottom:52px!important;
+            width:79px!important;
+            max-width:79px!important;
         }
         .st-key-farmaquery_floating button {
-            width:78px!important;
-            min-width:78px!important;
-            max-width:78px!important;
-            height:78px!important;
-            min-height:78px!important;
+            width:75px!important;
+            min-width:75px!important;
+            max-width:75px!important;
+            height:75px!important;
+            min-height:75px!important;
         }
+    }
+    @media (prefers-reduced-motion:reduce) {
+        .st-key-farmaquery_floating button:hover {transform:none;}
     }
     </style>
     """,unsafe_allow_html=True)
