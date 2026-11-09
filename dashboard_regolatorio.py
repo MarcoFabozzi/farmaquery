@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 import json
 import re
 from html import escape
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, unquote
 import sqlite3
 import tempfile
 
@@ -77,10 +77,82 @@ div[data-testid="stButton"] button:hover {background:#dff5ee;border-color:#169b8
     .regula-hero h1 {font-size:1.85rem;}
     div[data-testid="stMetric"] {padding:8px 7px;}
 }
+
+/* Rifinitura estetica: non modifica query, dati o logica di navigazione. */
+.stApp {background:linear-gradient(180deg,#eff8fa 0%,#ffffff 440px);}
+.block-container {max-width:1080px;padding-top:1.3rem;padding-bottom:7rem;}
+.regula-hero {
+  background:linear-gradient(112deg,#163a55 0%,#0b7982 63%,#16a58d 100%);
+  border:1px solid rgba(255,255,255,.20);
+  padding:30px 34px;border-radius:22px;
+  box-shadow:0 14px 34px rgba(11,89,103,.15);
+}
+.regula-hero h1 {font-size:clamp(2.05rem,4vw,2.75rem);font-weight:800;
+  letter-spacing:-.03em;margin-bottom:10px;}
+.regula-hero p {max-width:65ch;line-height:1.55;color:#eefdfb;}
+h3 {color:#163d53!important;font-weight:730;letter-spacing:-.02em;}
+div[data-testid="stMetric"] {
+  background:#ffffff;border:1px solid #d5e8e7;border-radius:16px;
+  padding:16px;box-shadow:0 4px 16px rgba(32,83,99,.06);
+}
+div[data-testid="stMetricValue"] {color:#076f75;font-weight:800;}
+div[data-testid="stMetricLabel"] {color:#486675;font-weight:600;}
+div[data-testid="stTextInput"] input {
+  background:#ffffff;border:1px solid #bad9da;border-radius:12px;
+  color:#173d4f;min-height:48px;
+}
+div[data-testid="stTextInput"] input:focus {
+  border-color:#0e9290;box-shadow:0 0 0 3px rgba(20,148,145,.13);
+}
+div[data-testid="stButton"] button {
+  border:1px solid #c9e2e0;background:#ffffff;color:#155263;
+  border-radius:12px;font-weight:650;
+}
+div[data-testid="stButton"] button:hover {
+  background:#e8f7f3;border-color:#148d85;color:#0c6564;
+}
+div[data-testid="stButton"] button[kind="primary"] {
+  background:#0b7c7d;border-color:#0b7c7d;color:#ffffff;
+}
+div[data-testid="stButton"] button[kind="primary"]:hover {
+  background:#09696d;border-color:#09696d;color:#ffffff;
+}
+div[data-testid="stDataFrame"] {
+  border:1px solid #d9e9e7;border-radius:13px;overflow:hidden;
+}
+div[data-testid="stExpander"] {border-color:#d9e9e7;border-radius:12px;}
+.regula-packages-scroll {
+  border:1px solid #d9e9e7;box-shadow:0 4px 14px rgba(16,74,84,.04);
+}
+.regula-packages th {background:#e8f6f2;color:#164e57;border-bottom-color:#c9e6de;}
+.regula-packages tr:nth-child(even) {background:#f7fbfa;}
+.regula-packages tbody tr:hover {background:#edf8f5;}
+.regula-detail-link {color:#087a78!important;}
+.regula-detail-link:hover {color:#075e66!important;}
+@media (max-width:650px) {
+  .block-container {padding-top:.8rem;padding-bottom:7.5rem;}
+  .regula-hero {padding:23px 20px;border-radius:18px;}
+  .regula-hero h1 {font-size:2rem;}
+  .regula-hero p {font-size:.88rem;}
+  div[data-testid="stMetric"] {padding:10px;}
+  div[data-testid="stMetricValue"] {font-size:1.2rem;}
+}
+@media (prefers-reduced-motion:no-preference) {
+  div[data-testid="stButton"] button {transition:background-color .16s,border-color .16s,color .16s;}
+}
+.regula-update-footer {
+  border-top:1px solid #d8e8e6;margin-top:1.4rem;padding-top:1rem;
+  color:#16485a;font-size:1rem;
+}
+@media(max-width:700px) {
+  div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"] div[data-testid="stMetric"]) {
+    flex-wrap:wrap;
+  }
+}
 </style>
 <div class="regula-hero">
 <h1>💊 FarmaQuery</h1>
-<p>Ricerca medicinali e confezioni dalle fonti ufficiali EMA, AIFA e Gazzetta Ufficiale.</p>
+<p>Ricerca medicinali e confezioni dalle fonti ufficiali EMA, AIFA, Gazzetta Ufficiale e dalle note regionali della Campania.</p>
 </div>
 """,unsafe_allow_html=True)
 
@@ -371,6 +443,8 @@ if requested_aic is not None:
     st.stop()
 
 
+from regione_campania_dashboard import conta_note_regionali, mostra_sezione_regione
+
 ema=query('SELECT COUNT(*) AS n FROM ema_medicinali')[0]['n']
 gu=query('SELECT COUNT(*) AS n FROM gazzetta_atti')[0]['n']
 aifa_main=query('SELECT COUNT(*) AS n FROM aifa_confezioni')[0]['n']
@@ -387,10 +461,12 @@ if AIFA.is_file():
     except (OSError,KeyError,TypeError,ValueError):
         pass
 st.markdown('### 📊 Archivio disponibile')
-c1,c2,c3=st.columns(3)
+note_count=conta_note_regionali(DATA)
+c1,c2,c3,c4=st.columns(4)
 c1.metric('Medicinali EMA',f'{ema:,}'.replace(',','.'))
 c2.metric(aifa_label,f'{aifa_total:,}'.replace(',','.'))
 c3.metric('Atti Gazzetta',gu)
+c4.metric('Note regionali',f'{note_count:,}'.replace(',','.') if note_count is not None else 'N/D')
 
 st.markdown('### 🔎 Cerca un medicinale')
 term=st.text_input('Nome, principio attivo, codice EMA o AIC',placeholder='Es. Tachipirina, Cardirene, Leqembi')
@@ -469,7 +545,7 @@ if term.strip():
             st.warning(f'Archivio AIFA momentaneamente non disponibile: {exc}')
 
 st.markdown('### 📚 Elenco dei farmaci')
-st.caption('Scorri l’elenco e tocca una riga per vedere le confezioni. Puoi filtrare per lettera.')
+st.caption('Le denominazioni sono in ordine alfabetico, a partire dalla lettera A. Puoi cambiare iniziale dal filtro.')
 
 if AIFA.is_file():
     try:
@@ -485,7 +561,7 @@ else:
     source_table='aifa_confezioni'
 
 letter=st.selectbox('Filtra per iniziale',['Tutte']+list('ABCDEFGHIJKLMNOPQRSTUVWXYZ'),
-                    key='aifa_letter')
+                    index=1,key='aifa_letter')
 filter_id=(term.strip().casefold(),letter,str(list_db),list_db.stat().st_mtime_ns)
 if st.session_state.get('aifa_filter_id')!=filter_id:
     st.session_state['aifa_filter_id']=filter_id
@@ -569,8 +645,24 @@ try:
 except (sqlite3.DatabaseError,OSError,ValueError) as exc:
     st.warning(f'Impossibile visualizzare l’elenco: {exc}')
 
-from regione_campania_dashboard import mostra_sezione_regione
 mostra_sezione_regione(DATA)
+
+def ultima_data_archivio_regionale():
+    """Data ricavata dal nome dell'archivio ufficiale, NON dall'acquisizione."""
+    path=DATA/'stato_fonti'/'regione_campania.json'
+    try:
+        obj=json.loads(path.read_text(encoding='utf-8'))
+        fonti=[f for f in obj.get('fonti',[]) if isinstance(f,dict)]
+        for fonte in sorted(fonti,key=lambda f:int(f.get('anno',0)),reverse=True):
+            name=unquote(urlsplit(str(fonte.get('url') or '')).path)
+            match=re.search(r'(\d{2})\.(\d{2})\.(20\d{2})',name)
+            if match:
+                giorno,mese,anno=match.groups()
+                return giorno+'/'+mese+'/'+anno
+    except (OSError,ValueError,TypeError,KeyError):
+        pass
+    return 'Non disponibile'
+
 
 with st.expander('Stato degli aggiornamenti'):
     st.write('EMA:',ultimo('ema'))
@@ -578,7 +670,16 @@ with st.expander('Stato degli aggiornamenti'):
     st.write('AIFA · classi A/H:',ultimo('aifa_ah'))
     st.write('AIFA · storico C(nn):',ultimo('aifa_cnn'))
     st.write('Gazzetta Ufficiale:',ultimo('gazzetta'))
+    st.write('Note regionali · data ultimo archivio:',ultima_data_archivio_regionale())
     st.caption('Gli aggiornamenti sono giornalieri, con nuovi tentativi in caso di errore. Le date riportano le acquisizioni, non la validità normativa.')
+
+# Le fonti hanno date indipendenti: mostrarle separatamente evita di
+# attribuire a tutte la data di acquisizione più recente.
+st.markdown('<div class="regula-update-footer"><strong>Ultimo aggiornamento dei dati</strong></div>',unsafe_allow_html=True)
+st.caption('EMA: '+ultimo('ema')+' · AIFA confezioni: '+ultimo('aifa_anagrafica'))
+st.caption('AIFA classi A/H: '+ultimo('aifa_ah')+' · Gazzetta Ufficiale: '+ultimo('gazzetta'))
+st.caption('Note regionali: archivio datato '+ultima_data_archivio_regionale())
+st.caption('Le date indicano acquisizioni delle fonti o, per la Regione, la data dell’archivio; non certificano la validità normativa.')
 st.caption('Prototipo accademico: le informazioni non certificano la classificazione o la rimborsabilità corrente dei medicinali.')
 
 # Assistente sempre raggiungibile dall'icona in basso a destra.

@@ -38,6 +38,24 @@ def _query(database,sql,params=()):
         return [dict(x) for x in con.execute(sql,params)]
 
 
+
+def conta_note_regionali(data_dir):
+    """Conta le note presenti nel medesimo archivio consultato dalla pagina.
+
+    Restituisce None quando la raccolta non è disponibile: non mostra
+    un totale storico che potrebbe non corrispondere al database attivo.
+    """
+    path=Path(data_dir)/"regione_campania.sqlite.gz"
+    if not path.is_file():
+        return None
+    try:
+        db=_db_regionale(str(path),path.stat().st_mtime_ns)
+        result=_query(db,"SELECT COUNT(*) AS n FROM documenti")
+        return int(result[0]["n"]) if result else None
+    except (OSError,ValueError,sqlite3.DatabaseError):
+        return None
+
+
 def mostra_sezione_regione(data_dir):
     path=Path(data_dir)/"regione_campania.sqlite.gz"
     st.markdown("### 🏥 Note regionali e centri prescrittori")
