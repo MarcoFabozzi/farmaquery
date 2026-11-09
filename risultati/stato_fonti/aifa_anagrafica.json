@@ -1,8 +1,8 @@
 {
   "fonte": "aifa_anagrafica",
   "esito": "OK",
-  "ultimo_successo_utc": "2026-11-08T05:15:36+00:00",
-  "precedente_successo_utc": "2026-11-07T05:14:24+00:00",
+  "ultimo_successo_utc": "2026-11-09T05:30:04+00:00",
+  "precedente_successo_utc": "2026-11-08T05:15:36+00:00",
   "statistiche": {
     "confezioni_file": 160264,
     "principi_attivi_righe_file": 339482,
@@ -91,8 +91,8 @@
     },
     "archivio_completo": {
       "confezioni_totali": 160264,
-      "bytes_compressi": 5042658,
-      "sha256_archivio": "334d40b815b0dd317c0b42751a85508f54761561fd05e76351fab1ed648e49c8",
+      "bytes_compressi": 5042663,
+      "sha256_archivio": "b3b33ab0bcff0a53787cab1d90d357ca4b9ec20ce647985b4a1974b919c06eb6",
       "file_archivio": "aifa_confezioni_complete.sqlite.gz"
     },
     "confezioni_pertinenti": 10603,
@@ -105,7 +105,7 @@
     "aifa": {
       "url": "https://drive.aifa.gov.it/farmaci/confezioni_fornitura.csv",
       "bytes": 82635450,
-      "sha256": "7119c28eff14f7ef6c9a1993a82cb214f847be56271d073a847a64537a849167"
+      "sha256": "64c8a9cd5e07df264793c5964fcde4c02038ef3446aa9fd943d366c6132dd714"
     },
     "aifa_principi_attivi": {
       "url": "https://drive.aifa.gov.it/farmaci/PA_confezioni.csv",
