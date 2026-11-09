@@ -72,9 +72,22 @@ def importa_catalogo_ema(db,rows,sid,target=None,stamp=None):
     missing=set(existing)-set(catalog)
     if missing:
         raise ValueError(f'{len(missing)} medicinali preesistenti mancanti nel dataset')
+    # L'identificativo EMA resta la chiave stabile: le denominazioni possono
+    # cambiare nel tempo. Conserviamo entrambe le versioni in ema_revisioni_snapshot.
+    # Se insieme al nome cambia anche il principio attivo, fermiamo la pubblicazione
+    # per verifica manuale: non trattiamo automaticamente due prodotti diversi
+    # come un semplice cambio di nome.
+    renamed=[]
     for ident,prior in existing.items():
-        if norm(prior['nome'])!=norm(catalog[ident]['nome']):
-            raise ValueError('Denominazione EMA cambiata per '+ident)
+        new=catalog[ident]
+        if not norm(new.get('nome')):
+            raise ValueError('Denominazione EMA vuota per '+ident)
+        if norm(prior['nome'])!=norm(new['nome']):
+            before=norm(prior.get('principio_attivo'))
+            after=norm(new.get('principio_attivo'))
+            if not before or not after or before!=after:
+                raise ValueError('Cambio EMA di nome e principio attivo da verificare: '+ident)
+            renamed.append(ident)
     if target is None:
         # Modalita definitiva: ogni ID EMA valido presente nel file ufficiale.
         selected=[catalog[key] for key in sorted(catalog)]
@@ -111,5 +124,6 @@ def importa_catalogo_ema(db,rows,sid,target=None,stamp=None):
         raise ValueError(f'Importazione EMA incompleta: {total} record rispetto a {len(catalog)} record sorgente')
     return {'catalogo_sorgente':len(catalog),'modalita':'CATALOGO_EMA_COMPLETO' if target is None else 'CAMPIONE',
             'target':target if target is not None else len(catalog),'nuovi_medicinali':added,
+            'denominazioni_aggiornate':len(renamed),
             'medicinali_archiviati':total,'versioni_ema_osservate':revisions,
             'nota':'Versioni osservate nel dataset, non eventi normativi o date di prima autorizzazione'}
