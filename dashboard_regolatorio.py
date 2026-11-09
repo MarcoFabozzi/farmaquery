@@ -143,7 +143,7 @@ div[data-testid="stExpander"] {border-color:#d9e9e7;border-radius:12px;}
 </style>
 <div class="regula-hero">
 <h1>💊 FarmaQuery</h1>
-<p>Ricerca medicinali e confezioni dalle fonti ufficiali EMA, AIFA e Gazzetta Ufficiale.</p>
+<p>Ricerca medicinali e confezioni dalle fonti ufficiali EMA, AIFA, Gazzetta Ufficiale e dalle note regionali della Campania.</p>
 </div>
 """,unsafe_allow_html=True)
 
@@ -532,7 +532,7 @@ if term.strip():
             st.warning(f'Archivio AIFA momentaneamente non disponibile: {exc}')
 
 st.markdown('### 📚 Elenco dei farmaci')
-st.caption('Scorri l’elenco e tocca una riga per vedere le confezioni. Puoi filtrare per lettera.')
+st.caption('Le denominazioni sono in ordine alfabetico, a partire dalla lettera A. Puoi cambiare iniziale dal filtro.')
 
 if AIFA.is_file():
     try:
@@ -548,7 +548,7 @@ else:
     source_table='aifa_confezioni'
 
 letter=st.selectbox('Filtra per iniziale',['Tutte']+list('ABCDEFGHIJKLMNOPQRSTUVWXYZ'),
-                    key='aifa_letter')
+                    index=1,key='aifa_letter')
 filter_id=(term.strip().casefold(),letter,str(list_db),list_db.stat().st_mtime_ns)
 if st.session_state.get('aifa_filter_id')!=filter_id:
     st.session_state['aifa_filter_id']=filter_id
