@@ -1227,7 +1227,8 @@ sql_method=measured_engine(sql_method)
 def main():
     p=argparse.ArgumentParser()
     p.add_argument("--db",type=Path,required=True)
-    p.add_argument("--method",choices=["TAG","TAG automatico","Text-to-SQL"],required=True)
+    p.add_argument("--method",choices=["TAG","TAG automatico","Text-to-SQL",
+                                      "Text-to-SQL con auto-correzione"],required=True)
     p.add_argument("--model",required=True)
     p.add_argument("--question",required=True)
     p.add_argument("--out",type=Path)
@@ -1242,6 +1243,9 @@ def main():
         elif a.method=="TAG automatico":
             from tesi.tag_automatico import automatic_tag
             result=automatic_tag(db,a.question,a.model)
+        elif a.method=="Text-to-SQL con auto-correzione":
+            from tesi.sql_autocorrezione import sql_autocorrezione
+            result=sql_autocorrezione(db,a.question,a.model)
         else:
             result=sql_method(db,a.question,a.model)
     record={"metodo":a.method,"modello":a.model,"domanda":a.question,
