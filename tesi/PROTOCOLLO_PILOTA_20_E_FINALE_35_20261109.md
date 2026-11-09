@@ -66,7 +66,7 @@ Protocollo di lavoro approvato il 9 novembre 2026. La grafica dell'app è identi
 
 ## Interfaccia e tracciabilità
 
-Il menu mostra soltanto **Text-to-SQL** e **TAG**. L'etichetta Text-to-SQL corrisponde al motore con auto-correzione. Le informazioni tecniche sono nascoste per impostazione predefinita; per visualizzarle durante un debug, un sviluppatore può impostare `FARMAQUERY_SHOW_TECHNICAL_DETAILS=1` nei Secrets Streamlit. La diagnostica resta sempre nell'esportazione JSON.
+Il menu mostra soltanto **Text-to-SQL** e **TAG**. L'etichetta Text-to-SQL corrisponde al motore con auto-correzione. Le informazioni tecniche sono nascoste per impostazione predefinita: per visualizzarle durante il collaudo, attivare «Mostra dettagli tecnici» nel chatbot. Per gli screenshot finali lasciare questa opzione disattivata. La diagnostica resta sempre nell'esportazione JSON. La diagnostica resta sempre nell'esportazione JSON.
 
 Il limite di richieste per sessione è aumentato per agevolare il collaudo; le **quote effettive del provider LLM** restano indipendenti, quindi eventuali messaggi QUOTA vanno documentati e ritentati separatamente.
 
