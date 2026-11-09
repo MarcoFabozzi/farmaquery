@@ -77,6 +77,69 @@ div[data-testid="stButton"] button:hover {background:#dff5ee;border-color:#169b8
     .regula-hero h1 {font-size:1.85rem;}
     div[data-testid="stMetric"] {padding:8px 7px;}
 }
+
+/* Rifinitura estetica: non modifica query, dati o logica di navigazione. */
+.stApp {background:linear-gradient(180deg,#eff8fa 0%,#ffffff 440px);}
+.block-container {max-width:1080px;padding-top:1.3rem;padding-bottom:7rem;}
+.regula-hero {
+  background:linear-gradient(112deg,#163a55 0%,#0b7982 63%,#16a58d 100%);
+  border:1px solid rgba(255,255,255,.20);
+  padding:30px 34px;border-radius:22px;
+  box-shadow:0 14px 34px rgba(11,89,103,.15);
+}
+.regula-hero h1 {font-size:clamp(2.05rem,4vw,2.75rem);font-weight:800;
+  letter-spacing:-.03em;margin-bottom:10px;}
+.regula-hero p {max-width:65ch;line-height:1.55;color:#eefdfb;}
+h3 {color:#163d53!important;font-weight:730;letter-spacing:-.02em;}
+div[data-testid="stMetric"] {
+  background:#ffffff;border:1px solid #d5e8e7;border-radius:16px;
+  padding:16px;box-shadow:0 4px 16px rgba(32,83,99,.06);
+}
+div[data-testid="stMetricValue"] {color:#076f75;font-weight:800;}
+div[data-testid="stMetricLabel"] {color:#486675;font-weight:600;}
+div[data-testid="stTextInput"] input {
+  background:#ffffff;border:1px solid #bad9da;border-radius:12px;
+  color:#173d4f;min-height:48px;
+}
+div[data-testid="stTextInput"] input:focus {
+  border-color:#0e9290;box-shadow:0 0 0 3px rgba(20,148,145,.13);
+}
+div[data-testid="stButton"] button {
+  border:1px solid #c9e2e0;background:#ffffff;color:#155263;
+  border-radius:12px;font-weight:650;
+}
+div[data-testid="stButton"] button:hover {
+  background:#e8f7f3;border-color:#148d85;color:#0c6564;
+}
+div[data-testid="stButton"] button[kind="primary"] {
+  background:#0b7c7d;border-color:#0b7c7d;color:#ffffff;
+}
+div[data-testid="stButton"] button[kind="primary"]:hover {
+  background:#09696d;border-color:#09696d;color:#ffffff;
+}
+div[data-testid="stDataFrame"] {
+  border:1px solid #d9e9e7;border-radius:13px;overflow:hidden;
+}
+div[data-testid="stExpander"] {border-color:#d9e9e7;border-radius:12px;}
+.regula-packages-scroll {
+  border:1px solid #d9e9e7;box-shadow:0 4px 14px rgba(16,74,84,.04);
+}
+.regula-packages th {background:#e8f6f2;color:#164e57;border-bottom-color:#c9e6de;}
+.regula-packages tr:nth-child(even) {background:#f7fbfa;}
+.regula-packages tbody tr:hover {background:#edf8f5;}
+.regula-detail-link {color:#087a78!important;}
+.regula-detail-link:hover {color:#075e66!important;}
+@media (max-width:650px) {
+  .block-container {padding-top:.8rem;padding-bottom:7.5rem;}
+  .regula-hero {padding:23px 20px;border-radius:18px;}
+  .regula-hero h1 {font-size:2rem;}
+  .regula-hero p {font-size:.88rem;}
+  div[data-testid="stMetric"] {padding:10px;}
+  div[data-testid="stMetricValue"] {font-size:1.2rem;}
+}
+@media (prefers-reduced-motion:no-preference) {
+  div[data-testid="stButton"] button {transition:background-color .16s,border-color .16s,color .16s;}
+}
 </style>
 <div class="regula-hero">
 <h1>💊 FarmaQuery</h1>
