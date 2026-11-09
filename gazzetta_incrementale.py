@@ -86,6 +86,37 @@ def fetch(u,limit=3_000_000):
             if attempt==3:raise
             time.sleep((2,5,10)[attempt])
 
+
+def _testo_valido(t):
+    """Controllo conservativo, condiviso da lettura ordinaria e alternativa."""
+    return len(t)>=100 and bool(re.search(
+        r'\\b(art|determina|medicinal|farmac|a\\.?i\\.?c\\.?)\\b',t,re.I))
+
+
+def _testo_atto(code,when,typ):
+    """Ritenta da due pagine ufficiali GU; non inventa né salva testi parziali.
+
+    Restituisce (testo, fonte) oppure (None, None). L'atto non verrà
+    marcato come esaminato quando entrambe le letture falliscono.
+    """
+    article='https://'+HOST+'/atto/serie_generale/caricaArticoloDefault/originario?'+urlencode({
+        'atto.codiceRedazionale':code,'atto.dataPubblicazioneGazzetta':when,
+        'atto.tipoProvvedimento':typ})
+    menu='https://'+HOST+'/atto/vediMenuHTML?'+urlencode({
+        'atto.codiceRedazionale':code,'atto.dataPubblicazioneGazzetta':when,
+        'tipoSerie':'serie_generale','tipoVigenza':'originario'})
+    for url in (article,menu):
+        try:
+            parser=Parser()
+            parser.feed(fetch(url))
+            text=parser.result()
+            if _testo_valido(text) and (url==article or code in text):
+                return text,url
+        except (HTTPError,URLError,TimeoutError,ValueError) as exc:
+            print('Lettura GU non riuscita per '+code+': '+type(exc).__name__)
+    return None,None
+
+
 def ident(u):
     p=urlparse(safe(u))
     m=re.search(r'/eli/id/(\d{4})/(\d{2})/(\d{2})/([0-9]{2}[A-Z][0-9]{5})/sg/?$',p.path,re.I)
@@ -214,15 +245,21 @@ def run(con,work,limit_issues=30,limit_scans=80):
     known_aics={r[0] for r in con.execute('SELECT aic FROM aifa_confezioni')}
     outdir=Path(work)/'gazzetta_testi';outdir.mkdir(exist_ok=True)
     new=pending=new_annex=examined=negative=from_text=0
+    failed_text=[]
+    fallback_text=0
     for code,when,title in chosen:
         typ=re.search(r'\b(DETERMINA|COMUNICATO|DECRETO)\b',title,re.I)
         typ=typ[1].upper() if typ else 'DETERMINA'
         url='https://'+HOST+'/eli/id/'+when.replace('-','/')+'/'+code+'/sg'
-        article='https://'+HOST+'/atto/serie_generale/caricaArticoloDefault/originario?'+urlencode({
-            'atto.codiceRedazionale':code,'atto.dataPubblicazioneGazzetta':when,'atto.tipoProvvedimento':typ})
-        p=Parser();p.feed(fetch(article));txt=p.result()
-        if len(txt)<100 or not re.search(r'\b(art|determina|medicinal|farmac|a\.?i\.?c\.?)\b',txt,re.I):
-            raise ValueError('Testo incompleto per '+code)
+        txt,article=_testo_atto(code,when,typ)
+        if txt is None:
+            # Non segnare screening e non attribuire falsamente assenza:
+            # riproveremo questo codice al prossimo aggiornamento.
+            failed_text.append(code)
+            print('GU: testo incompleto per '+code+'; atto rinviato a un prossimo tentativo')
+            continue
+        if 'vediMenuHTML' in article:
+            fallback_text+=1
         mentioned=match_names(txt+' '+title)
         ev=aic_evidences(txt)
         linked_aics=set(ev)&known_aics
@@ -283,6 +320,9 @@ def run(con,work,limit_issues=30,limit_scans=80):
             'atti_gia_esaminati_senza_archiviazione':len(set(acts)&screened-known),
             'atti_in_coda_prima_del_controllo':waiting,
             'atti_esaminati_in_questa_esecuzione':examined,
+            'atti_da_ritentare_testo':len(failed_text),
+            'codici_da_ritentare_testo':failed_text[:30],
+            'atti_letti_da_pagina_alternativa':fallback_text,
             'atti_non_pertinenti_al_catalogo':negative,
             'nuovi_atti':new,'atti_recuperati_da_titoli_generici':from_text,
             'allegati_nuovi':new_annex,
