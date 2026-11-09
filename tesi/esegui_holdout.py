@@ -22,7 +22,10 @@ COLUMNS=("id","metodo","modello","snapshot_sha256","risposta","fonti",
          "chiamate_llm_effettive","elementi_predetti",
          "valutazione_astensione","errore_tecnico",
          "citazioni_corrette_n","citazioni_verificate_n","codice_commit",
-         "stato_motore","sql_originale_llm","sql_eseguito","tag_auto_revision",
+         "stato_motore","versione_text_to_sql","sql_originale_llm",
+         "sql_eseguito","tag_auto_revision","correzioni_sql",
+         "motivo_controllo_sql","risposta_originale_llm",
+         "sql_proposte","errori_sql_tentativi","codice_errore","fase_errore",
          "errore_sql_iniziale","sql_iniziale_validata",
          "sql_normalizzato_nome","sql_normalizzato_ambito_regione",
          "sql_normalizzato_join_documentali","righe_sql","righe_recuperate",
@@ -52,7 +55,7 @@ COLUMNS=("id","metodo","modello","snapshot_sha256","risposta","fonti",
          "sql_controllo_copertura","documenti_controllo_copertura",
          "documenti_esclusi_primo_recupero",
          "controllo_copertura_eseguito","controllo_copertura_troncato")
-METHODS=("Text-to-SQL","TAG","TAG automatico")
+METHODS=("Text-to-SQL con auto-correzione","TAG automatico")
 
 
 def file_sha(path):
@@ -94,7 +97,7 @@ def collect(gold_file,db_file,manifest_file,model,out,commit,answer_fn=answer_qu
         writer=csv.DictWriter(handle,fieldnames=COLUMNS,delimiter=";")
         writer.writeheader()
         for index,item in enumerate(gold):
-            # Rotazione ciclica dei tre metodi per bilanciare la posizione
+            # Rotazione ciclica dei due metodi del confronto finale
             # nelle esecuzioni senza ripetere nessuna domanda/metodo.
             order=METHODS[index%len(METHODS):]+METHODS[:index%len(METHODS)]
             for method in order:
@@ -123,9 +126,17 @@ def collect(gold_file,db_file,manifest_file,model,out,commit,answer_fn=answer_qu
                     "token_output":result.get("token_output"),
                     "costo_usd":result.get("costo_usd"),
                     "chiamate_llm_effettive":result.get("chiamate_llm_effettive"),
-                    "errore_tecnico":int(error),
+                    "errore_tecnico":int(error or result.get("stato") in ("ERRORE","ERRORE_SQL")),
                     "codice_commit":commit,
                     "stato_motore":result.get("stato"),
+                    "versione_text_to_sql":result.get("versione_text_to_sql"),
+                    "correzioni_sql":result.get("correzioni_sql"),
+                    "motivo_controllo_sql":result.get("motivo_controllo_sql"),
+                    "risposta_originale_llm":result.get("risposta_originale_llm"),
+                    "sql_proposte":json.dumps(result.get("sql_proposte") or [],ensure_ascii=False),
+                    "errori_sql_tentativi":json.dumps(result.get("errori_sql_tentativi") or [],ensure_ascii=False),
+                    "codice_errore":result.get("codice_errore"),
+                    "fase_errore":result.get("fase_errore"),
                     "sql_originale_llm":result.get("sql_originale_llm"),
                     "sql_eseguito":result.get("sql"),
                     "tag_auto_revision":result.get("tag_auto_revision"),

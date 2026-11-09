@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'tesi/sql_autocorrezione.py'
+      - 'tesi/esegui_holdout.py'
+      - 'tesi/tests/test_runner_holdout_congelato.py'
       - 'tesi/sql_sicurezza_risposta.py'
       - 'tesi/tests/test_sql_controlli_v2.py'
       - 'chatbot_widget.py'
@@ -31,4 +33,4 @@ jobs:
       - name: Compilazione e test senza API
         run: |
           python -m py_compile tesi/sql_autocorrezione.py tesi/sql_sicurezza_risposta.py chatbot_farmaquery.py chatbot_widget.py
-          python -m unittest -v tesi.tests.test_sql_autocorrezione tesi.tests.test_sql_controlli_v2 tests.test_chatbot_farmaquery
+          python -m unittest -v tesi.tests.test_sql_autocorrezione tesi.tests.test_sql_controlli_v2 tesi.tests.test_runner_holdout_congelato tests.test_chatbot_farmaquery

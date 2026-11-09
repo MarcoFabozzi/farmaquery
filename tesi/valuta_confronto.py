@@ -18,7 +18,9 @@ import unicodedata
 
 from tesi.valida_gold import read
 
-METHODS=("Text-to-SQL","TAG","TAG automatico")
+FINAL_METHODS=("Text-to-SQL con auto-correzione","TAG automatico")
+HISTORICAL_METHODS=("Text-to-SQL","TAG","TAG automatico")
+ALL_METHODS=set(FINAL_METHODS)|set(HISTORICAL_METHODS)
 
 
 def _number(value,kind,default=None):
@@ -90,13 +92,22 @@ def evaluate(benchmark,results,manifest):
               "valutazione_risposta","valutazione_citazioni","note_revisore"}
     if not responses or not required.issubset(set(responses[0])):
         raise ValueError("Schema risultati mancante")
+    present={rec["metodo"] for rec in responses if rec["id"] in gold}
+    if not present <= ALL_METHODS:
+        raise ValueError("Metodo sconosciuto")
+    if "Text-to-SQL con auto-correzione" in present:
+        if present & {"Text-to-SQL","TAG"}:
+            raise ValueError("Non mescolare baseline storiche e metodo v2")
+        methods=FINAL_METHODS
+    else:
+        methods=HISTORICAL_METHODS
     ids=set()
     models=set()
     paired=defaultdict(dict)
     for rec in responses:
         if rec["id"] not in gold:continue
         method=rec["metodo"]
-        if method not in METHODS:raise ValueError("Metodo sconosciuto")
+        if method not in methods:raise ValueError("Metodo non previsto nel protocollo selezionato")
         if rec["snapshot_sha256"]!=digest:
             raise ValueError("Il modello ha interrogato uno snapshot diverso")
         if (rec["id"],method) in ids:
@@ -125,7 +136,7 @@ def evaluate(benchmark,results,manifest):
         calls=[_number(x.get("chiamate_llm_effettive"),int) for x in rows
                if str(x.get("chiamate_llm_effettive") or "").strip()]
         abstained=[int(x["valutazione_astensione"]) for x in rows
-                   if gold[x["id"]]["categoria"] in ("ASSENZA_DOCUMENTALE","NEGATIVE")
+                   if gold[x["id"]]["categoria"] in ("ASSENZA_DOCUMENTALE","NEGATIVE","NESSUNA_RISPOSTA")
                    and str(x.get("valutazione_astensione") or "").strip() in ("0","1")]
         errors=[int(x["errore_tecnico"]) for x in rows
                 if str(x.get("errore_tecnico") or "").strip() in ("0","1")]
@@ -158,29 +169,31 @@ def evaluate(benchmark,results,manifest):
             "costo_medio_usd":round(mean(costs),6) if costs else None,
         }
         return {**score,**_micro_list_metrics(rows,gold)}
-    methods={}
-    for method in METHODS:
+    stats_by_method={}
+    for method in methods:
         method_rows=[pair[method] for pair in paired.values() if method in pair]
-        methods[method]={"totale_gold":len(gold),
+        stats_by_method[method]={"totale_gold":len(gold),
                          "copertura":round(len(method_rows)/len(gold),4),
                          **stat(method_rows),
                          "categorie":{cat:stat([x for x in method_rows
                             if gold[x["id"]]["categoria"]==cat])
                             for cat in sorted({x["categoria"] for x in gold.values()})}}
     complete_pair=[key for key,pair in paired.items()
-                   if {"TAG","Text-to-SQL"} <= set(pair)]
+                   if set(methods if methods==FINAL_METHODS else
+                          ("Text-to-SQL","TAG")) <= set(pair)]
     complete_three=[key for key,pair in paired.items()
-                    if set(METHODS) <= set(pair)]
+                    if set(HISTORICAL_METHODS) <= set(pair)] if methods==HISTORICAL_METHODS else []
     allcats=sorted({x["categoria"] for x in gold.values()})
-    # Una riga per categoria, colonne distinte per i tre motori.
+    # Una riga per categoria, con due motori finali oppure tre storici.
     table=[]
     for cat in allcats:
         record={"categoria":cat,
                 "domande_gold":sum(x["categoria"]==cat for x in gold.values())}
-        for method in METHODS:
-            entry=methods[method]["categorie"][cat]
+        for method in methods:
+            entry=stats_by_method[method]["categorie"][cat]
             short={"Text-to-SQL":"Text_to_SQL","TAG":"TAG",
-                   "TAG automatico":"TAG_automatico"}[method]
+                   "TAG automatico":"TAG_automatico",
+                   "Text-to-SQL con auto-correzione":"Text_to_SQL_v2"}[method]
             for source,dest in (
                 ("accuratezza_manuale","accuratezza"),
                 ("precision_micro","precision"),
@@ -199,8 +212,10 @@ def evaluate(benchmark,results,manifest):
     return {"esito":"OK","snapshot_sha256":digest,"modello":next(iter(models),None),
             "gold_validati":len(gold),
             "domande_con_entrambe_le_risposte":len(complete_pair),
+            "protocollo_motori":("FINALE_DUE_MOTORI" if methods==FINAL_METHODS
+                                 else "STORICO_TRE_MOTORI"),
             "domande_con_tre_risposte":len(complete_three),
-            "metodi":methods,"tabella_categorie":table,
+            "metodi":stats_by_method,"tabella_categorie":table,
             "nota":"Metriche cliniche/giuridiche soltanto da annotazioni manuali; "
                    "vuoto = non misurato. Precision/recall/F1 micro richiedono "
                    "elementi_gold ed elementi_predetti. Chiamate LLM effettive "
@@ -213,7 +228,7 @@ def main():
     p.add_argument("--risultati",required=True)
     p.add_argument("--manifest",required=True)
     p.add_argument("--out",required=True)
-    p.add_argument("--tabella-csv",help="Tabella righe=categorie; colonne=misure dei tre metodi")
+    p.add_argument("--tabella-csv",help="Tabella righe=categorie; colonne=metodi del protocollo")
     a=p.parse_args()
     report=evaluate(a.benchmark,a.risultati,a.manifest)
     Path(a.out).write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",

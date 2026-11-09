@@ -57,33 +57,38 @@ class HoldoutRunnerTests(unittest.TestCase):
                     answer_fn=lambda *a: called.append(a))
         self.assertEqual(called,[])
 
-    def test_unico_run_scrive_tre_metodi_e_misure_reali(self):
+    def test_unico_run_scrive_due_metodi_e_misure_reali(self):
         def answer(db,q,method,model):
             return {"risposta":"test","fonti":["test/f.pdf#p1"],
-                    "chiamate_llm_effettive":(4 if method=="TAG automatico"
-                                              else 3 if method=="TAG" else 2),
+                    "chiamate_llm_effettive":(4 if method=="TAG automatico" else 2),
                     "token_input":10,"token_output":7,"costo_usd":0.001,
                     "sql_originale_llm":"SELECT 1",
                     "sql":"SELECT 2","tag_auto_revision":"test-r0",
                     "sql_primo_tentativo":"SELECT 1",
                     "sql_fallback":"SELECT 2",
                     "recupero_progressivo_usato":True,
-                    "sql_tentativi":2}
+                    "sql_tentativi":2,"correzioni_sql":1,
+                    "versione_text_to_sql":"autocorrezione-v2-controlli",
+                    "motivo_controllo_sql":"TEST",
+                    "sql_proposte":["SELECT 1","SELECT 2"]}
         path=self.root/"ris.csv"
         collect(self.gold,self.db,self.manifest,"mock",path,"abcdef123",
                 answer_fn=answer)
         with path.open(encoding="utf-8-sig",newline="") as f:
             rows=list(csv.DictReader(f,delimiter=";"))
         self.assertEqual({r["metodo"] for r in rows},
-                         {"TAG","Text-to-SQL","TAG automatico"})
+                         {"Text-to-SQL con auto-correzione","TAG automatico"})
         self.assertEqual({r["chiamate_llm_effettive"] for r in rows},
-                         {"2","3","4"})
+                         {"2","4"})
         self.assertTrue(all(r["valutazione_risposta"]=="" for r in rows))
         self.assertTrue(all(r["sql_originale_llm"]=="SELECT 1" for r in rows))
         self.assertTrue(all(r["sql_eseguito"]=="SELECT 2" for r in rows))
         self.assertTrue(all(r["sql_primo_tentativo"]=="SELECT 1" for r in rows))
         self.assertTrue(all(r["sql_fallback"]=="SELECT 2" for r in rows))
         self.assertTrue(all(r["sql_tentativi"]=="2" for r in rows))
+        self.assertTrue(all(r["correzioni_sql"]=="1" for r in rows))
+        self.assertTrue(all(r["versione_text_to_sql"]=="autocorrezione-v2-controlli" for r in rows))
+        self.assertTrue(all("SELECT 1" in r["sql_proposte"] for r in rows))
         self.assertTrue(all(r["tag_auto_revision"]=="test-r0" for r in rows))
         with self.assertRaises(FileExistsError):
             collect(self.gold,self.db,self.manifest,"mock",path,"abcdef123",
@@ -91,7 +96,7 @@ class HoldoutRunnerTests(unittest.TestCase):
 
 
     def test_ordine_a_rotazione_senza_ripetizioni(self):
-        # Rotazione dei tre motori su tre domande valide con identica fonte.
+        # Rotazione dei due motori su tre domande valide con identica fonte.
         for i in range(1,4):
             row=dict(self.record,id=f"B0{i}",domanda=f"Domanda prova {i}")
             if i==1:
@@ -110,10 +115,10 @@ class HoldoutRunnerTests(unittest.TestCase):
         collect(self.gold,self.db,self.manifest,"mock",self.root/"tre.csv",
                 "abcdef123",answer_fn=answer)
         actual=[x[1] for x in order]
-        self.assertEqual(actual[:3],["Text-to-SQL","TAG","TAG automatico"])
-        self.assertEqual(actual[3:6],["TAG","TAG automatico","Text-to-SQL"])
-        self.assertEqual(actual[6:9],["TAG automatico","Text-to-SQL","TAG"])
-        self.assertEqual(len(order),9)
+        self.assertEqual(actual[:2],["Text-to-SQL con auto-correzione","TAG automatico"])
+        self.assertEqual(actual[2:4],["TAG automatico","Text-to-SQL con auto-correzione"])
+        self.assertEqual(actual[4:6],["Text-to-SQL con auto-correzione","TAG automatico"])
+        self.assertEqual(len(order),6)
 
 
 if __name__=="__main__":
