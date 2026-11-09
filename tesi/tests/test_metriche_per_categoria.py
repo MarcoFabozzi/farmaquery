@@ -86,5 +86,59 @@ class MetricsReportTests(unittest.TestCase):
             {"x":{"elementi_gold":"A"}})["f1_micro"])
 
 
+    def test_finale_v2_due_motori_e_astensione(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder)
+            snapshot="f"*64
+            gold=root/"gold.csv"
+            pred=root/"pred.csv"
+            manifest=root/"manifest.json"
+            manifest.write_text(json.dumps({"sha256_sqlite":snapshot}))
+            gfields=["id","categoria","domanda","risposta_gold","fonti_gold",
+                     "stato_validazione","note_revisore","elementi_gold",
+                     "snapshot_sha256"]
+            with gold.open("w",encoding="utf-8",newline="") as fh:
+                writer=csv.DictWriter(fh,fieldnames=gfields,delimiter=";")
+                writer.writeheader()
+                writer.writerow(dict(id="Q28",categoria="NESSUNA_RISPOSTA",
+                    domanda="Quanti pazienti trattati?",risposta_gold="Non documentato nello snapshot",
+                    fonti_gold="note.pdf#p1",stato_validazione="VALIDATO",
+                    note_revisore="Audit del corpus condotto",elementi_gold="",
+                    snapshot_sha256=snapshot))
+            fields=["id","metodo","modello","snapshot_sha256","risposta",
+                    "fonti","secondi","valutazione_risposta",
+                    "valutazione_citazioni","note_revisore",
+                    "valutazione_astensione","chiamate_llm_effettive",
+                    "errore_tecnico"]
+            with pred.open("w",encoding="utf-8",newline="") as fh:
+                writer=csv.DictWriter(fh,fieldnames=fields,delimiter=";")
+                writer.writeheader()
+                for method,correct in (
+                    ("Text-to-SQL con auto-correzione",1),
+                    ("TAG automatico",0),
+                ):
+                    writer.writerow(dict(id="Q28",metodo=method,
+                       modello="mock",snapshot_sha256=snapshot,
+                       risposta="Non documentato" if correct else "0 pazienti",
+                       fonti="note.pdf#p1",secondi=2,
+                       valutazione_risposta=str(correct),
+                       valutazione_citazioni="1",
+                       note_revisore="Valutazione indipendente",
+                       valutazione_astensione=str(correct),
+                       chiamate_llm_effettive=2,errore_tecnico=0))
+            report=evaluate(gold,pred,manifest)
+        self.assertEqual(report["protocollo_motori"],"FINALE_DUE_MOTORI")
+        self.assertEqual(report["domande_con_entrambe_le_risposte"],1)
+        self.assertEqual(report["domande_con_tre_risposte"],0)
+        self.assertEqual(set(report["metodi"]),{
+            "Text-to-SQL con auto-correzione","TAG automatico"})
+        self.assertEqual(report["metodi"]["Text-to-SQL con auto-correzione"]
+                         ["accuratezza_astensione"],1)
+        self.assertEqual(report["metodi"]["TAG automatico"]
+                         ["accuratezza_astensione"],0)
+        self.assertIn("Text_to_SQL_v2_astensione",
+                      report["tabella_categorie"][0])
+
+
 if __name__=="__main__":
     unittest.main()
