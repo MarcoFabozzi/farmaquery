@@ -202,10 +202,11 @@ def _visible_message(item, mostra_dettagli):
 
 
 
-APP_UI_VERSION="2026-11-09-sqlretry-csv-v1"
+APP_UI_VERSION="2026-11-09-sqlretry-v2-guards"
 CSV_FIELDS=("metodo","numero_domanda","domanda","risposta_integrale",
             "fonti","evidenze_fonti","stato","sql","sql_originale_llm",
             "sql_proposte","sql_tentativi","correzioni_sql","errori_sql_tentativi",
+            "versione_text_to_sql","motivo_controllo_sql","risposta_originale_llm",
             "codice_errore","fase_errore","tipo_errore","secondi",
             "tempo_backend_s","chiamate_llm_effettive","chiamate_llm_dirette",
             "chiamate_llm_lotus","token_input","token_output","costo_usd",
@@ -627,6 +628,9 @@ def assistant_dialog():
                         "sql":result.get("sql",""),
                         "diagnostica_sql":result.get("diagnostica_sql"),
                         "sql_originale_llm":result.get("sql_originale_llm"),
+                        "versione_text_to_sql":result.get("versione_text_to_sql"),
+                        "motivo_controllo_sql":result.get("motivo_controllo_sql"),
+                        "risposta_originale_llm":result.get("risposta_originale_llm"),
                         "sql_normalizzato_nome":result.get("sql_normalizzato_nome"),
                         "sql_normalizzato_ambito_regione":result.get(
                             "sql_normalizzato_ambito_regione"),
