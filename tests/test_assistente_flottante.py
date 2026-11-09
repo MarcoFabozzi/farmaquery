@@ -37,6 +37,19 @@ class FloatingAssistantTests(unittest.TestCase):
         self.assertNotIn("domande_utente_35.csv",src)
         self.assertNotIn("domande_della_tesi",src)
 
+    def test_clean_mode_keeps_error_visible_but_hides_internal_codes(self):
+        import chatbot_widget as widget
+        item={"role":"assistant",
+              "text":"La query SQL non è eseguibile. (fase: esecuzione SQL; codice: SQL; tipo: OperationalError).",
+              "stato":"ERRORE"}
+        with patch.object(widget,"_show_technical_details",return_value=False):
+            shown=widget._visible_message(item)
+            self.assertEqual(shown,"La query SQL non è eseguibile.")
+        # I dati completi restano disponibili per la valutazione scientifica.
+        self.assertIn("codice: SQL",item["text"])
+        with patch.object(widget,"_show_technical_details",return_value=True):
+            self.assertEqual(widget._visible_message(item),item["text"])
+
     def test_nuova_conversazione_cancella_tutte_tre_le_chat(self):
         import chatbot_widget as widget
         state={
