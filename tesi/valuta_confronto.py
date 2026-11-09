@@ -169,10 +169,10 @@ def evaluate(benchmark,results,manifest):
             "costo_medio_usd":round(mean(costs),6) if costs else None,
         }
         return {**score,**_micro_list_metrics(rows,gold)}
-    methods={}
+    stats_by_method={}
     for method in methods:
         method_rows=[pair[method] for pair in paired.values() if method in pair]
-        methods[method]={"totale_gold":len(gold),
+        stats_by_method[method]={"totale_gold":len(gold),
                          "copertura":round(len(method_rows)/len(gold),4),
                          **stat(method_rows),
                          "categorie":{cat:stat([x for x in method_rows
@@ -190,7 +190,7 @@ def evaluate(benchmark,results,manifest):
         record={"categoria":cat,
                 "domande_gold":sum(x["categoria"]==cat for x in gold.values())}
         for method in methods:
-            entry=methods[method]["categorie"][cat]
+            entry=stats_by_method[method]["categorie"][cat]
             short={"Text-to-SQL":"Text_to_SQL","TAG":"TAG",
                    "TAG automatico":"TAG_automatico",
                    "Text-to-SQL con auto-correzione":"Text_to_SQL_v2"}[method]
@@ -215,7 +215,7 @@ def evaluate(benchmark,results,manifest):
             "protocollo_motori":("FINALE_DUE_MOTORI" if methods==FINAL_METHODS
                                  else "STORICO_TRE_MOTORI"),
             "domande_con_tre_risposte":len(complete_three),
-            "metodi":methods,"tabella_categorie":table,
+            "metodi":stats_by_method,"tabella_categorie":table,
             "nota":"Metriche cliniche/giuridiche soltanto da annotazioni manuali; "
                    "vuoto = non misurato. Precision/recall/F1 micro richiedono "
                    "elementi_gold ed elementi_predetti. Chiamate LLM effettive "
