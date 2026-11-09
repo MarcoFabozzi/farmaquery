@@ -57,7 +57,7 @@ class FloatingAssistantTests(unittest.TestCase):
                 "etichetta":"Text-to-SQL",
                 "messaggi":[
                     {"role":"user","text":"Quali AIC per NINLARO?"},
-                    {"role":"assistant","text":"Risposta; completa, \\"citata\\".\\nSeconda riga.",
+                    {"role":"assistant","text":'Risposta; completa, "citata".\nSeconda riga.',
                      "sql":"SELECT aic FROM aifa_confezioni",
                      "sql_tentativi":2,"correzioni_sql":1,
                      "chiamate_llm_effettive":3,"secondi":3.2,
@@ -66,14 +66,14 @@ class FloatingAssistantTests(unittest.TestCase):
             }]
         }
         output=widget._full_results_csv(payload)
-        self.assertTrue(output.startswith("\\ufeff"))
-        parsed=list(csv.DictReader(io.StringIO(output.lstrip("\\ufeff")),
+        self.assertTrue(output.startswith("\ufeff"))
+        parsed=list(csv.DictReader(io.StringIO(output.lstrip("\ufeff")),
                                    delimiter=";"))
         self.assertEqual(len(parsed),1)
         row=parsed[0]
         self.assertEqual(row["domanda"],"Quali AIC per NINLARO?")
         self.assertEqual(row["risposta_integrale"],
-                         'Risposta; completa, "citata".\\nSeconda riga.')
+                         'Risposta; completa, "citata".\nSeconda riga.')
         self.assertEqual(row["correzioni_sql"],"1")
         self.assertEqual(row["chiamate_llm_effettive"],"3")
         self.assertEqual(row["fonti"],'["AIFA AIC 045181017"]')
