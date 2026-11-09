@@ -220,7 +220,7 @@ def _full_results_csv(report):
     """
     file=StringIO(newline="")
     writer=csv.DictWriter(file,fieldnames=CSV_FIELDS,delimiter=";",
-                          quoting=csv.QUOTE_ALL,lineterminator="\\n")
+                          quoting=csv.QUOTE_ALL,lineterminator="\n")
     writer.writeheader()
     for method in report.get("metodi",[]):
         if not isinstance(method,dict):
@@ -253,7 +253,7 @@ def _full_results_csv(report):
                           if isinstance(value,(dict,list)) else
                           "" if value is None else value)
             writer.writerow(row)
-    return "\\ufeff"+file.getvalue()
+    return "\ufeff"+file.getvalue()
 
 
 @st.dialog("Assistente FarmaQuery",width="large")
