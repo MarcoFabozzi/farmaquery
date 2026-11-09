@@ -1,12 +1,13 @@
 # FarmaQuery — esecuzione del confronto finale a 35 domande (Text-to-SQL v2 vs TAG automatico)
 
-**Stato 09/11/2026: infrastruttura preparata, benchmark NON ancora avviato con v2.**
+**Stato 09/11/2026: preparazione completata e Gold definite sul solo SQLite congelato; benchmark v2 NON ancora eseguito.**
 
 ## File di riferimento
 
 - Domande originali senza risposte Gold: `tesi/QUESTIONARIO_FINALE_35_20261109.csv` (35 ID, Q01–Q35, formulazioni immutate).
-- Gold candidate originali: `tesi/FarmaQuery_Gold_35_20261109.json` (34 indicati come `VERIFICATO_SU_SNAPSHOT`, Q11 `DA_CONFERMARE_ESAUSTIVITA`).
-- Scheda di approvazione: `tesi/GOLD_35_REVISIONE_DA_VALIDARE_20261109.csv`, dove i campi operativi `risposta_gold`, `fonti_gold`, `note_revisore` ed `elementi_gold` sono lasciati vuoti per impedire una promozione automatica. Le proposte e le verifiche storiche restano nelle colonne separate.
+- **Gold ufficiali per questo confronto**: `tesi/GOLD_35_VALIDATO_SOLO_DATABASE_20261109.csv`, 35 domande valide **esclusivamente rispetto al contenuto estratto e alle tabelle dello SQLite statico**. Non comprendono informazioni ottenute da PDF esterni, web, linee guida aggiornate o altre fonti non presenti nel DB.
+- Gold candidate precedenti, conservate esclusivamente per la storia delle revisioni: `tesi/FarmaQuery_Gold_35_20261109.json`; non usare questo JSON per valutare il nuovo benchmark.
+- Scheda preparatoria precedente: `tesi/GOLD_35_REVISIONE_DA_VALIDARE_20261109.csv`, sostituita dal file ufficiale sopra.
 - Protocollo originario del pilota 20 e finale 35: `tesi/PROTOCOLLO_PILOTA_20_E_FINALE_35_20261109.md`.
 
 Il test finale usa **solo due motori**: `Text-to-SQL con auto-correzione` (versione `autocorrezione-v2-controlli`) e `TAG automatico` (r24). Il runner `tesi/esegui_holdout.py` e il valutatore `tesi/valuta_confronto.py` ora distinguono il confronto finale dal test storico a tre metodi.
@@ -22,13 +23,21 @@ Il test finale usa **solo due motori**: `Text-to-SQL con auto-correzione` (versi
 
 **Prima dell'esecuzione annotare il commit corrente completo di main**, il modello LLM *effettivamente in uso*, i parametri, la data e le eventuali quote API.
 
-## Blocchi di validazione ancora necessari
+## Regola Gold definitiva: database soltanto
 
-1. Q11: controllare **visivamente** `note 2025 - 18.12.2025/RYSTIGGO.pdf`, pagina **3**, per verificare se AOU Federico II compare nell'elenco dei centri e se l'elenco dei quattro medicinali precedentemente attestati è esaustivo. Il testo della tabella non è leggibile nella copia OCR. Non aggiungere RYSTIGGO né dichiarare 4/4 corretto senza questa verifica.
-2. Per le altre Gold, conservare il controllo precedente sullo snapshot e **formalizzare la revisione** delle pagine OCR/documenti originali, dei riferimenti EMA/AIFA e delle informazioni negative. Una fonte esterna non contenuta nello SQLite non va spacciata come citazione dello snapshot.
-3. Compilare i campi `risposta_gold`, `fonti_gold` (formati previsti da `valida_gold.py`), `note_revisore`, `elementi_gold` e impostare `stato_validazione=VALIDATO` soltanto dopo la verifica.
+La risposta Gold deve riflettere **esclusivamente ciò che è ricavabile dal file SQLite congelato**: tabelle `note`, `pagine` (compreso testo OCR imperfetto), `aifa_confezioni`, `ema_medicinali`, `gu_atti`, `gu_documenti`, `gu_segmenti` e le relazioni effettivamente incluse nello snapshot.
 
-## Comandi una volta approvate tutte le Gold
+**Non aggiornare o correggere i testi OCR sulla base dei PDF originali o di fonti online.** Una discrepanza tra DB e realtà normativa non è un errore della Gold sperimentale: è un limite del corpus e va riportato nella tesi.
+
+**Caso Q11/RYSTIGGO.** Nel DB il testo della pagina 3 della nota RYSTIGGO descrive la MGg ma non estrae l'elenco dei centri; il registro AIFA conservato nello stesso DB contiene un collegamento RYSTIGGO–Federico II. Poiché la domanda chiede i medicinali indicati **nelle note regionali**, questo collegamento AIFA non certifica il centro nella nota. Per il confronto si valutano le quattro associazioni regionali testualmente ricostruibili: VYVGART, SOLIRIS, ULTOMIRIS, ZILBRYSQ. La Gold registra l'incertezza come limite del corpus; non si inserisce un quinto medicinale attribuito per supposizione. Questa decisione è fissata **prima** di leggere gli output del nuovo test.
+
+Audit offline:
+- `tesi/tests/test_gold_35_snapshot_audit.py`: 59 citazioni regionali verificate, 0 pagine assenti, 0 omonimie non risolte.
+- `tesi/tests/test_gold_35_database_contract.py`: controlla la lista AIFA XEMBIFY, la distinzione SIVEXTRO, i record EMA, l'atto GU 23A02767, la Gold negativa rispetto allo schema, Q11 e i 35 record validati.
+- `tesi.valida_gold`: controlla esistenza delle 35 citazioni Gold e coerenza del file ufficiale.
+- Validazione esclusivamente relativa allo snapshot, **non un giudizio di conformità normativa attuale**.
+
+## Comandi per il benchmark finale (Gold già predisposte)
 
 Decomprimere lo SQLite una sola volta, senza modificarlo:
 
@@ -36,15 +45,15 @@ Decomprimere lo SQLite una sola volta, senza modificarlo:
 python -c "import gzip,pathlib; p=pathlib.Path('risultati/tesi_statico_20261102.sqlite.gz'); pathlib.Path('risultati/tesi_statico_20261102.sqlite').write_bytes(gzip.decompress(p.read_bytes()))"
 ```
 
-Salvare le Gold approvate in una **copia distinta**: `tesi/GOLD_35_VALIDATO_20261109.csv`.
+Usare il file Gold già preparato: `tesi/GOLD_35_VALIDATO_SOLO_DATABASE_20261109.csv`. Non rigenerarlo dopo aver visto gli output.
 
 ```bash
 python -m tesi.valida_gold \
-  --benchmark tesi/GOLD_35_VALIDATO_20261109.csv \
+  --benchmark tesi/GOLD_35_VALIDATO_SOLO_DATABASE_20261109.csv \
   --db risultati/tesi_statico_20261102.sqlite
 
 python -m tesi.esegui_holdout \
-  --benchmark tesi/GOLD_35_VALIDATO_20261109.csv \
+  --benchmark tesi/GOLD_35_VALIDATO_SOLO_DATABASE_20261109.csv \
   --db risultati/tesi_statico_20261102.sqlite \
   --manifest risultati/tesi_statico_20261102.json \
   --model MODELLO_EFFETTIVO \
@@ -58,5 +67,5 @@ Il runner produce **70 record** (35×2) senza inviare le Gold agli LLM e rifiuta
 
 - Le 20 domande pilota della v1 e le loro risposte non vengono modificate.
 - Le 35 domande erano già state usate nel confronto storico. Il confronto con v2 è una **nuova valutazione sulle stesse domande**, non un holdout completamente indipendente.
-- Senza revisione Gold e risposte originali nuove non ci sono nuove percentuali da pubblicare.
+- Le Gold sono già definite rispetto allo snapshot; senza le 70 nuove esecuzioni non esistono ancora metriche della v2 da pubblicare.
 - Non modificare prompt, TAG o soglie dopo aver letto i risultati definitivi. Se necessario, creare una nuova versione sperimentale separata.
