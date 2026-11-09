@@ -25,7 +25,12 @@ class FloatingAssistantTests(unittest.TestCase):
         self.assertIn('st.rerun(scope="fragment")',src)
         self.assertIn('if not has_key:',src)
         self.assertIn('if remaining<=0:',src)
-        self.assertIn('("Text-to-SQL","TAG automatico")',src)
+        # La sola opzione Text-to-SQL usa il motore con autocorrezione.
+        self.assertIn('("Text-to-SQL con auto-correzione","TAG automatico")',src)
+        self.assertIn('"Text-to-SQL" if value=="Text-to-SQL con auto-correzione"',src)
+        self.assertIn('if _show_technical_details():',src)
+        self.assertIn('Esporta le risposte integrali per la tesi',src)
+        self.assertNotIn('if _enable_sql_retry_experiment():',src)
         self.assertIn("answer_question(db,question,method,model)",src)
         self.assertIn("st.form_submit_button",src)
         self.assertNotIn("FARMAQUERY_CHAT_PASSWORD",src)
