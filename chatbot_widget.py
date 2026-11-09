@@ -21,7 +21,7 @@ from chatbot_farmaquery import (
     verify_provider,
 )
 
-MAX_QUESTIONS_PER_SESSION=12
+MAX_QUESTIONS_PER_SESSION=100
 
 
 def start_new_conversation():
@@ -189,6 +189,16 @@ def _show_excerpt(source):
     st.text(raw)
 
 
+def _visible_message(item, mostra_dettagli):
+    """Per gli screenshot nasconde il codice tecnico, non l'errore reale."""
+    text=str(item.get("text") or "")
+    if (not mostra_dettagli and item.get("role")=="assistant"
+            and item.get("stato") in ("ERRORE","ERRORE_SQL")):
+        # Il messaggio originale resta intatto nell'esportazione JSON.
+        text=re.sub(r"\s*\(fase:\s*[^)]*\)\.?$", "", text).strip()
+    return text
+
+
 @st.dialog("Assistente FarmaQuery",width="large")
 def assistant_dialog():
     """Una finestra nativa: il campo è esterno al CSS del pulsante flottante."""
@@ -260,7 +270,7 @@ def assistant_dialog():
             st.caption("Scrivi una domanda per iniziare.")
         for msg_index,item in enumerate(history):
             with st.chat_message(item["role"]):
-                st.markdown(item["text"])
+                st.markdown(_visible_message(item, mostra_dettagli))
                 if item["role"]=="assistant":
                     if item.get("fonti"):
                         with st.expander("Fonti consultate"):
@@ -546,6 +556,11 @@ def assistant_dialog():
         result=_reply(text_question,method,model,has_key,remaining)
         history.append({"role":"assistant",
                         "text":result.get("risposta","Nessuna risposta disponibile."),
+                        "modello":model,
+                        "token_input":result.get("token_input"),
+                        "token_output":result.get("token_output"),
+                        "costo_usd":result.get("costo_usd"),
+                        "costo_completo":result.get("costo_completo"),
                         "fonti":result.get("fonti",[]),
                         "evidenze_fonti":result.get("evidenze_fonti",[]),
                         "sql":result.get("sql",""),
@@ -631,6 +646,7 @@ def assistant_dialog():
                         "stato":result.get("stato"),
                         "codice_errore":result.get("codice_errore"),
                         "fase_errore":result.get("fase_errore"),
+                        "tipo_errore":result.get("tipo_errore"),
                         "secondi":round(time.monotonic()-start,2),
                         "versione_tag":result.get("versione_tag"),
                         "verifica_contesto":result.get("verifica_contesto"),
@@ -665,25 +681,35 @@ def assistant_dialog():
         # Solo la finestra viene aggiornata: rimane aperta e scrivibile.
         st.rerun(scope="fragment")
 
-    # Il pulsante esporta sempre le risposte COMPLETE, anche se la
-    # presentazione ha nascosto i controlli tecnici per le schermate.
+    # Conserva integralmente risposte e dati tecnici nel JSON, ma tieni
+    # il pulsante di download fuori dalla vista degli screenshot standard.
+    try:
+        _,snapshot_meta=_cached_snapshot(snapshot_version())
+        snapshot_sha=snapshot_meta.get("sha256_sqlite")
+    except (OSError,ValueError,TypeError,KeyError,sqlite3.DatabaseError):
+        snapshot_sha=None
     complete={
         "esportazione_utc":datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "modello":model,
+        "snapshot_sha256":snapshot_sha,
         "base_dati":"copia statica FarmaQuery per i test",
         "metodi":[{
             "metodo":m,
+            "etichetta":"Text-to-SQL" if m=="Text-to-SQL con auto-correzione" else "TAG",
             "messaggi":st.session_state.get(history_key(m),[])
         } for m in ("Text-to-SQL con auto-correzione","TAG automatico")]
     }
-    st.download_button(
-        "Esporta risposte integrali e metriche (JSON)",
-        data=json.dumps(complete,ensure_ascii=False,indent=2),
-        file_name="farmaquery_risposte_complete.json",
-        mime="application/json",
-        key="farmaquery_export_full_experiment",
-        use_container_width=True
-    )
+    with st.expander("Esporta risultati della tesi"):
+        st.caption("Salva le risposte complete prima di cliccare Nuova conversazione. "
+                   "Il JSON conserva SQL, fonti, errori, tempi e chiamate LLM.")
+        st.download_button(
+            "Esporta risposte integrali e metriche (JSON)",
+            data=json.dumps(complete,ensure_ascii=False,indent=2,default=str),
+            file_name="farmaquery_risposte_complete.json",
+            mime="application/json",
+            key="farmaquery_export_full_experiment",
+            use_container_width=True
+        )
 
     st.caption("Prototipo accademico: controlla le fonti prima di prendere "
                "decisioni cliniche.")
