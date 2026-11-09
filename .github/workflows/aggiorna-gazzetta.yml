@@ -39,14 +39,18 @@ jobs:
           cutoff=datetime.combine(now.date(),time(5,0),tzinfo=timezone.utc)
           if now<cutoff:cutoff-=timedelta(days=1)
           path=Path('risultati/stato_fonti/gazzetta.json')
+          pending_text=0
           try:
               info=json.loads(path.read_text(encoding='utf-8'))
               timestamp=datetime.fromisoformat(info['ultimo_successo_utc'].replace('Z','+00:00'))
               if timestamp.tzinfo is None or info.get('esito')!='OK':timestamp=None
+              pending_text=int(info.get('statistiche',{}).get('atti_da_ritentare_testo',0) or 0)
           except (OSError,ValueError,KeyError,TypeError):
               timestamp=None
-          due=os.environ.get('EVENT_NAME')=='workflow_dispatch' or timestamp is None or timestamp<cutoff
-          print('Fonte: gazzetta | ultimo successo:',timestamp,'| tentativo:',due)
+          due=(os.environ.get('EVENT_NAME')=='workflow_dispatch' or
+               timestamp is None or timestamp<cutoff or pending_text>0)
+          print('Fonte: gazzetta | ultimo successo:',timestamp,
+                '| atti con testo da riprovare:',pending_text,'| tentativo:',due)
           with open(os.environ['GITHUB_OUTPUT'],'a') as f:
               f.write('run='+str(due).lower()+'\n')
           PY
