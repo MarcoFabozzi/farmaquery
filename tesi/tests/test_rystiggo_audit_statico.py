@@ -6,6 +6,13 @@ import hashlib
 from pathlib import Path
 import sqlite3
 import unittest
+import urllib.request
+import urllib.error
+import zipfile
+import io
+import shutil
+import subprocess
+import tempfile
 
 ROOT=Path(__file__).resolve().parents[2]
 
@@ -62,3 +69,63 @@ class RystiggoPageAudit(unittest.TestCase):
                         print("=== TESTO PAGINA 3 FINE ===",flush=True)
         finally:
             db.close()
+
+    def test_remote_original_rystiggo_page_three_when_available(self):
+        """Controllo documentale online facoltativo, indipendente dal database."""
+        urls=[
+            "https://www.regione.campania.it/sites/default/files/2025-12/note%202025%20-%2018.12.2025.zip",
+            "https://archivioportale.regione.campania.it/assets/documents/note-2025-18-12-2025.zip",
+        ]
+        payload=None
+        for url in urls:
+            try:
+                request=urllib.request.Request(
+                    url,headers={"User-Agent":"Mozilla/5.0 FarmaQuery audit"})
+                with urllib.request.urlopen(request,timeout=15) as stream:
+                    raw=stream.read(75000001)
+                    print("URL_ORIGINALE",url,"bytes",len(raw),flush=True)
+                if len(raw)<75000000 and zipfile.is_zipfile(io.BytesIO(raw)):
+                    payload=raw
+                    break
+                print("URL_ORIGINALE_NON_ZIP",url,flush=True)
+            except (OSError,urllib.error.HTTPError,TimeoutError) as exc:
+                print("URL_ORIGINALE_NON_DISPONIBILE",url,type(exc).__name__,
+                      str(exc)[:160],flush=True)
+        if payload is None:
+            self.skipTest("ZIP ufficiale non scaricabile dal runner: verifica visiva resta aperta")
+        with zipfile.ZipFile(io.BytesIO(payload)) as z:
+            paths=[n for n in z.namelist()
+                   if n.lower().endswith("rystiggo.pdf")
+                   and "__macosx" not in n.lower()]
+            print("RYSTIGGO_ZIP_MATCHES",paths,flush=True)
+            self.assertTrue(paths,"Archivio disponibile, nota RYSTIGGO non trovata")
+            doc=z.read(paths[0])
+        actual=hashlib.sha256(doc).hexdigest()
+        print("RYSTIGGO_PDF_SHA256",actual,"bytes",len(doc),flush=True)
+        with tempfile.TemporaryDirectory() as temp:
+            pdf=Path(temp)/"RYSTIGGO.pdf"
+            pdf.write_bytes(doc)
+            if shutil.which("pdftotext"):
+                extracted=subprocess.run(
+                    ["pdftotext","-f","3","-l","3","-layout",
+                     str(pdf),"-"],capture_output=True,text=True,timeout=25)
+                t=extracted.stdout
+                print("RYSTIGGO_P3_LAYOUT_CHARS",len(t),flush=True)
+                print("RYSTIGGO_P3_LAYOUT",t[:14000],flush=True)
+                print("FEDERICO_P3_LAYOUT", "federico" in t.casefold(),flush=True)
+            if shutil.which("pdftoppm") and shutil.which("tesseract"):
+                png=Path(temp)/"rystiggo-3"
+                subprocess.run(
+                    ["pdftoppm","-f","3","-l","3","-r","150","-png",
+                     "-singlefile",str(pdf),str(png)],
+                    capture_output=True,timeout=35,check=True)
+                langs=subprocess.run(["tesseract","--list-langs"],
+                                     capture_output=True,text=True,timeout=5).stdout
+                lang="ita+eng" if "ita" in langs else "eng"
+                ocr=subprocess.run(
+                    ["tesseract",str(png)+".png","stdout","-l",lang,"--psm","6"],
+                    capture_output=True,text=True,timeout=35)
+                t=ocr.stdout
+                print("RYSTIGGO_P3_OCR_CHARS",len(t),flush=True)
+                print("RYSTIGGO_P3_OCR",t[:14000],flush=True)
+                print("FEDERICO_P3_OCR","federico" in t.casefold(),flush=True)
