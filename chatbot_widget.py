@@ -211,7 +211,7 @@ def _visible_message(item):
             and item.get("role")=="assistant"
             and item.get("stato") in ("ERRORE","ERRORE_SQL")):
         # Non maschera il fallimento, elimina solo la diagnostica interna.
-        text=re.sub(r"\\s*\\(fase:\\s*[^)]*\\)\\.?$", "", text).strip()
+        text=re.sub(r"\s*\(fase:\s*[^)]*\)\.?$", "", text).strip()
     return text
 
 
