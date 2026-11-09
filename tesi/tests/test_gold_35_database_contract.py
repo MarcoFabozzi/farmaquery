@@ -100,6 +100,44 @@ class SnapshotOnlyGoldTests(unittest.TestCase):
         self.assertTrue(self.db.execute(
             "SELECT 1 FROM gu_atti WHERE codice='23A02767'").fetchone())
 
+
+    def test_validated_35_gold_csv_is_referentially_consistent(self):
+        """Ogni Gold usa riferimenti e testo DELLO snapshot; nessuna GU esterna."""
+        from tesi.valida_gold import read,inspect
+        path=ROOT/"tesi/GOLD_35_VALIDATO_SOLO_DATABASE_20261109.csv"
+        gold=read(path)
+        self.assertEqual(len(gold),35)
+        self.assertEqual([g["id"] for g in gold],
+                         [f"Q{i:02}" for i in range(1,36)])
+        self.assertTrue(all(g["stato_validazione"]=="VALIDATO" for g in gold))
+        self.assertTrue(all(g["perimetro_gold"]=="SOLO_SQLITE_STATICO_20261102"
+                            for g in gold))
+        for g in gold:
+            self.assertNotIn("Fonte esterna",g["risposta_gold"])
+            self.assertNotIn("GU esterna",g["risposta_gold"])
+        q11=gold[10]
+        self.assertEqual(q11["elementi_gold"],
+                         "VYVGART|SOLIRIS|ULTOMIRIS|ZILBRYSQ")
+        self.assertIn("non prova",q11["risposta_gold"].casefold())
+        status=inspect(gold,self.db)
+        print("SNAPSHOT_ONLY_GOLD_VALIDATION",status,flush=True)
+        self.assertEqual(status["esito"],"OK")
+        self.assertEqual(status["validati"],35)
+        self.assertEqual(status["da_verificare"],0)
+        self.assertEqual(status["scartati"],0)
+
+    def test_wegovy_aic_and_class_c_are_in_frozen_gu_text(self):
+        row=self.db.execute(
+            "SELECT testo FROM gu_documenti WHERE documento_id='23A02767:atto'"
+        ).fetchone()
+        self.assertIsNotNone(row)
+        t=row["testo"]
+        for aic in ("049883061","049883073","049883085",
+                    "049883097","049883109","049883111"):
+            self.assertIn(aic,t)
+        # Regola di classe presente come evidenza testuale nell'atto.
+        self.assertRegex(t.casefold(),r"classe.{0,110}c|c.{0,110}classe")
+
     def test_detailed_page_contents_for_review(self):
         # Stampa SOLO i blocchi gia' estratti dal database e associati al
         # questionario, per permettere di revisionare le risposte senza PDF.
