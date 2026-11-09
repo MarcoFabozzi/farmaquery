@@ -204,6 +204,17 @@ def _show_technical_details():
     return str(setting).strip().casefold() in ("1","true","yes","si")
 
 
+def _visible_message(item):
+    """Testo pulito per screenshot; conserva il messaggio originale nel JSON."""
+    text=str(item.get("text") or "")
+    if (not _show_technical_details()
+            and item.get("role")=="assistant"
+            and item.get("stato") in ("ERRORE","ERRORE_SQL")):
+        # Non maschera il fallimento, elimina solo la diagnostica interna.
+        text=re.sub(r"\\s*\\(fase:\\s*[^)]*\\)\\.?$", "", text).strip()
+    return text
+
+
 @st.dialog("Assistente FarmaQuery",width="large")
 def assistant_dialog():
     """Una finestra nativa: il campo è esterno al CSS del pulsante flottante."""
@@ -271,7 +282,7 @@ def assistant_dialog():
             st.caption("Scrivi una domanda per iniziare.")
         for msg_index,item in enumerate(history):
             with st.chat_message(item["role"]):
-                st.markdown(item["text"])
+                st.markdown(_visible_message(item))
                 if item["role"]=="assistant":
                     if item.get("fonti"):
                         with st.expander("Fonti consultate"):
