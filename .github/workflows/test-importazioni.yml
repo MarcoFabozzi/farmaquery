@@ -1,0 +1,28 @@
+name: Test importazioni EMA e Gazzetta
+
+on:
+  pull_request:
+    paths:
+      - 'catalogo_ema.py'
+      - 'gazzetta_incrementale.py'
+      - 'tests/test_catalogo_ema.py'
+      - 'tests/test_gazzetta_incrementale.py'
+      - '.github/workflows/test-importazioni.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verifica sintassi
+        run: python -m py_compile catalogo_ema.py gazzetta_incrementale.py
+      - name: Test EMA e Gazzetta senza rete
+        run: python -m unittest -v tests.test_catalogo_ema tests.test_gazzetta_incrementale
