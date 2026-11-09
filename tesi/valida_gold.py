@@ -58,7 +58,7 @@ def inspect(rows,connection):
             result["errori"].append(key+": motivazione del revisore mancante")
             continue
         refs=[part.strip() for part in rec["fonti_gold"].split("|") if part.strip()]
-        is_negative=category in ("NEGATIVE","ASSENZA_DOCUMENTALE")
+        is_negative=category in ("NEGATIVE","ASSENZA_DOCUMENTALE","NESSUNA_RISPOSTA")
         if not is_negative and not refs:
             result["errori"].append(key+": nessuna citazione verificabile (EMA:ID, AIFA:AIC o file.pdf#pN)")
             continue
