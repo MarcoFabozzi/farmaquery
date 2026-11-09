@@ -28,6 +28,19 @@ class ChatbotTests(unittest.TestCase):
             self.assertEqual(sql.call_count,1)
             self.assertEqual(connect.return_value.close.call_count,2)
 
+    def test_third_sql_engine_isolated_from_original(self):
+        with patch("tesi.pilota_tag_vs_sql.read_only") as connect, \
+             patch("tesi.sql_autocorrezione.sql_autocorrezione") as corrected:
+            connect.return_value.close.return_value=None
+            corrected.return_value={"risposta":"corretta dopo retry"}
+            self.assertEqual(
+                chat.answer_question("db.sqlite","Domanda",
+                                     "Text-to-SQL con auto-correzione","mock")["risposta"],
+                "corretta dopo retry")
+            corrected.assert_called_once()
+        self.assertNotEqual(chat.history_key("Text-to-SQL"),
+                            chat.history_key("Text-to-SQL con auto-correzione"))
+
     def test_invalid_method_rejected(self):
         with self.assertRaises(ValueError):
             chat.answer_question("db.sqlite","Test?","RAG","mock")
