@@ -9,6 +9,7 @@ from __future__ import annotations
 import sqlite3
 import time
 import re
+import os
 from urllib.parse import urlsplit
 
 import streamlit as st
@@ -24,7 +25,8 @@ MAX_QUESTIONS_PER_SESSION=12
 
 def start_new_conversation():
     """Pulisce entrambe le cronologie, senza azzerare la quota API."""
-    for method in ("Text-to-SQL", "TAG", "TAG automatico"):
+    for method in ("Text-to-SQL", "TAG", "TAG automatico",
+                   "Text-to-SQL con auto-correzione"):
         st.session_state[history_key(method)]=[]
     st.session_state["farmaquery_chat_just_cleared"]=True
 
@@ -186,12 +188,25 @@ def _show_excerpt(source):
     st.text(raw)
 
 
+def _enable_sql_retry_experiment():
+    """La terza baseline è visibile solo se abilitata nella demo sperimentale."""
+    setting=os.environ.get("FARMAQUERY_SQL_RETRY_EXPERIMENT","")
+    try:
+        setting=st.secrets.get("FARMAQUERY_SQL_RETRY_EXPERIMENT",setting)
+    except (FileNotFoundError,RuntimeError,AttributeError):
+        pass
+    return str(setting).strip().casefold() in ("1","true","yes","si")
+
+
 @st.dialog("Assistente FarmaQuery",width="large")
 def assistant_dialog():
     """Una finestra nativa: il campo è esterno al CSS del pulsante flottante."""
     st.caption("Informazioni EMA, AIFA, Gazzetta Ufficiale e Regione Campania.")
+    method_options=("Text-to-SQL","TAG automatico")
+    if _enable_sql_retry_experiment():
+        method_options+=("Text-to-SQL con auto-correzione",)
     method=st.selectbox("Metodo di risposta",
-                        ("Text-to-SQL","TAG automatico"),
+                        method_options,
                         format_func=lambda value: "TAG" if value=="TAG automatico" else value,
                         key="farmaquery_float_method")
     model,has_key=_server_config()
@@ -274,7 +289,8 @@ def assistant_dialog():
                                 _show_excerpt(source)
                     if method=="TAG automatico" and item.get("diagnostica_sql"):
                         st.caption("Diagnostica SQL: "+str(item["diagnostica_sql"]))
-                    if method in ("Text-to-SQL","TAG automatico") and item.get("sql"):
+                    if method in ("Text-to-SQL","TAG automatico",
+                                  "Text-to-SQL con auto-correzione") and item.get("sql"):
                         with st.expander("SQL di recupero e tracciabilità" if method=="TAG automatico"
                                          else "Query SQL generata dall'LLM"):
                             original = item.get("sql_originale_llm")
@@ -326,6 +342,10 @@ def assistant_dialog():
                         st.caption("LOTUS non ha selezionato gruppi: risposta "
                                    "elaborata dal testo integrale della "
                                    "pagina identificata, recuperata dallo SQLite.")
+                    if method=="Text-to-SQL con auto-correzione" and item.get("correzioni_sql") is not None:
+                        st.caption("Text-to-SQL con auto-correzione · correzioni SQL: "+
+                                   str(item["correzioni_sql"])+"/2 · SELECT tentate: "+
+                                   str(item.get("sql_tentativi","?"))+".")
                     if item.get("chiamate_llm_effettive") is not None:
                         st.caption(
                             "Invii LLM misurati: "+
@@ -623,6 +643,9 @@ def assistant_dialog():
                         "identificativi_sql_riconciliati":result.get(
                             "identificativi_sql_riconciliati"),
                         "chiamate_llm_stimate":result.get("chiamate_llm_stimate"),
+                        "correzioni_sql":result.get("correzioni_sql"),
+                        "sql_proposte":result.get("sql_proposte",[]),
+                        "errori_sql_tentativi":result.get("errori_sql_tentativi",[]),
                         "chiamate_llm_effettive":result.get("chiamate_llm_effettive"),
                         "chiamate_llm_dirette":result.get("chiamate_llm_dirette"),
                         "chiamate_llm_lotus":result.get("chiamate_llm_lotus"),
