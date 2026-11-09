@@ -45,6 +45,7 @@ CACHE_CODE_SOURCES=(
     "tesi/revisione_categoria.py",
     "tesi/recupero_sql_first.py",
     "tesi/tag_automatico.py",
+    "tesi/sql_autocorrezione.py",
     "tesi/contatore_llm.py",
 )
 
@@ -197,7 +198,8 @@ def enable_server_key(model,secrets=None,environ=None):
 def answer_question(db_file,question,method,model):
     """Instrada realmente ai tre motori indipendenti."""
     from tesi import pilota_tag_vs_sql
-    if method not in ("Text-to-SQL","TAG","TAG automatico"):
+    if method not in ("Text-to-SQL","TAG","TAG automatico",
+                      "Text-to-SQL con auto-correzione"):
         raise ValueError("Metodo sconosciuto")
     question=question.strip()
     if not question or len(question)>700:
@@ -208,6 +210,9 @@ def answer_question(db_file,question,method,model):
         if method=="TAG automatico":
             from tesi.tag_automatico import automatic_tag
             return automatic_tag(db,question,model)
+        if method=="Text-to-SQL con auto-correzione":
+            from tesi.sql_autocorrezione import sql_autocorrezione
+            return sql_autocorrezione(db,question,model)
         return pilota_tag_vs_sql.sql_method(db,question,model)
 
 
@@ -229,7 +234,9 @@ def verify_provider(model):
 
 
 def history_key(method):
-    if method not in ("Text-to-SQL","TAG","TAG automatico"):
+    if method not in ("Text-to-SQL","TAG","TAG automatico",
+                      "Text-to-SQL con auto-correzione"):
         raise ValueError("Metodo sconosciuto")
-    suffix={"Text-to-SQL":"sql","TAG":"tag","TAG automatico":"tag_auto"}[method]
+    suffix={"Text-to-SQL":"sql","TAG":"tag","TAG automatico":"tag_auto",
+            "Text-to-SQL con auto-correzione":"sql_retry"}[method]
     return "farmaquery_chat_"+suffix
