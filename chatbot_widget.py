@@ -10,6 +10,8 @@ import sqlite3
 import time
 import re
 import json
+import csv
+from io import StringIO
 from datetime import datetime,timezone
 from urllib.parse import urlsplit
 
@@ -199,6 +201,61 @@ def _visible_message(item, mostra_dettagli):
     return text
 
 
+
+APP_UI_VERSION="2026-11-09-sqlretry-csv-v1"
+CSV_FIELDS=("metodo","numero_domanda","domanda","risposta_integrale",
+            "fonti","evidenze_fonti","stato","sql","sql_originale_llm",
+            "sql_proposte","sql_tentativi","correzioni_sql","errori_sql_tentativi",
+            "codice_errore","fase_errore","tipo_errore","secondi",
+            "tempo_backend_s","chiamate_llm_effettive","chiamate_llm_dirette",
+            "chiamate_llm_lotus","token_input","token_output","costo_usd",
+            "modello","snapshot_sha256","esportazione_utc")
+
+
+def _full_results_csv(report):
+    """Conserva ogni domanda/risposta integrale e le metriche in CSV.
+
+    Punto e virgola, virgolette per tutte le celle, BOM UTF-8 per Excel.
+    JSON resta l'originale autorevole per i campi strutturati.
+    """
+    file=StringIO(newline="")
+    writer=csv.DictWriter(file,fieldnames=CSV_FIELDS,delimiter=";",
+                          quoting=csv.QUOTE_ALL,lineterminator="\\n")
+    writer.writeheader()
+    for method in report.get("metodi",[]):
+        if not isinstance(method,dict):
+            continue
+        pending=[]
+        count=0
+        for item in method.get("messaggi") or []:
+            if not isinstance(item,dict):
+                continue
+            if item.get("role")=="user":
+                pending.append(str(item.get("text") or ""))
+                continue
+            if item.get("role")!="assistant":
+                continue
+            count+=1
+            row={
+                "metodo":str(method.get("etichetta") or method.get("metodo") or ""),
+                "numero_domanda":count,
+                "domanda":pending.pop(0) if pending else "",
+                "risposta_integrale":str(item.get("text") or ""),
+                "modello":str(item.get("modello") or report.get("modello") or ""),
+                "snapshot_sha256":report.get("snapshot_sha256") or "",
+                "esportazione_utc":report.get("esportazione_utc") or "",
+            }
+            for key in CSV_FIELDS:
+                if key in row:
+                    continue
+                value=item.get(key)
+                row[key]=(json.dumps(value,ensure_ascii=False,default=str)
+                          if isinstance(value,(dict,list)) else
+                          "" if value is None else value)
+            writer.writerow(row)
+    return "\\ufeff"+file.getvalue()
+
+
 @st.dialog("Assistente FarmaQuery",width="large")
 def assistant_dialog():
     """Una finestra nativa: il campo è esterno al CSS del pulsante flottante."""
@@ -328,9 +385,13 @@ def assistant_dialog():
                                         st.caption("SQL eseguito senza normalizzazioni")
                                 else:
                                     st.code(item["sql"],language="sql")
-                                st.caption("Text-to-SQL standard · una sola SELECT · nessuna correzione"
-                                           if method=="Text-to-SQL"
-                                           else "TAG automatico · SQL validato, candidati SQLite, filtro LOTUS")
+
+                                if method=="Text-to-SQL con auto-correzione":
+                                    st.caption("Text-to-SQL · massimo due correzioni su errore SQL")
+                                elif method=="Text-to-SQL":
+                                    st.caption("Text-to-SQL standard · una sola SELECT")
+                                else:
+                                    st.caption("TAG · SQL validato, candidati SQLite, filtro LOTUS")
                         if method=="TAG automatico" and item.get("tag_auto_revision"):
                             st.caption("Revisione del motore in uso: "+
                                        str(item["tag_auto_revision"]))
@@ -700,16 +761,29 @@ def assistant_dialog():
         } for m in ("Text-to-SQL con auto-correzione","TAG automatico")]
     }
     with st.expander("Esporta risultati della tesi"):
-        st.caption("Salva le risposte complete prima di cliccare Nuova conversazione. "
-                   "Il JSON conserva SQL, fonti, errori, tempi e chiamate LLM.")
-        st.download_button(
-            "Esporta risposte integrali e metriche (JSON)",
-            data=json.dumps(complete,ensure_ascii=False,indent=2,default=str),
-            file_name="farmaquery_risposte_complete.json",
-            mime="application/json",
-            key="farmaquery_export_full_experiment",
-            use_container_width=True
-        )
+        st.caption("Salva CSV e JSON prima di cliccare Nuova conversazione. "
+                   "Contengono risposte integrali, fonti, SQL, tempi ed errori. "
+                   "Il JSON è il riferimento per l'audit.")
+        st.caption("Interfaccia: "+APP_UI_VERSION+" · Motori: Text-to-SQL con auto-correzione / TAG")
+        col_csv,col_json=st.columns(2)
+        with col_csv:
+            st.download_button(
+                "Scarica CSV",
+                data=_full_results_csv(complete),
+                file_name="farmaquery_risposte_complete.csv",
+                mime="text/csv",
+                key="farmaquery_export_full_csv",
+                use_container_width=True
+            )
+        with col_json:
+            st.download_button(
+                "Scarica JSON",
+                data=json.dumps(complete,ensure_ascii=False,indent=2,default=str),
+                file_name="farmaquery_risposte_complete.json",
+                mime="application/json",
+                key="farmaquery_export_full_experiment",
+                use_container_width=True
+            )
 
     st.caption("Prototipo accademico: controlla le fonti prima di prendere "
                "decisioni cliniche.")
