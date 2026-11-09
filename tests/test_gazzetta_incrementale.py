@@ -64,6 +64,29 @@ class GazzettaTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             gu.safe('https://untrusted.example/serie_generale')
 
+    def test_comunicato_medicinali_counts_as_valid_full_text(self):
+        text=('Con il provvedimento del 2026 e stata sospesa '
+              'l autorizzazione alla produzione di medicinali '
+              'per terapie avanzate presso una officina farmaceutica. ')
+        self.assertTrue(gu._testo_valido(text))
+
+    def test_alternative_official_page_after_short_text(self):
+        text=('Comunicato 26A05747. Sono stati sospesi i provvedimenti '
+              'per la produzione di medicinali per terapie avanzate '
+              'presso la Fondazione Banca degli occhi del Veneto ETS.')
+        with patch.object(gu,'fetch',side_effect=['<html>errore</html>',
+                                                   '<p>'+text+'</p>']) as fetch:
+            result,source=gu._testo_atto('26A05747','2026-11-04','COMUNICATO')
+        self.assertIn('26A05747',result)
+        self.assertIn('vediMenuHTML',source)
+        self.assertEqual(fetch.call_count,2)
+
+    def test_incomplete_official_pages_do_not_become_evidence(self):
+        with patch.object(gu,'fetch',return_value='<p>Pagina vuota</p>'):
+            text,source=gu._testo_atto('26A05747','2026-11-04','COMUNICATO')
+        self.assertIsNone(text)
+        self.assertIsNone(source)
+
     def test_gu_article_code(self):
         self.assertEqual(
             gu.ident('https://www.gazzettaufficiale.it/eli/id/2026/05/06/26A02071/sg'),

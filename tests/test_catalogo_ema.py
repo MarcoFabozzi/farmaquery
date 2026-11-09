@@ -1,4 +1,5 @@
 import sqlite3
+import json
 import unittest
 from catalogo_ema import importa_catalogo_ema
 
@@ -70,10 +71,26 @@ class CatalogoTests(unittest.TestCase):
     def test_missing_id_rejected(self):
         with self.assertRaises(ValueError):
             importa_catalogo_ema(self.db,[rec(i) for i in range(1,101)],'new')
-    def test_renamed_id_rejected(self):
+    def test_renamed_id_preserves_old_and_new_versions(self):
         vals=[rec(i) for i in range(100)]
-        vals[1]['nome']='Different'
-        with self.assertRaises(ValueError):
-            importa_catalogo_ema(self.db,vals,'new')
+        vals[1]['nome']='Nuova denominazione'
+        outcome=importa_catalogo_ema(self.db,vals,'new',target=30)
+        self.assertEqual(outcome['denominazioni_aggiornate'],1)
+        self.assertEqual(self.db.execute(
+            'SELECT nome FROM ema_medicinali WHERE ema_id=?',
+            (rec(1)['ema_id'],)).fetchone()[0], 'Nuova denominazione')
+        revisions=[row[0] for row in self.db.execute(
+            'SELECT valori_json FROM ema_revisioni_snapshot WHERE ema_id=?',
+            (rec(1)['ema_id'],))]
+        self.assertEqual(len(revisions),2)
+        self.assertEqual({json.loads(value)['nome'] for value in revisions},
+                         {'Medicine 1','Nuova denominazione'})
+
+    def test_renamed_with_changed_active_ingredient_is_rejected(self):
+        vals=[rec(i) for i in range(100)]
+        vals[1]['nome']='Nuova denominazione'
+        vals[1]['principio_attivo']='unrelated ingredient'
+        with self.assertRaisesRegex(ValueError,'principio attivo'):
+            importa_catalogo_ema(self.db,vals,'new',target=30)
 
 if __name__=='__main__':unittest.main()
