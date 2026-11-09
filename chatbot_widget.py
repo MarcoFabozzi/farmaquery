@@ -9,7 +9,6 @@ from __future__ import annotations
 import sqlite3
 import time
 import re
-import os
 import json
 from datetime import datetime,timezone
 from urllib.parse import urlsplit
@@ -26,7 +25,7 @@ MAX_QUESTIONS_PER_SESSION=12
 
 
 def start_new_conversation():
-    """Pulisce entrambe le cronologie, senza azzerare la quota API."""
+    """Pulisce le cronologie, senza azzerare la quota API."""
     for method in ("Text-to-SQL", "TAG", "TAG automatico",
                    "Text-to-SQL con auto-correzione"):
         st.session_state[history_key(method)]=[]
@@ -190,27 +189,23 @@ def _show_excerpt(source):
     st.text(raw)
 
 
-def _enable_sql_retry_experiment():
-    """La terza baseline è visibile solo se abilitata nella demo sperimentale."""
-    setting=os.environ.get("FARMAQUERY_SQL_RETRY_EXPERIMENT","")
-    try:
-        setting=st.secrets.get("FARMAQUERY_SQL_RETRY_EXPERIMENT",setting)
-    except (FileNotFoundError,RuntimeError,AttributeError):
-        pass
-    return str(setting).strip().casefold() in ("1","true","yes","si")
-
-
 @st.dialog("Assistente FarmaQuery",width="large")
 def assistant_dialog():
     """Una finestra nativa: il campo è esterno al CSS del pulsante flottante."""
     st.caption("Informazioni EMA, AIFA, Gazzetta Ufficiale e Regione Campania.")
-    method_options=("Text-to-SQL","TAG automatico")
-    if _enable_sql_retry_experiment():
-        method_options+=("Text-to-SQL con auto-correzione",)
+    # Due soli motori visibili: il Text-to-SQL standard rimane in codice
+    # esclusivamente per confronti riproducibili con la vecchia baseline.
     method=st.selectbox("Metodo di risposta",
-                        method_options,
-                        format_func=lambda value: "TAG" if value=="TAG automatico" else value,
+                        ("Text-to-SQL con auto-correzione","TAG automatico"),
+                        format_func=lambda value: (
+                            "Text-to-SQL" if value=="Text-to-SQL con auto-correzione"
+                            else "TAG"),
                         key="farmaquery_float_method")
+    mostra_dettagli=st.toggle(
+        "Mostra dettagli tecnici",value=False,
+        key="farmaquery_show_technical_details",
+        help="Le metriche e gli errori restano salvati nell'esportazione JSON anche quando sono nascosti.")
+
     model,has_key=_server_config()
     history_id=history_key(method)
     if history_id not in st.session_state:
@@ -236,27 +231,28 @@ def assistant_dialog():
     if st.session_state.pop("farmaquery_chat_just_cleared",False):
         st.success("Conversazioni cancellate.")
 
-    # Diagnostica separata dalla chat: una chiamata minima permette di
-    # capire se il provider risponde senza coinvolgere TAG o Text-to-SQL.
-    with st.expander("Diagnostica del modello"):
-        st.caption(f"Modello selezionato: {model}. Il test usa una richiesta "
-                   "minima e può consumare una piccola quota API.")
-        if st.button("Verifica connessione Gemini",key="farmaquery_probe",
-                     disabled=not has_key or remaining<=0):
-            st.session_state["farmaquery_chat_count"]+=1
-            try:
-                ok=verify_provider(model)
-                if ok:
-                    st.success("Connessione al modello riuscita. "
-                               "Se la chat non risponde, il problema è nel "
-                               "motore TAG oppure nella query SQL.")
-                else:
-                    st.warning("Gemini non ha restituito testo.")
-            except Exception as exc:
-                result=label_error(exc)
-                st.error(result["risposta"])
-                st.caption("Questo errore riguarda la connessione al modello, "
-                           "non il database.")
+    if mostra_dettagli:
+        # Diagnostica separata dalla chat: una chiamata minima permette di
+        # capire se il provider risponde senza coinvolgere TAG o Text-to-SQL.
+        with st.expander("Diagnostica del modello"):
+            st.caption(f"Modello selezionato: {model}. Il test usa una richiesta "
+                       "minima e può consumare una piccola quota API.")
+            if st.button("Verifica connessione Gemini",key="farmaquery_probe",
+                         disabled=not has_key or remaining<=0):
+                st.session_state["farmaquery_chat_count"]+=1
+                try:
+                    ok=verify_provider(model)
+                    if ok:
+                        st.success("Connessione al modello riuscita. "
+                                   "Se la chat non risponde, il problema è nel "
+                                   "motore TAG oppure nella query SQL.")
+                    else:
+                        st.warning("Gemini non ha restituito testo.")
+                except Exception as exc:
+                    result=label_error(exc)
+                    st.error(result["risposta"])
+                    st.caption("Questo errore riguarda la connessione al modello, "
+                               "non il database.")
 
 
     with st.container(height=290,border=True):
@@ -272,267 +268,268 @@ def assistant_dialog():
                                 _show_citation(
                                     ref,instance_key=method+"_"+str(msg_index)+
                                     "_"+str(ref_index))
-                    if item.get("evidenze_fonti"):
-                        tabular_auto=(method=="TAG automatico" and all(
-                            src.get("tipo")=="SQL" for src in item["evidenze_fonti"]))
-                        with st.expander(
-                            "Righe strutturate consultate" if tabular_auto
-                            else "Passaggi del testo consultato"):
-                            if tabular_auto:
-                                st.caption("Record dello snapshot SQLite: "
-                                           "per queste fonti non sono previsti "
-                                           "numeri di pagina PDF.")
-                            else:
-                                st.caption("Testo originale estratto dalle fonti, "
-                                           "non evidenziazione nel PDF e non "
-                                           "verifica normativa indipendente.")
-                            for source in item["evidenze_fonti"]:
-                                st.caption(str(source.get("fonte") or "")[:200])
-                                _show_excerpt(source)
-                    if method=="TAG automatico" and item.get("diagnostica_sql"):
-                        st.caption("Diagnostica SQL: "+str(item["diagnostica_sql"]))
-                    if method in ("Text-to-SQL","TAG automatico",
-                                  "Text-to-SQL con auto-correzione") and item.get("sql"):
-                        with st.expander("SQL di recupero e tracciabilità" if method=="TAG automatico"
-                                         else "Query SQL generata dall'LLM"):
-                            original = item.get("sql_originale_llm")
-                            if method=="TAG automatico" and original:
-                                st.caption("SQL generato dall'LLM (prima dei controlli)")
-                                st.code(original,language="sql")
-                                if (item.get("sql_normalizzato_nome") or
-                                        item.get("sql_normalizzato_ambito_regione") or
-                                        item.get("sql_normalizzato_join_documentali") or
-                                        item.get("sql") != original):
-                                    if item.get("sql_normalizzato_nome"):
-                                        st.caption("Confronti dei nomi normalizzati: case-insensitive.")
-                                    if item.get("sql_normalizzato_ambito_regione"):
-                                        st.caption(
-                                            "Filtro regionale spurio sul percorso ZIP rimosso: "
-                                            "la tabella note contiene già le note della Campania.")
-                                    if item.get("sql_normalizzato_join_documentali"):
-                                        st.caption(
-                                            "JOIN con tabella revisionata parziale "
-                                            "convertita in LEFT JOIN per non perdere "
-                                            "note prive di una relazione già verificata. "
-                                            "I centri andranno confermati nel PDF.")
-                                    st.caption("SQL effettivamente eseguito (incluso eventuale fallback)")
-                                    st.code(item["sql"],language="sql")
+                    if mostra_dettagli:
+                        if item.get("evidenze_fonti"):
+                            tabular_auto=(method=="TAG automatico" and all(
+                                src.get("tipo")=="SQL" for src in item["evidenze_fonti"]))
+                            with st.expander(
+                                "Righe strutturate consultate" if tabular_auto
+                                else "Passaggi del testo consultato"):
+                                if tabular_auto:
+                                    st.caption("Record dello snapshot SQLite: "
+                                               "per queste fonti non sono previsti "
+                                               "numeri di pagina PDF.")
                                 else:
-                                    st.caption("SQL eseguito senza normalizzazioni")
-                            else:
-                                st.code(item["sql"],language="sql")
-                            st.caption("Text-to-SQL standard · una sola SELECT · nessuna correzione"
-                                       if method=="Text-to-SQL"
-                                       else "TAG automatico · SQL validato, candidati SQLite, filtro LOTUS")
-                    if method=="TAG automatico" and item.get("tag_auto_revision"):
-                        st.caption("Revisione del motore in uso: "+
-                                   str(item["tag_auto_revision"]))
-                    if item.get("secondi") is not None:
-                        st.caption(f'{item["secondi"]:.1f} s · {method}')
-                    if method=="TAG" and item.get("versione_tag"):
-                        st.caption("TAG "+str(item["versione_tag"])+" · fonte "+str(item.get("verifica_contesto","?"))+" · AIC "+str(item.get("aic_nel_testo_integrale",0)))
-                    if method=="TAG" and item.get("versione_tag"):
-                        st.caption("TAG: "+str(item["versione_tag"])+
-                                   " · testo originale: "+
-                                   str(item.get("verifica_contesto","n.d."))+
-                                   " · AIC nell'atto: "+
-                                   str(item.get("aic_nel_testo_integrale","n.d."))+
-                                   " · revisione LLM: "+
-                                   ("sì" if item.get("revisione_completezza_llm")
-                                    else "no"))
-                    if method=="TAG" and item.get("fallback_pagina_integrale"):
-                        st.caption("LOTUS non ha selezionato gruppi: risposta "
-                                   "elaborata dal testo integrale della "
-                                   "pagina identificata, recuperata dallo SQLite.")
-                    if method=="Text-to-SQL con auto-correzione" and item.get("correzioni_sql") is not None:
-                        st.caption("Text-to-SQL con auto-correzione · correzioni SQL: "+
-                                   str(item["correzioni_sql"])+"/2 · SELECT tentate: "+
-                                   str(item.get("sql_tentativi","?"))+".")
-                    if item.get("chiamate_llm_effettive") is not None:
-                        st.caption(
-                            "Invii LLM misurati: "+
-                            str(item["chiamate_llm_effettive"])+
-                            " · diretti: "+str(item.get("chiamate_llm_dirette","?"))+
-                            " · LOTUS: "+str(item.get("chiamate_llm_lotus") or 0))
-                    elif item.get("chiamate_llm_stimate") is not None:
-                        st.caption(
-                            "Chiamate LLM stimate (conteggio completo non disponibile): "+
-                            str(item["chiamate_llm_stimate"]))
-                    if method in ("TAG","TAG automatico") and item.get("modalita_selezione"):
-                        st.caption(
-                            "Selezione TAG: "+str(item["modalita_selezione"])+
-                            " · evidenze: "+str(item.get("righe_recuperate","?"))+
-                            " · elementi LOTUS: "+str(item.get("righe_sem_filter","?")))
-                    if method=="TAG automatico" and item.get("errore_sql_iniziale"):
-                        st.caption(
-                            "La SQL iniziale e' stata rifiutata prima "
-                            "dell'esecuzione (tabella non consentita). "+
-                            "Le SELECT alternative, se presenti, sono "
-                            "state generate da codice e validate separatamente."
-                        )
-                    if method=="TAG automatico" and item.get("controllo_copertura_eseguito"):
-                        st.caption(
-                            "Controllo copertura documentale · note candidate: "+
-                            str(item.get("documenti_controllo_copertura","?"))+
-                            " · note escluse dalla prima SELECT: "+
-                            str(item.get("documenti_esclusi_primo_recupero","?"))+
-                            ". I documenti aggiuntivi non sono automaticamente "
-                            "pertinenti alla domanda.")
-                        with st.expander("SQL del controllo di copertura"):
-                            st.code(
-                                item.get("sql_controllo_copertura")
-                                or "Non disponibile",language="sql"
-                            )
-                    if method=="TAG automatico" and item.get("strategia_tag")=="due_fasi":
-                        st.caption(
-                            "Metodo alternativo in due fasi · motivo: "+
-                            str(item.get("motivo_due_fasi","?"))+
-                            " · note prima fase: "+
-                            str(item.get("documenti_fase1","?"))+
-                            " · note seconda fase: "+
-                            str(item.get("documenti_fase2","?"))+
-                            " · coppie documentate: "+
-                            str(item.get("coppie_documentate","?"))+
-                            " · lotti prima fase: "+
-                            str(item.get("lotti_fase1_validi","?"))+"/"+
-                            str(item.get("lotti_fase1","?"))+".")
-                        with st.expander("SQL delle due fasi"):
-                            st.caption("Prima SELECT controllata (recupero documenti)")
-                            st.code(item.get("sql_fase1") or "Non eseguita",language="sql")
-                            st.caption("Seconda SELECT controllata (note selezionate)")
-                            st.code(item.get("sql_fase2") or "Non eseguita",language="sql")
-                    if method=="TAG automatico" and item.get("codice_errore_due_fasi"):
-                        st.caption(
-                            "Diagnostica interruzione TAG · causa: "+
-                            str(item.get("codice_errore_due_fasi"))+
-                            " · fase: "+
-                            str(item.get("fase_errore_due_fasi") or "sconosciuta")+
-                            " · tipo: "+
-                            str(item.get("tipo_errore_due_fasi") or "non disponibile")+
-                            " · lotto interrotto: "+
-                            str(item.get("lotto_verifica_interrotto") or "non applicabile")+
-                            ". Le informazioni già verificate non vengono inventate "
-                            "né presentate come elenco completo."
-                        )
-                    if method=="TAG automatico" and item.get("lotti_verifica_finale"):
-                        st.caption(
-                            "Verifica finale distribuita · lotti completati: "+
-                            str(item.get("lotti_verifica_conclusi",0))+"/"+
-                            str(item["lotti_verifica_finale"])+
-                            " · lotti non validi: "+
-                            str(item.get("lotti_verifica_non_validi",0))+
-                            " · schede inviate al verificatore: "+
-                            str(item.get("documenti_inviati_verifica",0))+"."
-                        )
-                    if method=="TAG automatico" and item.get("asserzioni_verifica_proposte") is not None:
-                        st.caption(
-                            "Verifica delle associazioni · proposte: "+
-                            str(item["asserzioni_verifica_proposte"])+
-                            " · accettate: "+
-                            str(item.get("asserzioni_verifica_accettate",0))+
-                            " · respinte: "+
-                            str(item.get("asserzioni_verifica_respinte",0))+
-                            ". Ogni associazione è controllata separatamente."
-                        )
-                    if method=="TAG automatico" and (
-                            item.get("motivi_rifiuto_verifica")
-                            or item.get("documenti_candidati_verifica")):
-                        with st.expander("Diagnostica puntuale della seconda fase"):
+                                    st.caption("Testo originale estratto dalle fonti, "
+                                               "non evidenziazione nel PDF e non "
+                                               "verifica normativa indipendente.")
+                                for source in item["evidenze_fonti"]:
+                                    st.caption(str(source.get("fonte") or "")[:200])
+                                    _show_excerpt(source)
+                        if method=="TAG automatico" and item.get("diagnostica_sql"):
+                            st.caption("Diagnostica SQL: "+str(item["diagnostica_sql"]))
+                        if method in ("Text-to-SQL","TAG automatico",
+                                      "Text-to-SQL con auto-correzione") and item.get("sql"):
+                            with st.expander("SQL di recupero e tracciabilità" if method=="TAG automatico"
+                                             else "Query SQL generata dall'LLM"):
+                                original = item.get("sql_originale_llm")
+                                if method=="TAG automatico" and original:
+                                    st.caption("SQL generato dall'LLM (prima dei controlli)")
+                                    st.code(original,language="sql")
+                                    if (item.get("sql_normalizzato_nome") or
+                                            item.get("sql_normalizzato_ambito_regione") or
+                                            item.get("sql_normalizzato_join_documentali") or
+                                            item.get("sql") != original):
+                                        if item.get("sql_normalizzato_nome"):
+                                            st.caption("Confronti dei nomi normalizzati: case-insensitive.")
+                                        if item.get("sql_normalizzato_ambito_regione"):
+                                            st.caption(
+                                                "Filtro regionale spurio sul percorso ZIP rimosso: "
+                                                "la tabella note contiene già le note della Campania.")
+                                        if item.get("sql_normalizzato_join_documentali"):
+                                            st.caption(
+                                                "JOIN con tabella revisionata parziale "
+                                                "convertita in LEFT JOIN per non perdere "
+                                                "note prive di una relazione già verificata. "
+                                                "I centri andranno confermati nel PDF.")
+                                        st.caption("SQL effettivamente eseguito (incluso eventuale fallback)")
+                                        st.code(item["sql"],language="sql")
+                                    else:
+                                        st.caption("SQL eseguito senza normalizzazioni")
+                                else:
+                                    st.code(item["sql"],language="sql")
+                                st.caption("Text-to-SQL standard · una sola SELECT · nessuna correzione"
+                                           if method=="Text-to-SQL"
+                                           else "TAG automatico · SQL validato, candidati SQLite, filtro LOTUS")
+                        if method=="TAG automatico" and item.get("tag_auto_revision"):
+                            st.caption("Revisione del motore in uso: "+
+                                       str(item["tag_auto_revision"]))
+                        if item.get("secondi") is not None:
+                            st.caption(f'{item["secondi"]:.1f} s · {method}')
+                        if method=="TAG" and item.get("versione_tag"):
+                            st.caption("TAG "+str(item["versione_tag"])+" · fonte "+str(item.get("verifica_contesto","?"))+" · AIC "+str(item.get("aic_nel_testo_integrale",0)))
+                        if method=="TAG" and item.get("versione_tag"):
+                            st.caption("TAG: "+str(item["versione_tag"])+
+                                       " · testo originale: "+
+                                       str(item.get("verifica_contesto","n.d."))+
+                                       " · AIC nell'atto: "+
+                                       str(item.get("aic_nel_testo_integrale","n.d."))+
+                                       " · revisione LLM: "+
+                                       ("sì" if item.get("revisione_completezza_llm")
+                                        else "no"))
+                        if method=="TAG" and item.get("fallback_pagina_integrale"):
+                            st.caption("LOTUS non ha selezionato gruppi: risposta "
+                                       "elaborata dal testo integrale della "
+                                       "pagina identificata, recuperata dallo SQLite.")
+                        if method=="Text-to-SQL con auto-correzione" and item.get("correzioni_sql") is not None:
+                            st.caption("Text-to-SQL con auto-correzione · correzioni SQL: "+
+                                       str(item["correzioni_sql"])+"/2 · SELECT tentate: "+
+                                       str(item.get("sql_tentativi","?"))+".")
+                        if item.get("chiamate_llm_effettive") is not None:
                             st.caption(
-                                "Documenti sottoposti alla verifica finale "
-                                "(l'elenco non dimostra la loro pertinenza clinica)."
+                                "Invii LLM misurati: "+
+                                str(item["chiamate_llm_effettive"])+
+                                " · diretti: "+str(item.get("chiamate_llm_dirette","?"))+
+                                " · LOTUS: "+str(item.get("chiamate_llm_lotus") or 0))
+                        elif item.get("chiamate_llm_stimate") is not None:
+                            st.caption(
+                                "Chiamate LLM stimate (conteggio completo non disponibile): "+
+                                str(item["chiamate_llm_stimate"]))
+                        if method in ("TAG","TAG automatico") and item.get("modalita_selezione"):
+                            st.caption(
+                                "Selezione TAG: "+str(item["modalita_selezione"])+
+                                " · evidenze: "+str(item.get("righe_recuperate","?"))+
+                                " · elementi LOTUS: "+str(item.get("righe_sem_filter","?")))
+                        if method=="TAG automatico" and item.get("errore_sql_iniziale"):
+                            st.caption(
+                                "La SQL iniziale e' stata rifiutata prima "
+                                "dell'esecuzione (tabella non consentita). "+
+                                "Le SELECT alternative, se presenti, sono "
+                                "state generate da codice e validate separatamente."
                             )
-                            for doc in item.get("documenti_candidati_verifica") or []:
-                                st.write(str(doc.get("documento") or "Documento privo di titolo"))
-                            uncovered=item.get("documenti_senza_associazione_verificata") or []
-                            if uncovered:
-                                st.caption(
-                                    "Documenti senza associazione accettata "
-                                    "(non significa che il medicinale non sia pertinente):"
+                        if method=="TAG automatico" and item.get("controllo_copertura_eseguito"):
+                            st.caption(
+                                "Controllo copertura documentale · note candidate: "+
+                                str(item.get("documenti_controllo_copertura","?"))+
+                                " · note escluse dalla prima SELECT: "+
+                                str(item.get("documenti_esclusi_primo_recupero","?"))+
+                                ". I documenti aggiuntivi non sono automaticamente "
+                                "pertinenti alla domanda.")
+                            with st.expander("SQL del controllo di copertura"):
+                                st.code(
+                                    item.get("sql_controllo_copertura")
+                                    or "Non disponibile",language="sql"
                                 )
-                                for name in uncovered:
-                                    st.write(str(name))
-                            reasons=item.get("motivi_rifiuto_verifica") or {}
-                            if reasons:
-                                st.caption("Cause dei riferimenti non accettati")
-                                for label,number in reasons.items():
-                                    st.write(str(label)+": "+str(number))
-                    if method=="TAG automatico" and item.get("motivo_astensione"):
-                        st.caption("Astensione documentale: "+str(item["motivo_astensione"]))
-                    if method=="TAG automatico" and item.get("raffinamento_documentale_usato"):
-                        st.caption(
-                            "Raffinamento documentale · candidati valutati: "+
-                            str(item.get("documenti_candidati_raffinamento","?"))+
-                            " · documenti scelti: "+
-                            str(item.get("documenti_selezionati_raffinamento","?"))+
-                            " · lotti completati: "+
-                            str(item.get("lotti_raffinamento_completati","?"))+
-                            "/"+str(item.get("lotti_raffinamento","?"))+
-                            " · lotti non validi: "+
-                            str(item.get("lotti_raffinamento_non_validi",0))+
-                            " · chiamate dirette del raffinamento: "+
-                            str(item.get("chiamate_dirette_raffinamento","?"))+
-                            ". Pertinenza e completezza non certificate.")
-                    if method=="TAG automatico" and item.get("chiamate_piano_documentale"):
-                        st.caption(
-                            "Piano documentale strutturato · esito: "+
-                            str(item.get("piano_documentale_esito","?"))+
-                            " · struttura: "+
-                            str(item.get("piano_documentale_centro") or "non confermata")+
-                            " · chiamate LLM piano: "+
-                            str(item.get("chiamate_piano_documentale",0))+
-                            ". Piano e pertinenza soggetti a verifica.")
-                    if method=="TAG automatico" and item.get("recupero_progressivo_usato"):
-                        st.caption(
-                            "Recupero SQL progressivo attivato · SELECT eseguite: "+
-                            str(item.get("sql_tentativi","?"))+
-                            ". SQL originale e finale disponibili sopra.")
-                    if method=="TAG automatico" and item.get("note_nell_indice") is not None:
-                        st.caption(
-                            "Note documentali nel contesto di sintesi: "+
-                            str(item.get("note_nel_contesto","?"))+
-                            " · schede nell'indice: "+
-                            str(item["note_nell_indice"])+
-                            ". La presenza nel contesto non certifica che "
-                            "la risposta abbia elencato tutte le note.")
-                    if method=="TAG automatico" and item.get("identificativi_sql_riconciliati"):
-                        st.caption(
-                            "Provenienza identificativi riallineata dopo la SELECT: "+
-                            str(item["identificativi_sql_riconciliati"])+
-                            " riga/e, con verifica nello snapshot. "
-                            "La query originale rimane visibile per l'audit.")
-                    if method=="TAG" and item.get("sql_first_note_con_centro"):
-                        st.caption(
-                            "SQL-first · note che menzionano la struttura: "+
-                            str(item["sql_first_note_con_centro"])+
-                            " · note candidate per la sintesi: "+
-                            str(item.get("sql_first_note_preselezionate",0)))
-
-                    if method=="TAG" and item.get("statistiche_revisione_categoria"):
-                        stats=item["statistiche_revisione_categoria"]
-                        if stats.get("chiamate",0)>0:
+                        if method=="TAG automatico" and item.get("strategia_tag")=="due_fasi":
                             st.caption(
-                                "Revisione categoria · candidati: "+
-                                str(stats.get("candidati",0))+
-                                " · verifiche individuali: "+
-                                str(stats.get("chiamate",0))+
-                                " · voci integrate: "+
-                                str(stats.get("accettati",0)))
-                            with st.expander("Diagnostica della revisione TAG"):
+                                "Metodo alternativo in due fasi · motivo: "+
+                                str(item.get("motivo_due_fasi","?"))+
+                                " · note prima fase: "+
+                                str(item.get("documenti_fase1","?"))+
+                                " · note seconda fase: "+
+                                str(item.get("documenti_fase2","?"))+
+                                " · coppie documentate: "+
+                                str(item.get("coppie_documentate","?"))+
+                                " · lotti prima fase: "+
+                                str(item.get("lotti_fase1_validi","?"))+"/"+
+                                str(item.get("lotti_fase1","?"))+".")
+                            with st.expander("SQL delle due fasi"):
+                                st.caption("Prima SELECT controllata (recupero documenti)")
+                                st.code(item.get("sql_fase1") or "Non eseguita",language="sql")
+                                st.caption("Seconda SELECT controllata (note selezionate)")
+                                st.code(item.get("sql_fase2") or "Non eseguita",language="sql")
+                        if method=="TAG automatico" and item.get("codice_errore_due_fasi"):
+                            st.caption(
+                                "Diagnostica interruzione TAG · causa: "+
+                                str(item.get("codice_errore_due_fasi"))+
+                                " · fase: "+
+                                str(item.get("fase_errore_due_fasi") or "sconosciuta")+
+                                " · tipo: "+
+                                str(item.get("tipo_errore_due_fasi") or "non disponibile")+
+                                " · lotto interrotto: "+
+                                str(item.get("lotto_verifica_interrotto") or "non applicabile")+
+                                ". Le informazioni già verificate non vengono inventate "
+                                "né presentate come elenco completo."
+                            )
+                        if method=="TAG automatico" and item.get("lotti_verifica_finale"):
+                            st.caption(
+                                "Verifica finale distribuita · lotti completati: "+
+                                str(item.get("lotti_verifica_conclusi",0))+"/"+
+                                str(item["lotti_verifica_finale"])+
+                                " · lotti non validi: "+
+                                str(item.get("lotti_verifica_non_validi",0))+
+                                " · schede inviate al verificatore: "+
+                                str(item.get("documenti_inviati_verifica",0))+"."
+                            )
+                        if method=="TAG automatico" and item.get("asserzioni_verifica_proposte") is not None:
+                            st.caption(
+                                "Verifica delle associazioni · proposte: "+
+                                str(item["asserzioni_verifica_proposte"])+
+                                " · accettate: "+
+                                str(item.get("asserzioni_verifica_accettate",0))+
+                                " · respinte: "+
+                                str(item.get("asserzioni_verifica_respinte",0))+
+                                ". Ogni associazione è controllata separatamente."
+                            )
+                        if method=="TAG automatico" and (
+                                item.get("motivi_rifiuto_verifica")
+                                or item.get("documenti_candidati_verifica")):
+                            with st.expander("Diagnostica puntuale della seconda fase"):
                                 st.caption(
-                                    "Esiti del controllo sulle citazioni "
-                                    "dello snapshot; non costituiscono "
-                                    "una valutazione clinica indipendente.")
-                                for check in item.get("diagnostica_revisione_categoria",[]):
-                                    label=(str(check.get("medicinale","?"))+
-                                           ": "+str(check.get("esito","n.d.")))
-                                    if check.get("proposte_esaminate",0)>1:
-                                        label+=(" ("+str(check["proposte_esaminate"])+
-                                                " proposte valutate)")
-                                    st.write(label)
-                                    if check.get("citazione_proposta"):
-                                        st.caption("Citazione da verificare: "+
-                                                   str(check["citazione_proposta"])[:180])
+                                    "Documenti sottoposti alla verifica finale "
+                                    "(l'elenco non dimostra la loro pertinenza clinica)."
+                                )
+                                for doc in item.get("documenti_candidati_verifica") or []:
+                                    st.write(str(doc.get("documento") or "Documento privo di titolo"))
+                                uncovered=item.get("documenti_senza_associazione_verificata") or []
+                                if uncovered:
+                                    st.caption(
+                                        "Documenti senza associazione accettata "
+                                        "(non significa che il medicinale non sia pertinente):"
+                                    )
+                                    for name in uncovered:
+                                        st.write(str(name))
+                                reasons=item.get("motivi_rifiuto_verifica") or {}
+                                if reasons:
+                                    st.caption("Cause dei riferimenti non accettati")
+                                    for label,number in reasons.items():
+                                        st.write(str(label)+": "+str(number))
+                        if method=="TAG automatico" and item.get("motivo_astensione"):
+                            st.caption("Astensione documentale: "+str(item["motivo_astensione"]))
+                        if method=="TAG automatico" and item.get("raffinamento_documentale_usato"):
+                            st.caption(
+                                "Raffinamento documentale · candidati valutati: "+
+                                str(item.get("documenti_candidati_raffinamento","?"))+
+                                " · documenti scelti: "+
+                                str(item.get("documenti_selezionati_raffinamento","?"))+
+                                " · lotti completati: "+
+                                str(item.get("lotti_raffinamento_completati","?"))+
+                                "/"+str(item.get("lotti_raffinamento","?"))+
+                                " · lotti non validi: "+
+                                str(item.get("lotti_raffinamento_non_validi",0))+
+                                " · chiamate dirette del raffinamento: "+
+                                str(item.get("chiamate_dirette_raffinamento","?"))+
+                                ". Pertinenza e completezza non certificate.")
+                        if method=="TAG automatico" and item.get("chiamate_piano_documentale"):
+                            st.caption(
+                                "Piano documentale strutturato · esito: "+
+                                str(item.get("piano_documentale_esito","?"))+
+                                " · struttura: "+
+                                str(item.get("piano_documentale_centro") or "non confermata")+
+                                " · chiamate LLM piano: "+
+                                str(item.get("chiamate_piano_documentale",0))+
+                                ". Piano e pertinenza soggetti a verifica.")
+                        if method=="TAG automatico" and item.get("recupero_progressivo_usato"):
+                            st.caption(
+                                "Recupero SQL progressivo attivato · SELECT eseguite: "+
+                                str(item.get("sql_tentativi","?"))+
+                                ". SQL originale e finale disponibili sopra.")
+                        if method=="TAG automatico" and item.get("note_nell_indice") is not None:
+                            st.caption(
+                                "Note documentali nel contesto di sintesi: "+
+                                str(item.get("note_nel_contesto","?"))+
+                                " · schede nell'indice: "+
+                                str(item["note_nell_indice"])+
+                                ". La presenza nel contesto non certifica che "
+                                "la risposta abbia elencato tutte le note.")
+                        if method=="TAG automatico" and item.get("identificativi_sql_riconciliati"):
+                            st.caption(
+                                "Provenienza identificativi riallineata dopo la SELECT: "+
+                                str(item["identificativi_sql_riconciliati"])+
+                                " riga/e, con verifica nello snapshot. "
+                                "La query originale rimane visibile per l'audit.")
+                        if method=="TAG" and item.get("sql_first_note_con_centro"):
+                            st.caption(
+                                "SQL-first · note che menzionano la struttura: "+
+                                str(item["sql_first_note_con_centro"])+
+                                " · note candidate per la sintesi: "+
+                                str(item.get("sql_first_note_preselezionate",0)))
+
+                        if method=="TAG" and item.get("statistiche_revisione_categoria"):
+                            stats=item["statistiche_revisione_categoria"]
+                            if stats.get("chiamate",0)>0:
+                                st.caption(
+                                    "Revisione categoria · candidati: "+
+                                    str(stats.get("candidati",0))+
+                                    " · verifiche individuali: "+
+                                    str(stats.get("chiamate",0))+
+                                    " · voci integrate: "+
+                                    str(stats.get("accettati",0)))
+                                with st.expander("Diagnostica della revisione TAG"):
+                                    st.caption(
+                                        "Esiti del controllo sulle citazioni "
+                                        "dello snapshot; non costituiscono "
+                                        "una valutazione clinica indipendente.")
+                                    for check in item.get("diagnostica_revisione_categoria",[]):
+                                        label=(str(check.get("medicinale","?"))+
+                                               ": "+str(check.get("esito","n.d.")))
+                                        if check.get("proposte_esaminate",0)>1:
+                                            label+=(" ("+str(check["proposte_esaminate"])+
+                                                    " proposte valutate)")
+                                        st.write(label)
+                                        if check.get("citazione_proposta"):
+                                            st.caption("Citazione da verificare: "+
+                                                       str(check["citazione_proposta"])[:180])
 
     # Non usare st.popover o st.chat_input: un normale text_area in st.dialog
     # è interattivo e non dipende dalle dimensioni/coordinate della bolla.
@@ -631,6 +628,9 @@ def assistant_dialog():
                         "piano_documentale_esito":result.get("piano_documentale_esito"),
                         "chiamate_piano_documentale":result.get("chiamate_piano_documentale"),
                         "sql_tentativi":result.get("sql_tentativi"),
+                        "stato":result.get("stato"),
+                        "codice_errore":result.get("codice_errore"),
+                        "fase_errore":result.get("fase_errore"),
                         "secondi":round(time.monotonic()-start,2),
                         "versione_tag":result.get("versione_tag"),
                         "verifica_contesto":result.get("verifica_contesto"),
@@ -665,26 +665,25 @@ def assistant_dialog():
         # Solo la finestra viene aggiornata: rimane aperta e scrivibile.
         st.rerun(scope="fragment")
 
-    if _enable_sql_retry_experiment():
-        # Esporta il testo INTEGRALE con tempi, fonti, SQL e chiamate.
-        # Non include GEMINI_API_KEY o altre informazioni da st.secrets.
-        methods=("Text-to-SQL","Text-to-SQL con auto-correzione","TAG automatico")
-        complete={
-            "esportazione_utc":datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "modello":model,
-            "metodi":[{
-                "metodo":m,
-                "messaggi":st.session_state.get(history_key(m),[])
-            } for m in methods]
-        }
-        st.download_button(
-            "Scarica risposte complete e metriche (JSON)",
-            data=json.dumps(complete,ensure_ascii=False,indent=2),
-            file_name="farmaquery_test_35_risposte_integrali.json",
-            mime="application/json",
-            key="farmaquery_export_full_experiment",
-            use_container_width=True
-        )
+    # Il pulsante esporta sempre le risposte COMPLETE, anche se la
+    # presentazione ha nascosto i controlli tecnici per le schermate.
+    complete={
+        "esportazione_utc":datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "modello":model,
+        "base_dati":"copia statica FarmaQuery per i test",
+        "metodi":[{
+            "metodo":m,
+            "messaggi":st.session_state.get(history_key(m),[])
+        } for m in ("Text-to-SQL con auto-correzione","TAG automatico")]
+    }
+    st.download_button(
+        "Esporta risposte integrali e metriche (JSON)",
+        data=json.dumps(complete,ensure_ascii=False,indent=2),
+        file_name="farmaquery_risposte_complete.json",
+        mime="application/json",
+        key="farmaquery_export_full_experiment",
+        use_container_width=True
+    )
 
     st.caption("Prototipo accademico: controlla le fonti prima di prendere "
                "decisioni cliniche.")
