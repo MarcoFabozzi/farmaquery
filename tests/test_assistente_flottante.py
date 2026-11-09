@@ -1,6 +1,8 @@
 """Verifica che FarmaQuery abbia un chatbot flottante senza domande precompilate."""
 from pathlib import Path
 import unittest
+import csv
+from io import StringIO
 from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -43,6 +45,43 @@ class FloatingAssistantTests(unittest.TestCase):
         self.assertEqual(widget._visible_message(item,False),"Query non eseguibile.")
         self.assertEqual(widget._visible_message(item,True),item["text"])
         self.assertIn("codice: SQL",item["text"])
+
+
+    def test_csv_export_preserves_full_responses_and_errors(self):
+        import chatbot_widget as widget
+        full_answer="Risposta integrale, senza tagli; prova con accenti è e nuove righe\nDocumento pag. 2"
+        groups={
+            "esportazione_utc":"2026-11-09T20:00:00+00:00",
+            "modello":"gemini/test","snapshot_sha256":"sha256_test",
+            "metodi":[
+                {"metodo":"Text-to-SQL con auto-correzione","etichetta":"Text-to-SQL",
+                 "messaggi":[
+                     {"role":"user","text":"Domanda 1?"},
+                     {"role":"assistant","text":full_answer,"stato":"OK",
+                      "fonti":["AIFA AIC 000"],"secondi":2.5,
+                      "correzioni_sql":1,"sql_tentativi":2,
+                      "chiamate_llm_effettive":3,"token_input":123,
+                      "sql":"SELECT * FROM aifa_confezioni","sql_proposte":["SQL errato","SQL valido"]}
+                 ]},
+                {"metodo":"TAG automatico","etichetta":"TAG",
+                 "messaggi":[
+                     {"role":"user","text":"Domanda 2?"},
+                     {"role":"assistant","text":"Errore SQL","stato":"ERRORE_SQL",
+                      "codice_errore":"SQL","sql_tentativi":3}
+                 ]}
+            ]}
+        csv_bytes=widget._export_csv(groups)
+        self.assertTrue(csv_bytes.startswith(b"\\xef\\xbb\\xbf"))
+        rows=list(csv.DictReader(StringIO(csv_bytes.decode("utf-8-sig")),delimiter=";"))
+        self.assertEqual(len(rows),2)
+        self.assertEqual(rows[0]["domanda"],"Domanda 1?")
+        self.assertEqual(rows[0]["risposta_completa"],full_answer)
+        self.assertEqual(rows[0]["sql_tentativi"],"2")
+        self.assertEqual(rows[0]["chiamate_llm_effettive"],"3")
+        self.assertIn("SQL errato",rows[0]["sql_proposte"])
+        self.assertEqual(rows[1]["metodo"],"TAG")
+        self.assertEqual(rows[1]["stato"],"ERRORE_SQL")
+        self.assertEqual(rows[1]["codice_errore"],"SQL")
 
     def test_nuova_conversazione_cancella_tutte_tre_le_chat(self):
         import chatbot_widget as widget
