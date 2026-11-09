@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 import json
 import re
 from html import escape
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, unquote
 import sqlite3
 import tempfile
 
@@ -139,6 +139,15 @@ div[data-testid="stExpander"] {border-color:#d9e9e7;border-radius:12px;}
 }
 @media (prefers-reduced-motion:no-preference) {
   div[data-testid="stButton"] button {transition:background-color .16s,border-color .16s,color .16s;}
+}
+.regula-update-footer {
+  border-top:1px solid #d8e8e6;margin-top:1.4rem;padding-top:1rem;
+  color:#16485a;font-size:1rem;
+}
+@media(max-width:700px) {
+  div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"] div[data-testid="stMetric"]) {
+    flex-wrap:wrap;
+  }
 }
 </style>
 <div class="regula-hero">
@@ -434,6 +443,8 @@ if requested_aic is not None:
     st.stop()
 
 
+from regione_campania_dashboard import conta_note_regionali, mostra_sezione_regione
+
 ema=query('SELECT COUNT(*) AS n FROM ema_medicinali')[0]['n']
 gu=query('SELECT COUNT(*) AS n FROM gazzetta_atti')[0]['n']
 aifa_main=query('SELECT COUNT(*) AS n FROM aifa_confezioni')[0]['n']
@@ -450,10 +461,12 @@ if AIFA.is_file():
     except (OSError,KeyError,TypeError,ValueError):
         pass
 st.markdown('### 📊 Archivio disponibile')
-c1,c2,c3=st.columns(3)
+note_count=conta_note_regionali(DATA)
+c1,c2,c3,c4=st.columns(4)
 c1.metric('Medicinali EMA',f'{ema:,}'.replace(',','.'))
 c2.metric(aifa_label,f'{aifa_total:,}'.replace(',','.'))
 c3.metric('Atti Gazzetta',gu)
+c4.metric('Note regionali',f'{note_count:,}'.replace(',','.') if note_count is not None else 'N/D')
 
 st.markdown('### 🔎 Cerca un medicinale')
 term=st.text_input('Nome, principio attivo, codice EMA o AIC',placeholder='Es. Tachipirina, Cardirene, Leqembi')
@@ -632,8 +645,24 @@ try:
 except (sqlite3.DatabaseError,OSError,ValueError) as exc:
     st.warning(f'Impossibile visualizzare l’elenco: {exc}')
 
-from regione_campania_dashboard import mostra_sezione_regione
 mostra_sezione_regione(DATA)
+
+def ultima_data_archivio_regionale():
+    """Data ricavata dal nome dell'archivio ufficiale, NON dall'acquisizione."""
+    path=DATA/'stato_fonti'/'regione_campania.json'
+    try:
+        obj=json.loads(path.read_text(encoding='utf-8'))
+        fonti=[f for f in obj.get('fonti',[]) if isinstance(f,dict)]
+        for fonte in sorted(fonti,key=lambda f:int(f.get('anno',0)),reverse=True):
+            name=unquote(urlsplit(str(fonte.get('url') or '')).path)
+            match=re.search(r'(?<!\\d)(\\d{2})\\.(\\d{2})\\.(20\\d{2})(?!\\d)',name)
+            if match:
+                giorno,mese,anno=match.groups()
+                return giorno+'/'+mese+'/'+anno
+    except (OSError,ValueError,TypeError,KeyError):
+        pass
+    return 'Non disponibile'
+
 
 with st.expander('Stato degli aggiornamenti'):
     st.write('EMA:',ultimo('ema'))
@@ -641,7 +670,16 @@ with st.expander('Stato degli aggiornamenti'):
     st.write('AIFA · classi A/H:',ultimo('aifa_ah'))
     st.write('AIFA · storico C(nn):',ultimo('aifa_cnn'))
     st.write('Gazzetta Ufficiale:',ultimo('gazzetta'))
+    st.write('Note regionali · data ultimo archivio:',ultima_data_archivio_regionale())
     st.caption('Gli aggiornamenti sono giornalieri, con nuovi tentativi in caso di errore. Le date riportano le acquisizioni, non la validità normativa.')
+
+# Le fonti hanno date indipendenti: mostrarle separatamente evita di
+# attribuire a tutte la data di acquisizione più recente.
+st.markdown('<div class="regula-update-footer"><strong>Ultimo aggiornamento dei dati</strong></div>',unsafe_allow_html=True)
+st.caption('EMA: '+ultimo('ema')+' · AIFA confezioni: '+ultimo('aifa_anagrafica'))
+st.caption('AIFA classi A/H: '+ultimo('aifa_ah')+' · Gazzetta Ufficiale: '+ultimo('gazzetta'))
+st.caption('Note regionali: archivio datato '+ultima_data_archivio_regionale())
+st.caption('Le date indicano acquisizioni delle fonti o, per la Regione, la data dell’archivio; non certificano la validità normativa.')
 st.caption('Prototipo accademico: le informazioni non certificano la classificazione o la rimborsabilità corrente dei medicinali.')
 
 # Assistente sempre raggiungibile dall'icona in basso a destra.
