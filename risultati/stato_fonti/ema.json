@@ -1,22 +1,23 @@
 {
   "fonte": "ema",
   "esito": "OK",
-  "ultimo_successo_utc": "2026-11-03T05:14:27+00:00",
-  "precedente_successo_utc": "2026-11-02T05:20:55+00:00",
+  "ultimo_successo_utc": "2026-11-09T13:36:19+00:00",
+  "precedente_successo_utc": "2026-11-03T05:14:27+00:00",
   "statistiche": {
     "catalogo_sorgente": 2357,
     "modalita": "CATALOGO_EMA_COMPLETO",
     "target": 2357,
     "nuovi_medicinali": 0,
+    "denominazioni_aggiornate": 2,
     "medicinali_archiviati": 2357,
-    "versioni_ema_osservate": 2357,
+    "versioni_ema_osservate": 2388,
     "nota": "Versioni osservate nel dataset, non eventi normativi o date di prima autorizzazione"
   },
   "fonti": {
     "ema": {
       "url": "https://www.ema.europa.eu/en/documents/report/medicines-output-medicines_json-report_en.json",
-      "bytes": 6795651,
-      "sha256": "b20536ff1adf122a0e3296bd7a47653d22a66e03adb2717f0f66054e4e59a664"
+      "bytes": 6804166,
+      "sha256": "62679c639d53b31c50f500736270a4bb8e8862903637057bbdc5ba9ba55e1cc3"
     }
   },
   "nota": "Controllo della fonte completato, non certificazione di stato regolatorio corrente"
