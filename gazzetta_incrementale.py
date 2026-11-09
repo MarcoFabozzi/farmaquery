@@ -90,7 +90,7 @@ def fetch(u,limit=3_000_000):
 def _testo_valido(t):
     """Controllo conservativo, condiviso da lettura ordinaria e alternativa."""
     return len(t)>=100 and bool(re.search(
-        r'\\b(art|determina|medicinal|farmac|a\\.?i\\.?c\\.?)\\b',t,re.I))
+        r'\b(art|determina|comunicat\w*|medicinal\w*|farmac\w*|autorizzazion\w*|a\.?i\.?c\.?)\b',t,re.I))
 
 
 def _testo_atto(code,when,typ):
