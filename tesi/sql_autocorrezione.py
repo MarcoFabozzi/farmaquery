@@ -9,6 +9,10 @@ from __future__ import annotations
 from errori_chatbot import EnginePhaseError, label_error
 from tesi.contatore_llm import measured_engine
 from tesi import pilota_tag_vs_sql as sql_base
+from tesi.sql_sicurezza_risposta import (
+    motivo_select_non_probante, domanda_volume_operativo,
+    sintesi_contraddittoria, anteprima_righe_non_validate,
+)
 
 MAX_CORREZIONI = 2
 
@@ -76,7 +80,7 @@ def sql_autocorrezione(db,question,model):
                     "errori_sql_tentativi":failures,
                     "sql_tentativi":len(proposed),
                     "correzioni_sql":corrections,
-                    "versione_text_to_sql":"autocorrezione-v1",
+                    "versione_text_to_sql":"autocorrezione-v2-controlli",
                     **usage,
                 })
                 return result
@@ -98,6 +102,35 @@ def sql_autocorrezione(db,question,model):
         "versione_text_to_sql":"autocorrezione-v1",
         "categoria_implicita":False,
     }
+    # Le query tecnicamente valide possono comunque non essere probanti.
+    # Il controllo non scatena ricerche alternative o tentativi semantici.
+    motivo = motivo_select_non_probante(sql)
+    if motivo is not None:
+        return {
+            "risposta":("La SELECT generata non fornisce evidenze verificabili "
+                        "per rispondere alla domanda. Non si puo' dedurre "
+                        "l'assenza del dato o un valore numerico pari a zero."),
+            "fonti":[], "sql":sql, "righe_sql":len(rows),
+            "stato":"SQL_NON_PROBANTE", "risultato_parziale":False,
+            "motivo_controllo_sql":motivo,
+            **usage, "costo_completo":usage.get("costo_usd") is not None,
+            **metadata,
+        }
+    if domanda_volume_operativo(question):
+        return {
+            "risposta":("Le righe di questo database regolatorio non "
+                        "documentano il numero di eventi realmente avvenuti "
+                        "(pazienti trattati, somministrazioni o dati economici). "
+                        "Non e' corretto interpretare un conteggio di record "
+                        "come misura di attivita' effettiva; il dato richiesto "
+                        "non e' verificabile con questa SELECT."),
+            "fonti":[], "sql":sql, "righe_sql":len(rows),
+            "stato":"DATO_OPERATIVO_NON_VERIFICABILE",
+            "motivo_controllo_sql":"MISURA_OPERATIVA_SENZA_FONTE",
+            "risultato_parziale":False,
+            **usage, "costo_completo":usage.get("costo_usd") is not None,
+            **metadata,
+        }
     if not rows:
         return {
             "risposta":(
@@ -117,6 +150,18 @@ def sql_autocorrezione(db,question,model):
          "risultati_parziali":truncated}
     )
     usage=sql_base._accumulate(usage,next_usage)
+    risposta_originale_llm = answer
+    incoerente = sintesi_contraddittoria(rows, answer)
+    if incoerente:
+        preview = anteprima_righe_non_validate(rows)
+        answer = (
+            "La sintesi prodotta e' incoerente con i dati restituiti: "
+            "la SELECT ha prodotto righe, ma la risposta negava "
+            "globalmente la disponibilita' di informazioni. "
+            "I dati recuperati richiedono controllo di pertinenza e "
+            "completezza, non costituiscono una Gold validata."
+            + ("\\n\\nIdentificativi candidati:\\n" + preview if preview else "")
+        )
     if truncated:
         answer+=(
             "\n\nAvvertenza: risultati SQL parziali per limite di righe, "
@@ -134,7 +179,10 @@ def sql_autocorrezione(db,question,model):
         "risposta":answer,"fonti":citations,"sql":sql,
         "evidenze_fonti":sql_base._source_previews(evidence),
         "righe_sql":len(rows),
-        "stato":"RISULTATI_PARZIALI" if truncated else "OK",
+        "stato":("SINTESI_INCOERENTE" if incoerente else
+                 "RISULTATI_PARZIALI" if truncated else "OK"),
+        "risposta_originale_llm":risposta_originale_llm if incoerente else None,
+        "motivo_controllo_sql":"NEGAZIONE_CON_RIGHE" if incoerente else None,
         "risultato_parziale":truncated,
         **usage,"costo_completo":usage.get("costo_usd") is not None,
         **metadata,
