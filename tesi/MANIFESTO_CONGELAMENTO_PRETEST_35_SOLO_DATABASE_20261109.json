@@ -1,0 +1,77 @@
+{
+  "titolo": "FarmaQuery - manifesto di congelamento pre-test, Gold solo database",
+  "data_preparazione": "2026-11-09",
+  "stato": "PRONTO_PER_TEST_FINALE_NESSUNA_ESECUZIONE_REALE_35X2",
+  "perimetro": "Risposte Gold riferite solo a record e testo estratto presenti nello SQLite statico del 2026-11-02, inclusi OCR imperfetti; nessuna fonte esterna o PDF aggiornato.",
+  "repository": "MarcoFabozzi/farmaquery",
+  "codice_commit": "6be39d814a71ffe7600e77135c6e8a583132b5aa",
+  "snapshot": {
+    "sqlite_compresso": "risultati/tesi_statico_20261102.sqlite.gz",
+    "manifest": "risultati/tesi_statico_20261102.json",
+    "sha256_sqlite_decompresso": "f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742",
+    "data_fonte": "2026-11-02",
+    "dati_immutati": true
+  },
+  "questionario": {
+    "percorso": "tesi/QUESTIONARIO_FINALE_35_20261109.csv",
+    "git_blob_sha": "5a5e406abb21154747bebce9d2115cc213bf2507",
+    "domande": 35,
+    "categorie": {
+      "SEMPLICE": 10,
+      "CATEGORIA_IMPLICITA": 10,
+      "MULTIFONTE": 5,
+      "NESSUNA_RISPOSTA": 5,
+      "MULTIPLA": 5
+    },
+    "domanda_immutata": true
+  },
+  "gold": {
+    "percorso": "tesi/GOLD_35_VALIDATO_SOLO_DATABASE_20261109.csv",
+    "git_blob_sha": "031d304c2c05f646136e57d4ee5267f5af3b4b85",
+    "validati_sullo_snapshot": 35,
+    "verificati_per_esistenza_e_struttura": 35,
+    "pagine_regionali_localizzate": 59,
+    "pagine_assenti": 0,
+    "pagine_ambigue": 0,
+    "fonte_esterna_usata": false,
+    "definizione_validita": "coerenza con il database interrogato, non aggiornamento normativo esterno",
+    "nota_Q11": "Sono valutabili i quattro medicinali ricostruiti testualmente dalle note campane. RYSTIGGO ha un centro in strutture_registri AIFA ma non un centro Federico II verificabile nel testo della nota regionale estratta. Non trasferire il dato AIFA alla nota."
+  },
+  "metodi": [
+    {
+      "nome": "Text-to-SQL con auto-correzione",
+      "versione": "autocorrezione-v2-controlli",
+      "max_autocorrezioni_sql": 2,
+      "usa_tag": false
+    },
+    {
+      "nome": "TAG automatico",
+      "versione": "2026-11-08-r24-errore-lotti-diagnosticabile"
+    }
+  ],
+  "esperimento": {
+    "esecuzioni_previste": 70,
+    "esecuzioni_gemini_avviate": 0,
+    "invii_llm_preflight": 0,
+    "runner": "tesi/esegui_holdout.py",
+    "valutatore": "tesi/valuta_confronto.py",
+    "modello_predefinito_nel_codice": "gemini/gemini-3.5-flash-lite",
+    "modello_effettivo": "da dichiarare esplicitamente nel parametro --model all'esecuzione; stessa stringa per entrambi",
+    "ordine_motori": "alternato sulle domande",
+    "criterio": "un primo tentativo per domanda e metodo; errori mantenuti",
+    "output_predefinito": "risultati/holdout_35_sql_v2_tag_auto_grezzi.csv",
+    "risultati_gold_non_passati_all_llm": true
+  },
+  "controlli": {
+    "workflow_pr": "https://github.com/MarcoFabozzi/farmaquery/actions/runs/42712610507",
+    "test_suite": "164 test superati",
+    "preflight_offline": "70 richieste simulate, zero chiamate reali",
+    "validazione_gold": "35 VALIDATO, 0 errori, 0 DA_VERIFICARE",
+    "esito": "OK"
+  },
+  "limiti": [
+    "Le 35 domande sono già state utilizzate in un confronto storico: il nuovo confronto è una ripetizione con Text-to-SQL v2, non un holdout indipendente.",
+    "Gold valide nel perimetro dello SQLite, non necessariamente conformi a fonti esterne più aggiornate.",
+    "Le metriche definitive richiedono l'esecuzione dei due motori e la successiva annotazione manuale delle risposte; non sono ancora disponibili."
+  ]
+}
