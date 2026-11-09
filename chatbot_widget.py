@@ -10,6 +10,8 @@ import sqlite3
 import time
 import re
 import os
+import json
+from datetime import datetime,timezone
 from urllib.parse import urlsplit
 
 import streamlit as st
@@ -662,6 +664,27 @@ def assistant_dialog():
                         "aic_nel_testo_integrale":result.get("aic_nel_testo_integrale")})
         # Solo la finestra viene aggiornata: rimane aperta e scrivibile.
         st.rerun(scope="fragment")
+
+    if _enable_sql_retry_experiment():
+        # Esporta il testo INTEGRALE con tempi, fonti, SQL e chiamate.
+        # Non include GEMINI_API_KEY o altre informazioni da st.secrets.
+        methods=("Text-to-SQL","Text-to-SQL con auto-correzione","TAG automatico")
+        complete={
+            "esportazione_utc":datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "modello":model,
+            "metodi":[{
+                "metodo":m,
+                "messaggi":st.session_state.get(history_key(m),[])
+            } for m in methods]
+        }
+        st.download_button(
+            "Scarica risposte complete e metriche (JSON)",
+            data=json.dumps(complete,ensure_ascii=False,indent=2),
+            file_name="farmaquery_test_35_risposte_integrali.json",
+            mime="application/json",
+            key="farmaquery_export_full_experiment",
+            use_container_width=True
+        )
 
     st.caption("Prototipo accademico: controlla le fonti prima di prendere "
                "decisioni cliniche.")
