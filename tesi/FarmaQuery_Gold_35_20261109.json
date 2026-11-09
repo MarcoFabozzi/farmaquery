@@ -1,0 +1,609 @@
+{
+  "meta": {
+    "titolo": "FarmaQuery — Risposte Gold candidate e rubriche per il test a 35 domande",
+    "snapshot_sorgente": "bb43ae4b00b6d581f4209ad83cbf9945054628868e6a52c59470ad32cada9a53",
+    "snapshot_statico": "f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742",
+    "data_snapshot": "2026-11-02",
+    "metodo": "Controllo diretto delle tabelle note/pagine/aifa_confezioni/ema_medicinali dello SQLite sorgente; precedenti audit PDF ufficiali per le note validate; GU esterna solo dove dichiarata. Nessuna esecuzione dei motori.",
+    "stato": "Revisione Gold; Q11 RYSTIGGO richiede controllo visivo per esaustività; testi OCR da riscontrare sul PDF originale per audit normativo finale."
+  },
+  "domande": [
+    {
+      "id": "Q01",
+      "categoria": "SEMPLICE",
+      "domanda": "Per ciascuna confezione di XEMBIFY indica a quale classe appartiene.",
+      "risposta_gold": "Nello snapshot AIFA A/H 30/06/2026, classe H: 049488012, 049488024, 049488036, 049488048. A/H non valorizzata (NULL): 049488051, 049488063, 049488075, 049488087, 049488099. Per convenzione dell’app questi cinque sono visualizzati come C per esclusione; un NULL, da solo, non costituisce una classificazione ufficiale in C. Controllo normativo distinto, esterno alla fotografia A/H: la GU del 30/09/2024, atto 24A04966, classificava quelle cinque nuove confezioni come C(nn).",
+      "elementi_attesi": [
+        "AIC 049488012=H",
+        "049488024=H",
+        "049488036=H",
+        "049488048=H",
+        "049488051=NULL A/H",
+        "049488063=NULL A/H",
+        "049488075=NULL A/H",
+        "049488087=NULL A/H",
+        "049488099=NULL A/H"
+      ],
+      "fonti": [
+        "SQLite:aifa_confezioni, 9 righe nome=XEMBIFY",
+        "Fonte esterna alla lista A/H: GU 30/09/2024, atto 24A04966, p.16"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": "Per il punteggio basato solo sul database accettare NULL/assente da A-H per le cinque confezioni o C esplicitamente qualificata come dedotta; non presentare C come attestata nel campo A/H. L’atto ufficiale GU C(nn) è controllo esterno, non necessariamente presente in gu_documenti."
+    },
+    {
+      "id": "Q02",
+      "categoria": "SEMPLICE",
+      "domanda": "Qual è la via di somministrazione prevista per XEMBIFY?",
+      "risposta_gold": "Somministrazione sottocutanea. La nota specifica che l’infusione sottocutanea per trattamento domiciliare deve essere avviata e monitorata da un operatore sanitario formato.",
+      "elementi_attesi": [
+        "Via sottocutanea"
+      ],
+      "fonti": [
+        "XEMBIFY.pdf#p1",
+        "XEMBIFY.pdf#p2",
+        "SQLite:aifa_confezioni, descrizione XEMBIFY"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q03",
+      "categoria": "SEMPLICE",
+      "domanda": "Quale regime di prescrizione è richiesto dalla nota campana per XEMBIFY?",
+      "risposta_gold": "RNRL: prescrizione medica limitativa non ripetibile, da rinnovare volta per volta, su prescrizione di centri ospedalieri o specialisti internista, infettivologo, ematologo, immunologo; la nota richiede inoltre MUP SANIARP.",
+      "elementi_attesi": [
+        "RNRL",
+        "MUP SANIARP"
+      ],
+      "fonti": [
+        "note 2025 - 18.12.2025/XEMBIFY.pdf#p2"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q04",
+      "categoria": "SEMPLICE",
+      "domanda": "La nota regionale KAYFANDA prevede distribuzione diretta oppure convenzionata?",
+      "risposta_gold": "Distribuzione diretta; non distribuzione convenzionata.",
+      "elementi_attesi": [
+        "Distribuzione diretta"
+      ],
+      "fonti": [
+        "note-regionali-2026 22.09.2026/KAYFANDA Prot.N.0162816-2026.pdf#p3"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q05",
+      "categoria": "SEMPLICE",
+      "domanda": "Quale canale File F è previsto per KAYFANDA?",
+      "risposta_gold": "File F, canale D.",
+      "elementi_attesi": [
+        "File F canale D"
+      ],
+      "fonti": [
+        "KAYFANDA Prot.N.0162816-2026.pdf#p3"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q06",
+      "categoria": "SEMPLICE",
+      "domanda": "Quale sistema informatico gestisce i piani terapeutici di KAYFANDA?",
+      "risposta_gold": "SINFONIA — Piani Terapeutici 2.0.",
+      "elementi_attesi": [
+        "SINFONIA Piani Terapeutici 2.0"
+      ],
+      "fonti": [
+        "KAYFANDA Prot.N.0162816-2026.pdf#p3"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q07",
+      "categoria": "SEMPLICE",
+      "domanda": "La nota campana relativa a HEMLIBRA prevede un piano terapeutico?",
+      "risposta_gold": "Sì: diagnosi e Piano Terapeutico AIFA per la prescrizione SSN di HEMLIBRA (emicizumab) nella profilassi degli episodi emorragici per emofilia A, secondo la nota.",
+      "elementi_attesi": [
+        "Piano terapeutico richiesto: sì"
+      ],
+      "fonti": [
+        "PTR 2024/HEMLIBRA.pdf#p1"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q08",
+      "categoria": "SEMPLICE",
+      "domanda": "Qual è la differenza di classe fra SIVEXTRO compresse (AIC 044020016) e SIVEXTRO endovenoso (AIC 044020030)?",
+      "risposta_gold": "044020016, compresse: A. 044020030, endovenoso: H. Le classi sono diverse.",
+      "elementi_attesi": [
+        "Compresse 044020016=A",
+        "EV 044020030=H"
+      ],
+      "fonti": [
+        "SQLite:aifa_confezioni, AIC 044020016 e 044020030"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q09",
+      "categoria": "SEMPLICE",
+      "domanda": "Da quale data è previsto il passaggio alla nuova piattaforma dei piani terapeutici per LIVMARLI?",
+      "risposta_gold": "Dal 3 novembre 2025 (03/11/2025), secondo il richiamo alla nota regionale 0566666/2025 del 28/10/2025.",
+      "elementi_attesi": [
+        "03/11/2025"
+      ],
+      "fonti": [
+        "note 2025 - 18.12.2025/LIVMARLI Prot.N.0625098-2025.pdf#p2"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q10",
+      "categoria": "SEMPLICE",
+      "domanda": "Quale sistema precedente viene dismesso con il passaggio alla nuova piattaforma per LIVMARLI?",
+      "risposta_gold": "SA.NI.A.R.P. (SANIARP), con chiusura del portale per i piani terapeutici di maralixibat; nuovo sistema SINFONIA Piani Terapeutici 2.0. La dismissione indicata riguarda LIVMARLI/maralixibat, non è una prova che ogni funzione SANIARP sia stata chiusa.",
+      "elementi_attesi": [
+        "SA.NI.A.R.P."
+      ],
+      "fonti": [
+        "LIVMARLI Prot.N.0625098-2025.pdf#p2"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q11",
+      "categoria": "CATEGORIA_IMPLICITA",
+      "domanda": "Quali medicinali per miastenia gravis generalizzata individuano l’AOU Federico II come centro prescrittore nelle note campane?",
+      "risposta_gold": "Medicinali con relazione Federico II esplicitamente ricostruita: VYVGART (nota 2023 p.3); SOLIRIS (nota 2022, tabella MGg p.4); ULTOMIRIS (nota 2024, tabella MGg p.3); ZILBRYSQ (nota 2025 p.2). Non usare le tabelle NMOSD (SOLIRIS p.3, ULTOMIRIS p.2). Esistono anche note 2025 RYSTIGGO, SOLIRIS pediatrico e VYVGART sottocutaneo: le ultime due non sono medicinali distinti, mentre per RYSTIGGO la tabella dei centri di p.3 non è stata estratta dall’OCR; non è possibile certificare dal solo SQLite se debba essere aggiunto come quinta voce.",
+      "elementi_attesi": [
+        "VYVGART",
+        "SOLIRIS",
+        "ULTOMIRIS",
+        "ZILBRYSQ"
+      ],
+      "fonti": [
+        "PTR_NoteRegionali2023_020124/VYVGART.pdf#p3",
+        "PTR_Note regionali 2022/SOLIRIS.pdf#p4",
+        "ptr-note-regionali-11.12.24 ore 16.40/ULTOMIRIS neurolielite e miastenia.pdf#p3",
+        "note 2025 - 18.12.2025/ZILBRYSQ.pdf#p2",
+        "note 2025 - 18.12.2025/RYSTIGGO.pdf#p3"
+      ],
+      "stato": "DA_CONFERMARE_ESAUSTIVITA",
+      "note": "Non dichiarare un elenco definitivo prima di vedere la tabella grafica RYSTIGGO p.3. Sono verificati i quattro riferimenti nominali su testo/precedente controllo primario."
+    },
+    {
+      "id": "Q12",
+      "categoria": "CATEGORIA_IMPLICITA",
+      "domanda": "Quali medicinali per CIDP individuano l’AOU Federico II come centro prescrittore?",
+      "risposta_gold": "KIOVIG (nota 2022 p.2); HYQVIA (nota 2025 p.2); HIZENTRA (aggiornamento dei centri per CIDP richiamato espressamente nella stessa nota HYQVIA p.2). La nota autonoma HIZENTRA siringhe sc 2025 non va confusa con l’aggiornamento della CIDP.",
+      "elementi_attesi": [
+        "KIOVIG",
+        "HYQVIA",
+        "HIZENTRA"
+      ],
+      "fonti": [
+        "PTR_Note regionali 2022/KIOVIG.pdf#p2",
+        "note 2025 - 18.12.2025/HYQVIA CIDP.pdf#p2"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q13",
+      "categoria": "CATEGORIA_IMPLICITA",
+      "domanda": "Quali medicinali per fibrosi cistica riportano centri prescrittori dell’AOU Federico II nelle note regionali?",
+      "risposta_gold": "Quattro medicinali distinti: KAFTRIO, KALYDECO, ORKAMBI e ALYFTREK (il file regionale è chiamato ALIFTREK). KAFTRIO e KALYDECO sono prescritti anche in associazione. Le note distinguono due centri Federico II: centro pediatrico e centro Fibrosi Cistica dell’Adulto. Le pagine sono KAFTRIO+KALYDECO 2022 p.3, ORKAMBI 2024 p.2, KAFTRIO 2026 p.2, KALYDECO 2026 p.2, ALIFTREK 2026 p.2.",
+      "elementi_attesi": [
+        "KAFTRIO",
+        "KALYDECO",
+        "ORKAMBI",
+        "ALYFTREK"
+      ],
+      "fonti": [
+        "PTR_Note regionali 2022/KAFTRIO+KALYDECO.pdf#p3",
+        "ptr-note-regionali-11.12.24 ore 16.40/ORKAMBI 2024.pdf#p2",
+        "note-regionali-2026 22.09.2026/KAFTRIO  Prot.N.0259319-2026.pdf#p2",
+        "note-regionali-2026 22.09.2026/KALYDECO  Prot.N.0259292-2026.pdf#p2",
+        "note-regionali-2026 22.09.2026/ALIFTREK Prot.N.0259328-2026.pdf#p2"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": "Screening per la locuzione fibrosi cistica su tutte le 942 pagine dello snapshot: otto PDF, di cui cinque dedicati ai quattro medicinali citati; esclude menzioni incidentali in note di altri medicinali."
+    },
+    {
+      "id": "Q14",
+      "categoria": "CATEGORIA_IMPLICITA",
+      "domanda": "Quali fasce d’età sono previste nelle note regionali per le terapie della fibrosi cistica associate all’AOU Federico II?",
+      "risposta_gold": "KAFTRIO + KALYDECO: dalla nota 2022, 6–<12 anni per l’estensione specifica (con registri anche ≥6); nelle note 2026, granulato 2–<6 anni e compresse ≥6 anni (mutazioni CFTR specificate). ORKAMBI: granuli da ≥1 anno, per pazienti omozigoti F508del (nota 2024). ALYFTREK: compresse da ≥6 anni, con almeno una mutazione CFTR non di classe I (nota 2026). Non estendere automaticamente alle note 2026 la soglia di 1 mese per KALYDECO in monoterapia, presente in un diverso provvedimento pubblico ma non nelle note dedicate conservate nello snapshot.",
+      "elementi_attesi": [
+        "KAFTRIO granulato 2–<6 anni",
+        "KAFTRIO compresse ≥6 anni",
+        "KALYDECO con KAFTRIO granulato 2–<6 anni",
+        "KALYDECO con KAFTRIO compresse ≥6 anni",
+        "ORKAMBI granulato ≥1 anno",
+        "ALYFTREK ≥6 anni"
+      ],
+      "fonti": [
+        "KAFTRIO+KALYDECO.pdf#p1",
+        "KAFTRIO  Prot.N.0259319-2026.pdf#p1",
+        "KALYDECO  Prot.N.0259292-2026.pdf#p1",
+        "ORKAMBI 2024.pdf#p1",
+        "ALIFTREK Prot.N.0259328-2026.pdf#p1"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": "Ogni età è legata alla formulazione/indicazione della specifica nota; non interpretarla come tutti i pazienti teoricamente eleggibili secondo la scheda EMA più recente."
+    },
+    {
+      "id": "Q15",
+      "categoria": "CATEGORIA_IMPLICITA",
+      "domanda": "Quali medicinali per il prurito colestatico nella sindrome di Alagille individuano l’AOU Federico II come centro prescrittore?",
+      "risposta_gold": "LIVMARLI (maralixibat): nota 2023 p.2, tabella codice RN1350; KAYFANDA (odevixibat): nota 2026 p.2, tabella codice RN1350. La nota LIVMARLI 2025 p.2 riguarda principalmente la nuova indicazione PFIC: non confondere la tabella PFIC con la tabella Alagille della nota 2023.",
+      "elementi_attesi": [
+        "LIVMARLI",
+        "KAYFANDA"
+      ],
+      "fonti": [
+        "PTR_NoteRegionali2023_020124/LIVMARLI.pdf#p2",
+        "note-regionali-2026 22.09.2026/KAYFANDA Prot.N.0162816-2026.pdf#p2"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q16",
+      "categoria": "CATEGORIA_IMPLICITA",
+      "domanda": "Qual è l’età minima prevista per ciascuno dei medicinali per la sindrome di Alagille presenti nelle note campane?",
+      "risposta_gold": "LIVMARLI: da 2 mesi (nota 2023 p.1; confermata nella nota 2025 p.1 come indicazione precedente). KAYFANDA: da 6 mesi (nota 2026 p.1). Non confondere LIVMARLI per PFIC, da 3 mesi, con la sua indicazione per Alagille.",
+      "elementi_attesi": [
+        "LIVMARLI ≥2 mesi",
+        "KAYFANDA ≥6 mesi"
+      ],
+      "fonti": [
+        "LIVMARLI.pdf#p1",
+        "LIVMARLI Prot.N.0625098-2025.pdf#p1",
+        "KAYFANDA Prot.N.0162816-2026.pdf#p1"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q17",
+      "categoria": "CATEGORIA_IMPLICITA",
+      "domanda": "Quali medicinali per distrofia muscolare di Duchenne individuano l’AOU Federico II come centro prescrittore?",
+      "risposta_gold": "AGAMREE (vamorolone), nota 2026 p.2; DUVYZAT (givinostat), nota 2026 p.2.",
+      "elementi_attesi": [
+        "AGAMREE",
+        "DUVYZAT"
+      ],
+      "fonti": [
+        "note-regionali-2026 22.09.2026/07-2026/AGAMREE  Prot.N.0663946-2026.pdf#p2",
+        "note-regionali-2026 22.09.2026/DUVYZAT  Prot.N.0368583-2026.pdf#p2"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q18",
+      "categoria": "CATEGORIA_IMPLICITA",
+      "domanda": "Quali fasce d’età sono previste nelle note regionali per i medicinali contro la distrofia muscolare di Duchenne?",
+      "risposta_gold": "AGAMREE: a partire da 4 anni, secondo la nota campana 2026 p.1; DUVYZAT: da 6 anni, pazienti deambulanti in trattamento concomitante con corticosteroidi, nota 2026 p.1. Non sostituire la soglia regionale AGAMREE con eventuali estensioni EMA successive.",
+      "elementi_attesi": [
+        "AGAMREE ≥4 anni",
+        "DUVYZAT ≥6 anni"
+      ],
+      "fonti": [
+        "AGAMREE  Prot.N.0663946-2026.pdf#p1",
+        "DUVYZAT  Prot.N.0368583-2026.pdf#p1"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q19",
+      "categoria": "CATEGORIA_IMPLICITA",
+      "domanda": "Quali centri prescrittori sono indicati nella tabella ATTR-CM della nota AMVUTTRA del 2026?",
+      "risposta_gold": "Tabella 1, pagina 2, sei centri: AO Ospedali dei Colli (Napoli); AOU San Giovanni di Dio e Ruggi d’Aragona (Salerno); AORN San Giuseppe Moscati (Avellino); AO Sant’Anna e San Sebastiano (Caserta); AOU Federico II (Napoli); AORN Cardarelli (Napoli).",
+      "elementi_attesi": [
+        "AO Ospedali dei Colli",
+        "AOU Ruggi d’Aragona",
+        "AORN Moscati",
+        "AO Sant’Anna e San Sebastiano",
+        "AOU Federico II",
+        "AORN Cardarelli"
+      ],
+      "fonti": [
+        "AMVUTTRA Prot.N.0634617-2026.pdf#p2, Tabella 1"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q20",
+      "categoria": "CATEGORIA_IMPLICITA",
+      "domanda": "Quali centri prescrittori sono indicati nella tabella per polineuropatia ereditaria della nota AMVUTTRA del 2026?",
+      "risposta_gold": "Tabella 2, pagina 3: AOU Federico II (Napoli); AOU Luigi Vanvitelli (Napoli); AO Ospedali dei Colli (Napoli). La tabella 3 riguarda la migrazione dei piani terapeutici e non va aggiunta alla tabella 2.",
+      "elementi_attesi": [
+        "AOU Federico II",
+        "AOU Luigi Vanvitelli",
+        "AO Ospedali dei Colli"
+      ],
+      "fonti": [
+        "AMVUTTRA Prot.N.0634617-2026.pdf#p3, Tabella 2"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q21",
+      "categoria": "MULTIFONTE",
+      "domanda": "Per WEGOVY, l’autorizzazione EMA comporta automaticamente la rimborsabilità SSN secondo la determina pubblicata in Gazzetta Ufficiale 23A02767?",
+      "risposta_gold": "No. L’autorizzazione europea all’immissione in commercio non costituisce di per sé un’autorizzazione al rimborso SSN. La determina AIFA della GU 23A02767, art.1, classifica le sei confezioni WEGOVY con AIC 049883061/E, 049883073/E, 049883085/E, 049883097/E, 049883109/E e 049883111/E in classe C.",
+      "elementi_attesi": [
+        "No: EMA ≠ rimborso SSN",
+        "GU 23A02767 classe C"
+      ],
+      "fonti": [
+        "SQLite:ema_medicinali, WEGOVY",
+        "risultati/gazzetta_testi/23A02767_38efcd9fe8135c8b.txt, Art.1 (snapshot GU statico)"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q22",
+      "categoria": "MULTIFONTE",
+      "domanda": "I criteri di eleggibilità dei pazienti per DUVYZAT riportati nella nota campana del 2026 corrispondono a quelli dell’indicazione EMA?",
+      "risposta_gold": "Sì, per i criteri fondamentali: distrofia muscolare di Duchenne in pazienti deambulanti dai 6 anni, in trattamento concomitante con corticosteroidi. La nota regionale riprende la stessa indicazione; eventuali condizioni operative di registri e prescrizione sono ulteriori e non vanno confuse con la modifica dell’indicazione EMA.",
+      "elementi_attesi": [
+        "Corrispondenza sostanziale: sì",
+        "DMD deambulanti ≥6 anni",
+        "Corticosteroidi concomitanti"
+      ],
+      "fonti": [
+        "SQLite:ema_medicinali, nome DUVYZAT",
+        "DUVYZAT Prot.N.0368583-2026.pdf#p1"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q23",
+      "categoria": "MULTIFONTE",
+      "domanda": "Quale registro di monitoraggio AIFA è previsto per l’indicazione BPCO di DUPIXENT recepita dalla Regione Campania?",
+      "risposta_gold": "Registro WEB di monitoraggio AIFA per DUPIXENT — Broncopneumopatia cronica ostruttiva (BPCO). La nota regionale 0368563/2026 p.2 lo distingue dal piano terapeutico cartaceo previsto per l’esofagite eosinofila; l’attivazione web è documentata da AIFA dal 05/02/2026.",
+      "elementi_attesi": [
+        "Registro WEB AIFA DUPIXENT BPCO"
+      ],
+      "fonti": [
+        "DUPIXENT  Prot.N.0368563-2026.pdf#p2",
+        "AIFA 05/02/2026 attivazione Registro DUPIXENT BPCO"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q24",
+      "categoria": "MULTIFONTE",
+      "domanda": "Per AMVUTTRA, i centri prescrittori individuati dalla Campania per ATTR-CM coincidono con quelli per la polineuropatia ereditaria?",
+      "risposta_gold": "No. Per ATTR-CM la tabella 1 p.2 contiene sei strutture; per polineuropatia la tabella 2 p.3 contiene tre. Le strutture comuni sono AOU Federico II e AO Ospedali dei Colli; per ATTR-CM soltanto vi sono anche AOU Ruggi, AORN Moscati, AO Sant’Anna e San Sebastiano e AORN Cardarelli; la sola aggiunta specifica nella tabella polineuropatia è AOU Luigi Vanvitelli. Non sommare la tabella 3 di migrazione dei piani.",
+      "elementi_attesi": [
+        "No: elenchi diversi",
+        "ATTR-CM 6",
+        "Polineuropatia 3",
+        "Comuni Federico II e Ospedali dei Colli"
+      ],
+      "fonti": [
+        "AMVUTTRA Prot.N.0634617-2026.pdf#p2",
+        "AMVUTTRA Prot.N.0634617-2026.pdf#p3"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q25",
+      "categoria": "MULTIFONTE",
+      "domanda": "Per PLUVICTO, la classificazione ospedaliera AIFA è sufficiente per prescrivere il medicinale in qualunque ospedale oppure la Regione Campania impone ulteriori requisiti autorizzativi?",
+      "risposta_gold": "Non basta la classe H/OSP in qualsiasi ospedale. La nota Campania PG/2025/0201843 del 18/04/2025 individua cinque U.O. di Medicina Nucleare (Federico II, dei Colli, Cardarelli, Ospedale del Mare, Pascale), con autorizzazione alla detenzione del lutezio-177 e abilitazione al Registro AIFA.",
+      "elementi_attesi": [
+        "No: classe H non basta",
+        "Centri designati Medicina Nucleare",
+        "Autorizzazione detenzione lutezio-177",
+        "Abilitazione Registro AIFA"
+      ],
+      "fonti": [
+        "PLUVICTO.pdf#p1",
+        "PLUVICTO.pdf#p2"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q26",
+      "categoria": "NESSUNA_RISPOSTA",
+      "domanda": "I medici dei centri regionali individuati per KAYFANDA risultano effettivamente già abilitati alla prescrizione su SINFONIA?",
+      "risposta_gold": "Non documentato nello snapshot. La nota impone di trasmettere i dati per attivare i centri e specifica che solo dopo l’attivazione possono essere abilitati i medici. Non contiene la conferma che ogni medico sia stato abilitato.",
+      "elementi_attesi": [
+        "Non documentato: stato operativo ignoto",
+        "Distinguere procedura da abilitazione effettiva"
+      ],
+      "fonti": [
+        "KAYFANDA Prot.N.0162816-2026.pdf#p3",
+        "SQLite:schema e fonti_snapshot"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q27",
+      "categoria": "NESSUNA_RISPOSTA",
+      "domanda": "Qual è la giacenza effettiva di XEMBIFY presso la farmacia dell’AORN Santobono-Pausilipon?",
+      "risposta_gold": "Non documentata nello snapshot: non sono presenti giacenze di magazzino per struttura. Non concludere che la giacenza sia zero.",
+      "elementi_attesi": [
+        "Giacenza non documentata",
+        "Non dedurre zero"
+      ],
+      "fonti": [
+        "XEMBIFY.pdf#p1",
+        "XEMBIFY.pdf#p2",
+        "SQLite:schema: nessuna tabella gestionale magazzino"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q28",
+      "categoria": "NESSUNA_RISPOSTA",
+      "domanda": "Quanti pazienti hanno effettivamente iniziato ALYFTREK nei centri per fibrosi cistica dell’AOU Federico II?",
+      "risposta_gold": "Numero non documentato nello snapshot. La nota individua il centro pediatrico e quello dell’adulto, ma non contiene un registro dei pazienti che hanno realmente iniziato il farmaco. Non rispondere zero.",
+      "elementi_attesi": [
+        "Numero pazienti non documentato",
+        "Non dedurre zero"
+      ],
+      "fonti": [
+        "ALIFTREK Prot.N.0259328-2026.pdf#p2",
+        "SQLite:schema: nessuna tabella di trattamenti/pazienti"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q29",
+      "categoria": "NESSUNA_RISPOSTA",
+      "domanda": "Qual è il prezzo netto realmente pagato dall’AOU Federico II per un flaconcino di ENHERTU nel primo semestre 2025?",
+      "risposta_gold": "Prezzo netto effettivo non documentato nel corpus: non vi sono fatture, gare/ordini o contabilità degli acquisti per l’AOU e il periodo. Un prezzo regolatorio o di listino non equivale al prezzo realmente pagato.",
+      "elementi_attesi": [
+        "Prezzo netto reale non documentato",
+        "Non confondere prezzo regolatorio con prezzo effettivo"
+      ],
+      "fonti": [
+        "ENHERTU.pdf / ENHERTU 2024.pdf (note regionali)",
+        "SQLite:schema senza dati di acquisto/fatture"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q30",
+      "categoria": "NESSUNA_RISPOSTA",
+      "domanda": "Qual è stato il tempo medio effettivo tra prescrizione e somministrazione di VYVGART presso l’AOU Federico II nel 2026?",
+      "risposta_gold": "Non calcolabile dai dati nello snapshot: mancano date/ore di prescrizioni e somministrazioni effettive abbinate per paziente/evento. Non ricavabile dalla sola nota autorizzativa; non è 0.",
+      "elementi_attesi": [
+        "Media temporale non calcolabile",
+        "Assenza di timestamp operativi abbinati"
+      ],
+      "fonti": [
+        "VYVGART.pdf#p1",
+        "VYVGART.pdf#p3",
+        "SQLite:schema senza eventi clinici individuali"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q31",
+      "categoria": "MULTIPLA",
+      "domanda": "Per XEMBIFY, quali classi risultano per le confezioni AIFA, qual è la via di somministrazione e quale regime di prescrizione richiede la nota campana?",
+      "risposta_gold": "Classe H nello snapshot AIFA per 049488012, 049488024, 049488036, 049488048; NULL A/H per 049488051, 049488063, 049488075, 049488087, 049488099 (C derivata dalla regola del progetto, con atto GU esterno del 2024 che le classificava C(nn)); somministrazione sottocutanea; prescrizione RNRL, con prescrittori limitati e MUP SANIARP, nota p.2.",
+      "elementi_attesi": [
+        "4 AIC H corretti",
+        "5 AIC NULL A/H corretti",
+        "Via sottocutanea",
+        "Regime RNRL",
+        "MUP SANIARP"
+      ],
+      "fonti": [
+        "SQLite:aifa_confezioni XEMBIFY",
+        "XEMBIFY.pdf#p1",
+        "XEMBIFY.pdf#p2"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q32",
+      "categoria": "MULTIPLA",
+      "domanda": "Per KAYFANDA, quale distribuzione è prevista, quale canale File F viene utilizzato e quale sistema gestisce i piani terapeutici?",
+      "risposta_gold": "Distribuzione diretta, File F canale D, piattaforma SINFONIA – Piani Terapeutici 2.0.",
+      "elementi_attesi": [
+        "Distribuzione diretta",
+        "File F canale D",
+        "SINFONIA Piani Terapeutici 2.0"
+      ],
+      "fonti": [
+        "KAYFANDA Prot.N.0162816-2026.pdf#p3"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q33",
+      "categoria": "MULTIPLA",
+      "domanda": "Per LIVMARLI, quale nuovo sistema informatico gestisce i piani terapeutici, da quale data e quale sistema precedente viene dismesso?",
+      "risposta_gold": "SINFONIA – Piani Terapeutici 2.0 per maralixibat, dal 03/11/2025, con chiusura del portale SA.NI.A.R.P. per tale ambito; nota 2025 p.2.",
+      "elementi_attesi": [
+        "SINFONIA PT 2.0",
+        "03/11/2025",
+        "SA.NI.A.R.P."
+      ],
+      "fonti": [
+        "LIVMARLI Prot.N.0625098-2025.pdf#p2"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q34",
+      "categoria": "MULTIPLA",
+      "domanda": "Per la sindrome di Alagille, quali medicinali sono prescrivibili presso l’AOU Federico II, quali età minime sono previste e in quali documenti e pagine sono individuati i centri?",
+      "risposta_gold": "LIVMARLI (maralixibat): ≥2 mesi; nota LIVMARLI 2023 p.1 per indicazione e p.2 per centro Federico II. KAYFANDA (odevixibat): ≥6 mesi; nota KAYFANDA 0162816/2026 p.1 per indicazione ed età e p.2 per centro Federico II. Non usare come prova Alagille la tabella PFIC della nota LIVMARLI 2025.",
+      "elementi_attesi": [
+        "LIVMARLI",
+        "LIVMARLI ≥2 mesi",
+        "LIVMARLI 2023 p.2",
+        "KAYFANDA",
+        "KAYFANDA ≥6 mesi",
+        "KAYFANDA 2026 p.2"
+      ],
+      "fonti": [
+        "LIVMARLI.pdf#p1",
+        "LIVMARLI.pdf#p2",
+        "KAYFANDA Prot.N.0162816-2026.pdf#p1",
+        "KAYFANDA Prot.N.0162816-2026.pdf#p2"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    },
+    {
+      "id": "Q35",
+      "categoria": "MULTIPLA",
+      "domanda": "Per PLUVICTO, qual è l’indicazione EMA, quali centri sono autorizzati dalla Regione Campania e in quale documento e pagina sono riportati?",
+      "risposta_gold": "Indicazione EMA: trattamento, in combinazione con ADT con o senza inibizione del percorso del recettore androgenico, di adulti con carcinoma prostatico metastatico resistente alla castrazione (mCRPC) progressivo PSMA-positivo, precedentemente trattati con inibizione della via AR e chemioterapia a base di taxani. Cinque centri regionali di Medicina Nucleare: AOU Federico II, AORN dei Colli, AORN Cardarelli, ASL Napoli 1 Centro – P.O. Ospedale del Mare, IRCCS Pascale. Nota PLUVICTO PG/2025/0201843 del 18/04/2025, centro p.2.",
+      "elementi_attesi": [
+        "Indicazione EMA mCRPC progressivo PSMA+ pretrattato",
+        "AOU Federico II",
+        "AORN dei Colli",
+        "AORN Cardarelli",
+        "Ospedale del Mare",
+        "IRCCS Pascale",
+        "Nota PLUVICTO p.2"
+      ],
+      "fonti": [
+        "SQLite:ema_medicinali, EMEA/H/C/005483",
+        "note 2025 - 18.12.2025/PLUVICTO.pdf#p1",
+        "note 2025 - 18.12.2025/PLUVICTO.pdf#p2"
+      ],
+      "stato": "VERIFICATO_SU_SNAPSHOT",
+      "note": ""
+    }
+  ]
+}
