@@ -191,8 +191,8 @@ def assistant_dialog():
     """Una finestra nativa: il campo è esterno al CSS del pulsante flottante."""
     st.caption("Informazioni EMA, AIFA, Gazzetta Ufficiale e Regione Campania.")
     method=st.selectbox("Metodo di risposta",
-                        ("Text-to-SQL","TAG","TAG automatico"),
-                        format_func=lambda value: "TAG manuale" if value=="TAG" else value,
+                        ("Text-to-SQL","TAG automatico"),
+                        format_func=lambda value: "TAG" if value=="TAG automatico" else value,
                         key="farmaquery_float_method")
     model,has_key=_server_config()
     history_id=history_key(method)
@@ -209,10 +209,13 @@ def assistant_dialog():
     else:
         st.caption(f"Richieste disponibili: {remaining}")
 
-    st.button("Nuova conversazione",
-              key="farmaquery_start_new_conversation",
-              on_click=start_new_conversation,
-              help="Cancella le conversazioni dei tre motori; preserva il limite API.")
+    # Comando indipendente e allineato a sinistra, lontano da 'Invia'.
+    new_chat_col, _ = st.columns([1.6, 2.4])
+    with new_chat_col:
+        st.button("↺ Nuova conversazione",
+                  key="farmaquery_start_new_conversation",
+                  on_click=start_new_conversation,
+                  help="Cancella le conversazioni; preserva il limite API.")
     if st.session_state.pop("farmaquery_chat_just_cleared",False):
         st.success("Conversazioni cancellate.")
 
