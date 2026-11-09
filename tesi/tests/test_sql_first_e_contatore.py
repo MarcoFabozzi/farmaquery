@@ -1,5 +1,7 @@
 """Test SQL-first sullo snapshot e regressione conteggio delle chiamate LLM."""
 import json
+import gzip
+from hashlib import sha256
 import sqlite3
 import tempfile
 import unittest
@@ -7,7 +9,7 @@ from contextlib import closing
 from pathlib import Path
 from unittest.mock import patch
 
-from tesi.prepara_snapshot_online import ROOT,build_snapshot
+from tesi.prepara_snapshot_online import ROOT
 from tesi.recupero_sql_first import retrieve_category_sql_first
 from tesi import pilota_tag_vs_sql as engine
 from tesi.contatore_llm import measure_requests,direct_attempt,instrument_lotus
@@ -23,7 +25,13 @@ class SqlFirstSnapshotTests(unittest.TestCase):
     def setUpClass(cls):
         cls.tmp=tempfile.TemporaryDirectory()
         cls.sqlite=Path(cls.tmp.name)/"static.sqlite"
-        build_snapshot(ROOT,cls.sqlite,Path(cls.tmp.name)/"manifest.json")
+        frozen=gzip.decompress(
+            (ROOT/"risultati/tesi_statico_20261102.sqlite.gz").read_bytes())
+        manifest=json.loads((ROOT/"risultati/tesi_statico_20261102.json")
+                            .read_text(encoding="utf-8"))
+        if sha256(frozen).hexdigest()!=manifest["sha256_sqlite"]:
+            raise AssertionError("Snapshot congelato non corrisponde al manifesto")
+        cls.sqlite.write_bytes(frozen)
 
     @classmethod
     def tearDownClass(cls):
