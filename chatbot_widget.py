@@ -10,6 +10,8 @@ import sqlite3
 import time
 import re
 import json
+import csv
+from io import StringIO
 from datetime import datetime,timezone
 from urllib.parse import urlsplit
 
@@ -197,6 +199,76 @@ def _visible_message(item, mostra_dettagli):
         # Il messaggio originale resta intatto nell'esportazione JSON.
         text=re.sub(r"\s*\(fase:\s*[^)]*\)\.?$", "", text).strip()
     return text
+
+
+
+EXPORT_COLUMNS=(
+    "metodo","numero_domanda","domanda","risposta_completa","fonti",
+    "stato","codice_errore","fase_errore","tipo_errore",
+    "secondi","tempo_backend_s","chiamate_llm_effettive",
+    "chiamate_llm_dirette","chiamate_llm_lotus",
+    "sql_tentativi","correzioni_sql","sql_finale",
+    "sql_originale_llm","sql_proposte","errori_sql_tentativi",
+    "token_input","token_output","costo_usd",
+    "modello","snapshot_sha256","esportazione_utc"
+)
+
+
+def _export_csv(complete):
+    """Una riga per risposta integrale; conserva errori e fonti senza riassumere.
+
+    CSV con separatore ';' e BOM UTF-8 per Excel. Non fa chiamate API,
+    non esegue query SQL e non calcola punteggi o gold.
+    """
+    buffer=StringIO(newline="")
+    writer=csv.DictWriter(buffer,fieldnames=EXPORT_COLUMNS,delimiter=";",
+                          quoting=csv.QUOTE_MINIMAL)
+    writer.writeheader()
+    for group in complete["metodi"]:
+        pending_question=""
+        number=0
+        for item in group["messaggi"]:
+            role=item.get("role")
+            if role=="user":
+                pending_question=str(item.get("text") or "")
+                continue
+            if role!="assistant":
+                continue
+            number+=1
+            def to_cell(value):
+                if isinstance(value,(list,dict)):
+                    return json.dumps(value,ensure_ascii=False,default=str)
+                return "" if value is None else value
+            writer.writerow({
+                "metodo":group.get("etichetta") or group.get("metodo"),
+                "numero_domanda":number,
+                "domanda":pending_question,
+                "risposta_completa":item.get("text") or "",
+                "fonti":to_cell(item.get("fonti")),
+                "stato":item.get("stato"),
+                "codice_errore":item.get("codice_errore"),
+                "fase_errore":item.get("fase_errore"),
+                "tipo_errore":item.get("tipo_errore"),
+                "secondi":item.get("secondi"),
+                "tempo_backend_s":item.get("tempo_backend_s"),
+                "chiamate_llm_effettive":item.get("chiamate_llm_effettive"),
+                "chiamate_llm_dirette":item.get("chiamate_llm_dirette"),
+                "chiamate_llm_lotus":item.get("chiamate_llm_lotus"),
+                "sql_tentativi":item.get("sql_tentativi"),
+                "correzioni_sql":item.get("correzioni_sql"),
+                "sql_finale":item.get("sql"),
+                "sql_originale_llm":item.get("sql_originale_llm"),
+                "sql_proposte":to_cell(item.get("sql_proposte")),
+                "errori_sql_tentativi":to_cell(item.get("errori_sql_tentativi")),
+                "token_input":item.get("token_input"),
+                "token_output":item.get("token_output"),
+                "costo_usd":item.get("costo_usd"),
+                "modello":item.get("modello") or complete.get("modello"),
+                "snapshot_sha256":complete.get("snapshot_sha256"),
+                "esportazione_utc":complete.get("esportazione_utc"),
+            })
+            pending_question=""
+    return buffer.getvalue().encode("utf-8-sig")
 
 
 @st.dialog("Assistente FarmaQuery",width="large")
@@ -700,16 +772,28 @@ def assistant_dialog():
         } for m in ("Text-to-SQL con auto-correzione","TAG automatico")]
     }
     with st.expander("Esporta risultati della tesi"):
-        st.caption("Salva le risposte complete prima di cliccare Nuova conversazione. "
-                   "Il JSON conserva SQL, fonti, errori, tempi e chiamate LLM.")
-        st.download_button(
-            "Esporta risposte integrali e metriche (JSON)",
-            data=json.dumps(complete,ensure_ascii=False,indent=2,default=str),
-            file_name="farmaquery_risposte_complete.json",
-            mime="application/json",
-            key="farmaquery_export_full_experiment",
-            use_container_width=True
-        )
+        st.caption("Salva i risultati prima di cliccare Nuova conversazione. "
+                   "Entrambi i file conservano le risposte complete e gli errori.")
+        st.caption("Versione chatbot: 2026-11-09-sql-retry-csv")
+        csv_col,json_col=st.columns(2)
+        with csv_col:
+            st.download_button(
+                "Scarica CSV",
+                data=_export_csv(complete),
+                file_name="farmaquery_risposte_complete.csv",
+                mime="text/csv",
+                key="farmaquery_export_full_csv",
+                use_container_width=True
+            )
+        with json_col:
+            st.download_button(
+                "Scarica JSON",
+                data=json.dumps(complete,ensure_ascii=False,indent=2,default=str),
+                file_name="farmaquery_risposte_complete.json",
+                mime="application/json",
+                key="farmaquery_export_full_experiment",
+                use_container_width=True
+            )
 
     st.caption("Prototipo accademico: controlla le fonti prima di prendere "
                "decisioni cliniche.")
