@@ -35,6 +35,21 @@ class RystiggoPageAudit(unittest.TestCase):
                   "ORDER BY numero_pagina",(note["id"],)
                 ).fetchall()
                 print("PAGINE",len(pages),flush=True)
+                relations=db.execute(
+                    "SELECT centro,indicazione,numero_pagina,stato "
+                    "FROM nota_centro_documentato WHERE nota_id=?",
+                    (note["id"],)).fetchall()
+                print("CENTRI_REVISIONATI", [dict(r) for r in relations],flush=True)
+                candidates=db.execute(
+                    "SELECT numero_pagina,menzione,stato "
+                    "FROM centri_candidati WHERE nota_id=?",
+                    (note["id"],)).fetchall()
+                print("CENTRI_CANDIDATI", [dict(r) for r in candidates][:25],flush=True)
+                regs=db.execute(
+                    "SELECT medicinale,struttura,indicazione FROM strutture_registri "
+                    "WHERE medicinale LIKE '%RYSTIGGO%' COLLATE NOCASE"
+                ).fetchall()
+                print("REGISTRI_AIFA_RYSTIGGO", [dict(r) for r in regs][:25],flush=True)
                 for page in pages:
                     t=page["testo"] or ""
                     print("PAGINA",page["numero_pagina"],"metodo",
