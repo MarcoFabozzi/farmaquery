@@ -655,7 +655,7 @@ def ultima_data_archivio_regionale():
         fonti=[f for f in obj.get('fonti',[]) if isinstance(f,dict)]
         for fonte in sorted(fonti,key=lambda f:int(f.get('anno',0)),reverse=True):
             name=unquote(urlsplit(str(fonte.get('url') or '')).path)
-            match=re.search(r'(?<!\\d)(\\d{2})\\.(\\d{2})\\.(20\\d{2})(?!\\d)',name)
+            match=re.search(r'(\d{2})\.(\d{2})\.(20\d{2})',name)
             if match:
                 giorno,mese,anno=match.groups()
                 return giorno+'/'+mese+'/'+anno
