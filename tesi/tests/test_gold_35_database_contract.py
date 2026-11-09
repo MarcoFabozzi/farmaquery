@@ -126,6 +126,41 @@ class SnapshotOnlyGoldTests(unittest.TestCase):
         self.assertEqual(status["da_verificare"],0)
         self.assertEqual(status["scartati"],0)
 
+    def test_full_runner_dry_run_35_times_two_without_llm(self):
+        """Preflight: esegue 70 passaggi MOCK, senza interrogazioni LLM."""
+        import csv
+        import tempfile
+        from tesi.esegui_holdout import collect
+        calls=[]
+        with tempfile.TemporaryDirectory() as folder:
+            work=Path(folder)
+            dbfile=work/"snapshot.sqlite"
+            dbfile.write_bytes(gzip.decompress(DB.read_bytes()))
+            out=work/"dry_run.csv"
+            def mock_answer(db,question,method,model):
+                calls.append((question,method))
+                return {"risposta":"MOCK (NON risultato del benchmark)",
+                        "fonti":[],"stato":"MOCK",
+                        "chiamate_llm_effettive":0,
+                        "sql":"SELECT 1"}
+            collect(
+                ROOT/"tesi/GOLD_35_VALIDATO_SOLO_DATABASE_20261109.csv",
+                dbfile,MANIFEST,"mock-no-api",out,
+                "1234567testcommit",answer_fn=mock_answer
+            )
+            with out.open(encoding="utf-8-sig",newline="") as fh:
+                rows=list(csv.DictReader(fh,delimiter=";"))
+        self.assertEqual(len(rows),70)
+        self.assertEqual(len(calls),70)
+        self.assertEqual({r["id"] for r in rows},
+                         {f"Q{i:02}" for i in range(1,36)})
+        self.assertEqual({r["metodo"] for r in rows},
+                         {"Text-to-SQL con auto-correzione","TAG automatico"})
+        self.assertEqual(len({(r["id"],r["metodo"]) for r in rows}),70)
+        self.assertTrue(all(r["valutazione_risposta"]==""
+                            for r in rows))
+        print("PREFLIGHT_35_X_2_OK; 70 MOCK, 0 LLM REALI",flush=True)
+
     def test_wegovy_aic_and_class_c_are_in_frozen_gu_text(self):
         row=self.db.execute(
             "SELECT testo FROM gu_documenti WHERE documento_id='23A02767:atto'"
