@@ -343,7 +343,11 @@ def assistant_dialog():
     # Vista per screenshot: solo ultima domanda/risposta, nessuna altezza fissa.
     visible_history=history[-2:] if screenshot_view else history
     history_start=len(history)-len(visible_history)
-    with st.container(height=None if screenshot_view else 560,border=True):
+    # Streamlit richiede un'altezza positiva se height viene specificata.
+    # La vista completa usa quindi il contenitore privo del parametro height.
+    conversation_box=(st.container(border=True) if screenshot_view
+                      else st.container(height=560,border=True))
+    with conversation_box:
         if not visible_history:
             st.caption("Scrivi una domanda per iniziare.")
         for msg_index,item in enumerate(visible_history,start=history_start):
