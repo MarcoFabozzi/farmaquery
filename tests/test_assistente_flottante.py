@@ -27,7 +27,7 @@ class FloatingAssistantTests(unittest.TestCase):
         self.assertIn('if remaining<=0:',src)
         self.assertIn('("Text-to-SQL con auto-correzione","TAG automatico")',src)
         self.assertIn('mostra_dettagli=st.toggle(',src)
-        self.assertIn('if mostra_dettagli:',src)
+        self.assertIn('if mostra_dettagli and not screenshot_view:',src)
         self.assertIn('"Scarica CSV"',src)
         self.assertIn('"Scarica JSON"',src)
         self.assertIn("answer_question(db,question,method,model)",src)
