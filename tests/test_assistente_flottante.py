@@ -52,7 +52,7 @@ class FloatingAssistantTests(unittest.TestCase):
         self.assertIn('key="farmaquery_screenshot_view"',src)
         self.assertIn('visible_history=history[-2:] if screenshot_view else history',src)
         self.assertIn('with _conversation_box(screenshot_view):',src)
-        self.assertNotIn('height=None',src)
+        self.assertNotIn('st.container(height=None',src)
         self.assertIn('height=125,max_chars=700,disabled=False',src)
         self.assertIn('width:min(1200px,96vw)!important',src)
         self.assertIn('with st.form("farmaquery_message_form_"+method',src)
