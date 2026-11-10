@@ -12,6 +12,7 @@ import re
 import json
 import csv
 from io import StringIO
+from contextlib import nullcontext
 from datetime import datetime,timezone
 from urllib.parse import urlsplit
 
@@ -202,7 +203,7 @@ def _visible_message(item, mostra_dettagli):
 
 
 
-APP_UI_VERSION="2026-11-09-sqlretry-v2-guards"
+APP_UI_VERSION="2026-11-10-screenshot-full-answer-v1"
 CSV_FIELDS=("metodo","numero_domanda","domanda","risposta_integrale",
             "fonti","evidenze_fonti","stato","sql","sql_originale_llm",
             "sql_proposte","sql_tentativi","correzioni_sql","errori_sql_tentativi",
@@ -274,6 +275,16 @@ def assistant_dialog():
         key="farmaquery_show_technical_details",
         help="Le metriche e gli errori restano salvati nell'esportazione JSON anche quando sono nascosti.")
 
+    screenshot_view=st.toggle(
+        "Vista per screenshot (risposta completa)",
+        value=False,
+        key="farmaquery_screenshot_view",
+        help=("Mostra l\u0027ultima domanda e tutta la risposta senza il piccolo"
+              " riquadro scorrevole. Non modifica le risposte o le metriche."))
+    if screenshot_view:
+        st.caption("Vista screenshot: ultimo scambio completo. Disattiva"
+                   " l\u0027opzione per tornare a tutta la cronologia.")
+
     model,has_key=_server_config()
     history_id=history_key(method)
     if history_id not in st.session_state:
@@ -299,7 +310,7 @@ def assistant_dialog():
     if st.session_state.pop("farmaquery_chat_just_cleared",False):
         st.success("Conversazioni cancellate.")
 
-    if mostra_dettagli:
+    if mostra_dettagli and not screenshot_view:
         # Diagnostica separata dalla chat: una chiamata minima permette di
         # capire se il provider risponde senza coinvolgere TAG o Text-to-SQL.
         with st.expander("Diagnostica del modello"):
@@ -323,12 +334,15 @@ def assistant_dialog():
                                "non il database.")
 
 
-    with st.container(height=290,border=True):
-        if not history:
+    # Vista per screenshot: solo ultima domanda/risposta, nessuna altezza fissa.
+    visible_history=history[-2:] if screenshot_view else history
+    history_start=len(history)-len(visible_history)
+    with st.container(height=None if screenshot_view else 560,border=True):
+        if not visible_history:
             st.caption("Scrivi una domanda per iniziare.")
-        for msg_index,item in enumerate(history):
+        for msg_index,item in enumerate(visible_history,start=history_start):
             with st.chat_message(item["role"]):
-                st.markdown(_visible_message(item, mostra_dettagli))
+                st.markdown(_visible_message(item, mostra_dettagli and not screenshot_view))
                 if item["role"]=="assistant":
                     if item.get("fonti"):
                         with st.expander("Fonti consultate"):
@@ -336,7 +350,7 @@ def assistant_dialog():
                                 _show_citation(
                                     ref,instance_key=method+"_"+str(msg_index)+
                                     "_"+str(ref_index))
-                    if mostra_dettagli:
+                    if mostra_dettagli and not screenshot_view:
                         if item.get("evidenze_fonti"):
                             tabular_auto=(method=="TAG automatico" and all(
                                 src.get("tipo")=="SQL" for src in item["evidenze_fonti"]))
@@ -605,11 +619,15 @@ def assistant_dialog():
 
     # Non usare st.popover o st.chat_input: un normale text_area in st.dialog
     # è interattivo e non dipende dalle dimensioni/coordinate della bolla.
-    with st.form("farmaquery_message_form_"+method,clear_on_submit=True):
-        question=st.text_area("Scrivi la tua domanda",
-                              placeholder="Digita qui la domanda...",
-                              height=85,max_chars=700,disabled=False)
-        sent=st.form_submit_button("Invia",type="primary",use_container_width=True)
+    # Nella vista screenshot il modulo resta accessibile ma chiuso,
+    # per lasciare tutto lo spazio visibile alla risposta.
+    with (st.expander("Scrivi un\u0027altra domanda",expanded=False)
+          if screenshot_view else nullcontext()):
+        with st.form("farmaquery_message_form_"+method,clear_on_submit=True):
+            question=st.text_area("Scrivi la tua domanda",
+                                  placeholder="Digita qui la domanda...",
+                                  height=125,max_chars=700,disabled=False)
+            sent=st.form_submit_button("Invia",type="primary",use_container_width=True)
 
     if sent and question.strip():
         text_question=question.strip()
@@ -798,7 +816,19 @@ def render_assistant():
     # vera si apre nel dialog Streamlit (portal indipendente dal layout).
     st.markdown("""
     <style>
-    /* Solo estetica: il dialog Streamlit rimane nativo e sempre editabile. */
+    /* Il popup resta nativo e interattivo, ma guadagna spazio. */
+    div[data-testid="stDialog"] div[role="dialog"] {
+        width:min(1200px,96vw)!important;
+        max-width:96vw!important;
+        max-height:96vh!important;
+    }
+    @media(max-width:650px) {
+        div[data-testid="stDialog"] div[role="dialog"] {
+            width:100vw!important;
+            max-width:100vw!important;
+            max-height:100vh!important;
+        }
+    }
     .st-key-farmaquery_floating {
         position:fixed!important;
         right:23px!important;
