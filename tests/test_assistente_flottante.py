@@ -36,6 +36,18 @@ class FloatingAssistantTests(unittest.TestCase):
         self.assertNotIn("domande_utente_35.csv",src)
         self.assertNotIn("domande_della_tesi",src)
 
+    def test_large_chat_and_full_answer_screenshot_mode(self):
+        src=WIDGET.read_text(encoding="utf-8")
+        self.assertIn('"Vista per screenshot (risposta completa)"',src)
+        self.assertIn('key="farmaquery_screenshot_view"',src)
+        self.assertIn('visible_history=history[-2:] if screenshot_view else history',src)
+        self.assertIn('height=None if screenshot_view else 560',src)
+        self.assertIn('height=125,max_chars=700,disabled=False',src)
+        self.assertIn('width:min(1200px,96vw)!important',src)
+        self.assertIn('with st.form("farmaquery_message_form_"+method',src)
+        self.assertIn('nullcontext()',src)
+        self.assertIn('st.rerun(scope="fragment")',src)
+
     def test_screenshot_cleanup_preserves_full_raw_error(self):
         import chatbot_widget as widget
         item={"role":"assistant",
