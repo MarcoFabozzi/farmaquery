@@ -619,11 +619,15 @@ def assistant_dialog():
 
     # Non usare st.popover o st.chat_input: un normale text_area in st.dialog
     # è interattivo e non dipende dalle dimensioni/coordinate della bolla.
-    with st.form("farmaquery_message_form_"+method,clear_on_submit=True):
-        question=st.text_area("Scrivi la tua domanda",
-                              placeholder="Digita qui la domanda...",
-                              height=85,max_chars=700,disabled=False)
-        sent=st.form_submit_button("Invia",type="primary",use_container_width=True)
+    # Nella vista screenshot il modulo resta accessibile ma chiuso,
+    # per lasciare tutto lo spazio visibile alla risposta.
+    with (st.expander("Scrivi un\u0027altra domanda",expanded=False)
+          if screenshot_view else nullcontext()):
+        with st.form("farmaquery_message_form_"+method,clear_on_submit=True):
+            question=st.text_area("Scrivi la tua domanda",
+                                  placeholder="Digita qui la domanda...",
+                                  height=125,max_chars=700,disabled=False)
+            sent=st.form_submit_button("Invia",type="primary",use_container_width=True)
 
     if sent and question.strip():
         text_question=question.strip()
@@ -812,7 +816,19 @@ def render_assistant():
     # vera si apre nel dialog Streamlit (portal indipendente dal layout).
     st.markdown("""
     <style>
-    /* Solo estetica: il dialog Streamlit rimane nativo e sempre editabile. */
+    /* Il popup resta nativo e interattivo, ma guadagna spazio. */
+    div[data-testid="stDialog"] div[role="dialog"] {
+        width:min(1200px,96vw)!important;
+        max-width:96vw!important;
+        max-height:96vh!important;
+    }
+    @media(max-width:650px) {
+        div[data-testid="stDialog"] div[role="dialog"] {
+            width:100vw!important;
+            max-width:100vw!important;
+            max-height:100vh!important;
+        }
+    }
     .st-key-farmaquery_floating {
         position:fixed!important;
         right:23px!important;
