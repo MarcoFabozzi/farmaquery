@@ -38,17 +38,19 @@ class FloatingAssistantTests(unittest.TestCase):
 
     def test_chat_toolbar_is_one_horizontal_row(self):
         src=WIDGET.read_text(encoding="utf-8")
-        self.assertIn('details_col,quota_col,new_chat_col=st.columns(',src)
+        self.assertIn('details_col,full_view_col,quota_col,new_chat_col=st.columns(',src)
         self.assertIn('vertical_alignment="center"',src)
         self.assertIn('with details_col:\n        mostra_dettagli=st.toggle(',src)
+        self.assertIn('with full_view_col:\n        screenshot_view=st.toggle(',src)
         self.assertIn('with quota_col:\n        st.caption(f"Richieste disponibili:',src)
         self.assertIn('with new_chat_col:\n        st.button("↺ Nuova conversazione"',src)
         self.assertIn('use_container_width=True',src)
         self.assertEqual(src.count('key="farmaquery_start_new_conversation"'),1)
         self.assertEqual(src.count('key="farmaquery_show_technical_details"'),1)
+        self.assertEqual(src.count('key="farmaquery_screenshot_view"'),1)
     def test_large_chat_and_full_answer_screenshot_mode(self):
         src=WIDGET.read_text(encoding="utf-8")
-        self.assertIn('"Vista per screenshot (risposta completa)"',src)
+        self.assertIn('"Vista completa"',src)
         self.assertIn('key="farmaquery_screenshot_view"',src)
         self.assertIn('visible_history=history[-2:] if screenshot_view else history',src)
         self.assertIn('with _conversation_box(screenshot_view):',src)
