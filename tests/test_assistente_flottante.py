@@ -51,12 +51,25 @@ class FloatingAssistantTests(unittest.TestCase):
         self.assertIn('"Vista per screenshot (risposta completa)"',src)
         self.assertIn('key="farmaquery_screenshot_view"',src)
         self.assertIn('visible_history=history[-2:] if screenshot_view else history',src)
-        self.assertIn('height=None if screenshot_view else 560',src)
+        self.assertIn('with _conversation_box(screenshot_view):',src)
+        self.assertNotIn('height=None',src)
         self.assertIn('height=125,max_chars=700,disabled=False',src)
         self.assertIn('width:min(1200px,96vw)!important',src)
         self.assertIn('with st.form("farmaquery_message_form_"+method',src)
         self.assertIn('nullcontext()',src)
         self.assertIn('st.rerun(scope="fragment")',src)
+
+    def test_screenshot_container_does_not_pass_invalid_height(self):
+        import chatbot_widget as widget
+        from unittest.mock import sentinel
+
+        with patch.object(widget.st,"container",return_value=sentinel.container) as container:
+            self.assertIs(widget._conversation_box(True),sentinel.container)
+            container.assert_called_once_with(border=True)
+
+        with patch.object(widget.st,"container",return_value=sentinel.container) as container:
+            self.assertIs(widget._conversation_box(False),sentinel.container)
+            container.assert_called_once_with(height=560,border=True)
 
     def test_screenshot_cleanup_preserves_full_raw_error(self):
         import chatbot_widget as widget

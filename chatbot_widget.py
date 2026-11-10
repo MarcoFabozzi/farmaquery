@@ -258,6 +258,16 @@ def _full_results_csv(report):
     return "\ufeff"+file.getvalue()
 
 
+def _conversation_box(screenshot_view):
+    """Contenitore chat: altezza automatica nella vista screenshot.
+
+    Streamlit non accetta height=None: quando vogliamo una risposta intera,
+    omettiamo completamente il parametro height.
+    """
+    if screenshot_view:
+        return st.container(border=True)
+    return st.container(height=560,border=True)
+
 @st.dialog("Assistente FarmaQuery",width="large")
 def assistant_dialog():
     """Una finestra nativa: il campo è esterno al CSS del pulsante flottante."""
@@ -343,7 +353,7 @@ def assistant_dialog():
     # Vista per screenshot: solo ultima domanda/risposta, nessuna altezza fissa.
     visible_history=history[-2:] if screenshot_view else history
     history_start=len(history)-len(visible_history)
-    with st.container(height=None if screenshot_view else 560,border=True):
+    with _conversation_box(screenshot_view):
         if not visible_history:
             st.caption("Scrivi una domanda per iniziare.")
         for msg_index,item in enumerate(visible_history,start=history_start):
