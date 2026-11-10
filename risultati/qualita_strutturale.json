@@ -1,23 +1,21 @@
 {
-  "generato_utc": "2026-11-09T08:31:45+00:00",
+  "generato_utc": "2026-11-10T08:21:28+00:00",
   "stato": "OK",
   "controlli_bloccanti": [],
   "avvertenze": [
-    "La percentuale di medicinali con link EU-AIC documentato è ancora bassa",
-    "ema: ultimo successo oltre 48 ore fa",
-    "gazzetta: ultimo successo oltre 48 ore fa"
+    "La percentuale di medicinali con link EU-AIC documentato è ancora bassa"
   ],
   "metriche": {
     "errori_foreign_key": 0,
     "conteggi": {
-      "acquisizioni": 14,
+      "acquisizioni": 17,
       "aifa_confezioni": 10607,
       "classi_snapshot": 2186,
       "cnn_elenco_storico": 1862,
       "ema_medicinali": 2357,
-      "ema_revisioni_snapshot": 2357,
+      "ema_revisioni_snapshot": 2396,
       "eventi_verificati": 4,
-      "gazzetta_atti": 62,
+      "gazzetta_atti": 63,
       "gu_allegati": 33,
       "gu_coppie_eu_aic": 100,
       "link_verificati": 10,
@@ -48,23 +46,23 @@
   "fonti": {
     "ema": {
       "stato": "OK",
-      "ultima_acquisizione_utc": "2026-11-03T05:14:27+00:00"
+      "ultima_acquisizione_utc": "2026-11-10T05:14:08+00:00"
     },
     "aifa_anagrafica": {
       "stato": "OK",
-      "ultima_acquisizione_utc": "2026-11-09T05:30:04+00:00"
+      "ultima_acquisizione_utc": "2026-11-10T05:20:24+00:00"
     },
     "aifa_ah": {
       "stato": "OK",
-      "ultima_acquisizione_utc": "2026-11-09T06:42:13+00:00"
+      "ultima_acquisizione_utc": "2026-11-10T06:34:04+00:00"
     },
     "aifa_cnn": {
       "stato": "OK",
-      "ultima_acquisizione_utc": "2026-11-09T05:43:37+00:00"
+      "ultima_acquisizione_utc": "2026-11-10T05:37:05+00:00"
     },
     "gazzetta": {
       "stato": "OK",
-      "ultima_acquisizione_utc": "2026-11-04T06:40:17+00:00"
+      "ultima_acquisizione_utc": "2026-11-10T05:33:29+00:00"
     }
   },
   "nota": "Solo qualita strutturale e provenienza locale: non verifica la classe vigente."
