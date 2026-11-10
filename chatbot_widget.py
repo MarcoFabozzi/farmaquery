@@ -270,10 +270,33 @@ def assistant_dialog():
                             "Text-to-SQL" if value=="Text-to-SQL con auto-correzione"
                             else "TAG"),
                         key="farmaquery_float_method")
-    mostra_dettagli=st.toggle(
-        "Mostra dettagli tecnici",value=False,
-        key="farmaquery_show_technical_details",
-        help="Le metriche e gli errori restano salvati nell'esportazione JSON anche quando sono nascosti.")
+    model,has_key=_server_config()
+    history_id=history_key(method)
+    if history_id not in st.session_state:
+        st.session_state[history_id]=[]
+    history=st.session_state[history_id]
+    if "farmaquery_chat_count" not in st.session_state:
+        st.session_state["farmaquery_chat_count"]=0
+    remaining=MAX_QUESTIONS_PER_SESSION-st.session_state["farmaquery_chat_count"]
+
+    # Barra compatta: tre elementi affiancati su desktop.
+    # Streamlit impila automaticamente le colonne su schermi stretti.
+    details_col,quota_col,new_chat_col=st.columns(
+        [1.45,1.0,1.3],gap="small",vertical_alignment="center")
+    with details_col:
+        mostra_dettagli=st.toggle(
+            "Mostra dettagli tecnici",value=False,
+            key="farmaquery_show_technical_details",
+            help=("Le metriche e gli errori restano salvati nel JSON "
+                  "anche quando non sono visibili."))
+    with quota_col:
+        st.caption(f"Richieste disponibili: {max(0,remaining)}")
+    with new_chat_col:
+        st.button("↺ Nuova conversazione",
+                  key="farmaquery_start_new_conversation",
+                  on_click=start_new_conversation,
+                  use_container_width=True,
+                  help="Cancella le conversazioni; preserva il limite API.")
 
     screenshot_view=st.toggle(
         "Vista per screenshot (risposta completa)",
@@ -285,28 +308,11 @@ def assistant_dialog():
         st.caption("Vista screenshot: ultimo scambio completo. Disattiva"
                    " l\u0027opzione per tornare a tutta la cronologia.")
 
-    model,has_key=_server_config()
-    history_id=history_key(method)
-    if history_id not in st.session_state:
-        st.session_state[history_id]=[]
-    history=st.session_state[history_id]
-    if "farmaquery_chat_count" not in st.session_state:
-        st.session_state["farmaquery_chat_count"]=0
-    remaining=MAX_QUESTIONS_PER_SESSION-st.session_state["farmaquery_chat_count"]
     if not has_key:
         st.warning("Gemini non è configurato. Il campo di scrittura è comunque disponibile.")
     elif remaining<=0:
         st.info("Limite di richieste raggiunto. Puoi ancora scrivere, ma non ottenere nuove risposte.")
-    else:
-        st.caption(f"Richieste disponibili: {remaining}")
 
-    # Comando indipendente e allineato a sinistra, lontano da 'Invia'.
-    new_chat_col, _ = st.columns([1.6, 2.4])
-    with new_chat_col:
-        st.button("↺ Nuova conversazione",
-                  key="farmaquery_start_new_conversation",
-                  on_click=start_new_conversation,
-                  help="Cancella le conversazioni; preserva il limite API.")
     if st.session_state.pop("farmaquery_chat_just_cleared",False):
         st.success("Conversazioni cancellate.")
 
