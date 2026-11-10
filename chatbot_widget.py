@@ -289,16 +289,21 @@ def assistant_dialog():
         st.session_state["farmaquery_chat_count"]=0
     remaining=MAX_QUESTIONS_PER_SESSION-st.session_state["farmaquery_chat_count"]
 
-    # Barra compatta: tre elementi affiancati su desktop.
-    # Streamlit impila automaticamente le colonne su schermi stretti.
-    details_col,quota_col,new_chat_col=st.columns(
-        [1.45,1.0,1.3],gap="small",vertical_alignment="center")
+    # Barra compatta: controlli affiancati su desktop, responsive su mobile.
+    details_col,full_view_col,quota_col,new_chat_col=st.columns(
+        [1.55,1.0,1.05,1.4],gap="small",vertical_alignment="center")
     with details_col:
         mostra_dettagli=st.toggle(
             "Mostra dettagli tecnici",value=False,
             key="farmaquery_show_technical_details",
             help=("Le metriche e gli errori restano salvati nel JSON "
                   "anche quando non sono visibili."))
+    with full_view_col:
+        screenshot_view=st.toggle(
+            "Vista completa",value=False,
+            key="farmaquery_screenshot_view",
+            help=("Mostra l\u0027ultima domanda e tutta la risposta senza "
+                  "scorrimento interno. Non cambia le risposte né le metriche."))
     with quota_col:
         st.caption(f"Richieste disponibili: {max(0,remaining)}")
     with new_chat_col:
@@ -307,16 +312,6 @@ def assistant_dialog():
                   on_click=start_new_conversation,
                   use_container_width=True,
                   help="Cancella le conversazioni; preserva il limite API.")
-
-    screenshot_view=st.toggle(
-        "Vista per screenshot (risposta completa)",
-        value=False,
-        key="farmaquery_screenshot_view",
-        help=("Mostra l\u0027ultima domanda e tutta la risposta senza il piccolo"
-              " riquadro scorrevole. Non modifica le risposte o le metriche."))
-    if screenshot_view:
-        st.caption("Vista screenshot: ultimo scambio completo. Disattiva"
-                   " l\u0027opzione per tornare a tutta la cronologia.")
 
     if not has_key:
         st.warning("Gemini non è configurato. Il campo di scrittura è comunque disponibile.")
