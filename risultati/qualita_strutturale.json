@@ -1,5 +1,5 @@
 {
-  "generato_utc": "2026-11-10T08:21:28+00:00",
+  "generato_utc": "2026-11-11T08:22:04+00:00",
   "stato": "OK",
   "controlli_bloccanti": [],
   "avvertenze": [
@@ -8,12 +8,12 @@
   "metriche": {
     "errori_foreign_key": 0,
     "conteggi": {
-      "acquisizioni": 17,
+      "acquisizioni": 19,
       "aifa_confezioni": 10607,
       "classi_snapshot": 2186,
       "cnn_elenco_storico": 1862,
       "ema_medicinali": 2357,
-      "ema_revisioni_snapshot": 2396,
+      "ema_revisioni_snapshot": 2410,
       "eventi_verificati": 4,
       "gazzetta_atti": 63,
       "gu_allegati": 33,
@@ -46,23 +46,23 @@
   "fonti": {
     "ema": {
       "stato": "OK",
-      "ultima_acquisizione_utc": "2026-11-10T05:14:08+00:00"
+      "ultima_acquisizione_utc": "2026-11-11T05:18:50+00:00"
     },
     "aifa_anagrafica": {
       "stato": "OK",
-      "ultima_acquisizione_utc": "2026-11-10T05:20:24+00:00"
+      "ultima_acquisizione_utc": "2026-11-11T05:24:28+00:00"
     },
     "aifa_ah": {
       "stato": "OK",
-      "ultima_acquisizione_utc": "2026-11-10T06:34:04+00:00"
+      "ultima_acquisizione_utc": "2026-11-11T06:37:16+00:00"
     },
     "aifa_cnn": {
       "stato": "OK",
-      "ultima_acquisizione_utc": "2026-11-10T05:37:05+00:00"
+      "ultima_acquisizione_utc": "2026-11-11T05:40:04+00:00"
     },
     "gazzetta": {
       "stato": "OK",
-      "ultima_acquisizione_utc": "2026-11-10T05:33:29+00:00"
+      "ultima_acquisizione_utc": "2026-11-11T05:36:59+00:00"
     }
   },
   "nota": "Solo qualita strutturale e provenienza locale: non verifica la classe vigente."
