@@ -1,0 +1,70 @@
+Estratto determina IP n. 281 del 30 aprile 2026
+Descrizione del medicinale da importare e attribuzione del numero
+di identificazione: al medicinale ZOELY  2.5  mg/1.5  mg  film-coated
+tablet, 84 tablets (72 active + 12 placebo) - (24 attive + 4 placebo)
+autorizzato dall'European Medicines Agency - EMA e  identificato  con
+n. EU/1/11/690/002, sono assegnati  i  seguenti  dati  identificativi
+nazionali.
+Importatore: Farma 1000 S.r.l., con sede legale in  via  Camperio
+Manfredo n. 9 - 20123 Milano.
+Confezione: «ZOELY» «2.5 mg/1.5 mg - compressa rivestita con film
+- uso orale - blister (PVC/ALLU)» 3 × 28 compresse  (24  attive  +  4
+placebo).
+Codice A.I.C.: 048519021 (in base 10) 1G8PVF (in base 32).
+Forma farmaceutica: compressa rivestita con film.
+Compresse attive  bianche  rivestite  con  film:  ogni  compressa
+rivestita con film contiene: principio attivo: 2,5 mg di nomegestrolo
+acetato e 1,5 mg di estradiolo (come emiidrato).
+Compresse placebo gialle rivestite con  film:  la  compressa  non
+contiene principi attivi.
+Eccipienti: nucleo  della  compressa  (compresse  attive  bianche
+rivestite con film e compresse placebo  gialle  rivestite  con  film)
+lattosio monoidrato, cellulosa microcristallina (E460),  crospovidone
+(E1201), talco (E553b), magnesio stearato (E572),  silice  colloidale
+anidra.
+Rivestimento della compressa (compresse attive bianche  rivestite
+con  film)  poli(vinil  alcool)  (E1203),  titanio  diossido  (E171),
+macrogol 3350, talco (E553b).
+Rivestimento della compressa (compresse placebo gialle  rivestite
+con  film)  poli(vinil  alcool)  (E1203),  titanio  diossido  (E171),
+macrogol 3350, talco  (E553b,)  ferro  ossido  giallo  (E172),  ferro
+ossido nero (E172).
+Classificazione ai fini della rimborsabilita'
+Confezione: «ZOELY» «2.5 mg/1.5 mg - compressa rivestita con film
+- uso orale - blister (PVC/ALLU)» 3 × 28 compresse  (24  attive  +  4
+placebo).
+Codice A.I.C.: 048519021.
+Classe di rimborsabilita': C.
+Classificazione ai fini della fornitura
+Confezione: «ZOELY» «2.5 mg/1.5 mg - compressa rivestita con film
+- uso orale - blister (PVC/ALLU)» 3 × 28 compresse  (24  attive  +  4
+placebo).
+Codice A.I.C.: 048519021.
+RNR - medicinali soggetti  a  prescrizione  medica  da  rinnovare
+volta per volta.
+Stampati
+Le confezioni del medicinale importato  devono  essere  poste  in
+commercio con gli stampati conformi ai testi approvati  dall'EMA  con
+l'indicazione  nella  parte  di  pertinenza  nazionale  dei  dati  di
+identificazione di cui alla presente determina.
+In ottemperanza all'art. 80, commi 1 e 3 del decreto  legislativo
+24 aprile 2006, n. 219 e successive modificazioni ed integrazioni, il
+foglio illustrativo e le etichette devono essere  redatti  in  lingua
+italiana e, limitatamente ai medicinali in commercio nella  Provincia
+di Bolzano, anche in lingua  tedesca.  Il  titolare  dell'A.I.C.  che
+intende avvalersi dell'uso complementare di lingue estere, deve darne
+preventiva  comunicazione  all'AIFA  e  tenere  a   disposizione   la
+traduzione giurata dei testi in lingua tedesca e/o  in  altra  lingua
+estera. In caso di inosservanza delle disposizioni sull'etichettatura
+e sul foglio illustrativo si applicano le sanzioni di cui all'art. 82
+del suddetto decreto legislativo.
+Farmacovigilanza e gestione delle segnalazioni
+di sospette reazioni avverse
+Il  titolare  dell'AIP  e'  tenuto  a  comunicare   al   titolare
+dell'A.I.C. del medicinale importato, l'avvenuto rilascio dell'AIP  e
+le eventuali segnalazioni di sospetta  reazione  avversa  di  cui  e'
+venuto a conoscenza, cosi' da consentire allo stesso di assolvere gli
+obblighi di farmacovigilanza.
+Decorrenza di efficacia della determina:  dal  giorno  successivo
+alla sua pubblicazione  nella  Gazzetta  Ufficiale  della  Repubblica
+italiana.

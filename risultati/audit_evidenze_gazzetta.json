@@ -1,9 +1,9 @@
 {
-  "generato_utc": "2026-11-11T05:36:59+00:00",
+  "generato_utc": "2026-11-12T05:40:23+00:00",
   "criterio": "Ricontrollo automatico per prossimita EU/AIC, hash e collegamenti. Non certifica autorizzazione, classificazione vigente o rimborsabilita.",
-  "totale_coppie": 100,
+  "totale_coppie": 108,
   "riepilogo": {
-    "COERENTE_NEL_TESTO_DA_REVISIONARE": 100,
+    "COERENTE_NEL_TESTO_DA_REVISIONARE": 108,
     "REVISIONE_PRIORITARIA": 0,
     "ANOMALIA_DOCUMENTALE": 0
   },
@@ -131,6 +131,18 @@
     "26A05513": {
       "totale": 6,
       "coerenti_nel_testo": 6
+    },
+    "26A05885": {
+      "totale": 1,
+      "coerenti_nel_testo": 1
+    },
+    "26A05886": {
+      "totale": 6,
+      "coerenti_nel_testo": 6
+    },
+    "26A05887": {
+      "totale": 1,
+      "coerenti_nel_testo": 1
     }
   },
   "coppie": [
@@ -1431,6 +1443,110 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/10/22/26A05513/sg",
       "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05513&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-10-22&art.progressivo=0#art",
       "estratto_documentale": "5 mL - 1 penna preriempita; EU/1/25/1992/006 - A.I.C.: 052735065 In base 32: 1L9C2T - 700 U/mL / 2 mg/mL -",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05885",
+      "data_pubblicazione_atto": "2026-11-11",
+      "presentazione_ue": "EU/1/26/2051/001",
+      "aic": "053307017",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05885/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05885&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-11&art.progressivo=0#art",
+      "estratto_documentale": "grafo 6.6. Confezioni autorizzate: EU/1/26/2051/001 - A.I.C.: 053307017, in base 32: 1LUTN9 - 6 mg - soluzione iniet",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05886",
+      "data_pubblicazione_atto": "2026-11-11",
+      "presentazione_ue": "EU/1/24/1839/025",
+      "aic": "051386252",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05886/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05886&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-11&art.progressivo=0#art",
+      "estratto_documentale": "rafo 4.5). Confezioni autorizzate: EU/1/24/1839/025 A.I.C. n.: 051386252 in base 32: 1K05WD - 20 mg - compressa",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05886",
+      "data_pubblicazione_atto": "2026-11-11",
+      "presentazione_ue": "EU/1/24/1839/026",
+      "aic": "051386264",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05886/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05886&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-11&art.progressivo=0#art",
+      "estratto_documentale": "10 x 1 compresse (dose unitaria); EU/1/24/1839/026 A.I.C. n.: 051386264 in base 32: 1K05WS - 50 mg - compressa",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05886",
+      "data_pubblicazione_atto": "2026-11-11",
+      "presentazione_ue": "EU/1/24/1839/027",
+      "aic": "051386276",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05886/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05886&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-11&art.progressivo=0#art",
+      "estratto_documentale": "10 x 1 compresse (dose unitaria); EU/1/24/1839/027 A.I.C. n.: 051386276 in base 32: 1K05X4 - 70 mg - compressa",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05886",
+      "data_pubblicazione_atto": "2026-11-11",
+      "presentazione_ue": "EU/1/24/1839/028",
+      "aic": "051386288",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05886/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05886&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-11&art.progressivo=0#art",
+      "estratto_documentale": "10 x 1 compresse (dose unitaria); EU/1/24/1839/028 A.I.C. n.: 051386288 in base 32: 1K05XJ - 80 mg - compressa",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05886",
+      "data_pubblicazione_atto": "2026-11-11",
+      "presentazione_ue": "EU/1/24/1839/029",
+      "aic": "051386290",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05886/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05886&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-11&art.progressivo=0#art",
+      "estratto_documentale": "10 x 1 compresse (dose unitaria); EU/1/24/1839/029 A.I.C. n.: 051386290 in base 32: 1K05XL - 100 mg - compressa",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05886",
+      "data_pubblicazione_atto": "2026-11-11",
+      "presentazione_ue": "EU/1/24/1839/030",
+      "aic": "051386302",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05886/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05886&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-11&art.progressivo=0#art",
+      "estratto_documentale": "10 x 1 compresse (dose unitaria); EU/1/24/1839/030 A.I.C. n.: 051386302 in base 32: 1K05XY - 140 mg - compressa",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05887",
+      "data_pubblicazione_atto": "2026-11-11",
+      "presentazione_ue": "EU/1/26/2052/001",
+      "aic": "053313019",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05887/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05887&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-11&art.progressivo=0#art",
+      "estratto_documentale": "rafo 6.6. Confezioni autorizzate: EU/1/26/2052/001 A.I.C.: 053313019 In base 32: 1LUZHV - 120 mg - Soluzione ini",
       "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
       "conflitti_con_link_esistenti": []
     }
