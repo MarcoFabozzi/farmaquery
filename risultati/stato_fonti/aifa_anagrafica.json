@@ -1,11 +1,11 @@
 {
   "fonte": "aifa_anagrafica",
   "esito": "OK",
-  "ultimo_successo_utc": "2026-11-11T05:24:28+00:00",
-  "precedente_successo_utc": "2026-11-10T05:20:24+00:00",
+  "ultimo_successo_utc": "2026-11-12T05:26:40+00:00",
+  "precedente_successo_utc": "2026-11-11T05:24:28+00:00",
   "statistiche": {
     "confezioni_file": 160017,
-    "principi_attivi_righe_file": 339624,
+    "principi_attivi_righe_file": 339633,
     "copertura_principi_attivi": {
       "aic_con_principio": 159961,
       "aic_totali": 160017,
@@ -91,8 +91,8 @@
     },
     "archivio_completo": {
       "confezioni_totali": 160017,
-      "bytes_compressi": 5030265,
-      "sha256_archivio": "4054ca6b3a50bba4c84d0bb98158468b47fccd0770c598f3cc6bfbd44e012941",
+      "bytes_compressi": 5028334,
+      "sha256_archivio": "7b6307619018994b56b7d256b4df5c5bd5686cc5935e9603cfb5a2fe08277663",
       "file_archivio": "aifa_confezioni_complete.sqlite.gz"
     },
     "confezioni_pertinenti": 10603,
@@ -104,13 +104,13 @@
   "fonti": {
     "aifa": {
       "url": "https://drive.aifa.gov.it/farmaci/confezioni_fornitura.csv",
-      "bytes": 82493131,
-      "sha256": "e864be37e8d31e4b5965b1eb6df6f1ecc6993c871649cc2dac451e3388fe35bc"
+      "bytes": 82493176,
+      "sha256": "8a357ec2128289b2268816ea5ecef575e0c4ba73de1b104d5268bd058f0bea44"
     },
     "aifa_principi_attivi": {
       "url": "https://drive.aifa.gov.it/farmaci/PA_confezioni.csv",
-      "bytes": 11588193,
-      "sha256": "d6971dad33d4dab966836881eeb99ff864d578aa1edad80bcacbb53f76cd98d4"
+      "bytes": 11587966,
+      "sha256": "c5135530ab4dc3be2729f03bad36df5d4572e4d759d09f85df605ec9b6b4cbd8"
     }
   },
   "nota": "Controllo della fonte completato, non certificazione di stato regolatorio corrente"
