@@ -1,8 +1,8 @@
 {
-  "generato_utc": "2026-11-11T08:22:04+00:00",
-  "totale_evidenze": 100,
+  "generato_utc": "2026-11-12T08:22:49+00:00",
+  "totale_evidenze": 108,
   "riepilogo": {
-    "AIC_NON_NEL_DATABASE_PRINCIPALE": 1,
+    "AIC_NON_NEL_DATABASE_PRINCIPALE": 9,
     "CANDIDATO_NOME_EMA_DA_REVISIONARE": 90,
     "COLLEGAMENTO_GIA_DOCUMENTATO": 4,
     "NOME_EMA_AMBIGUO_DA_REVISIONARE": 5
@@ -1926,6 +1926,110 @@
           "principio_attivo": "insulin icodec;semaglutide"
         }
       ],
+      "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
+    },
+    {
+      "atto_gu": "26A05885",
+      "data_pubblicazione": "2026-11-11",
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05885/sg",
+      "codice_presentazione_ue": "EU/1/26/2051/001",
+      "aic": "053307017",
+      "nome_aifa": null,
+      "principio_attivo_aifa": null,
+      "ema_documentato": null,
+      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
+      "candidati_ema_per_nome": [],
+      "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
+    },
+    {
+      "atto_gu": "26A05886",
+      "data_pubblicazione": "2026-11-11",
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05886/sg",
+      "codice_presentazione_ue": "EU/1/24/1839/025",
+      "aic": "051386252",
+      "nome_aifa": null,
+      "principio_attivo_aifa": null,
+      "ema_documentato": null,
+      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
+      "candidati_ema_per_nome": [],
+      "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
+    },
+    {
+      "atto_gu": "26A05886",
+      "data_pubblicazione": "2026-11-11",
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05886/sg",
+      "codice_presentazione_ue": "EU/1/24/1839/026",
+      "aic": "051386264",
+      "nome_aifa": null,
+      "principio_attivo_aifa": null,
+      "ema_documentato": null,
+      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
+      "candidati_ema_per_nome": [],
+      "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
+    },
+    {
+      "atto_gu": "26A05886",
+      "data_pubblicazione": "2026-11-11",
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05886/sg",
+      "codice_presentazione_ue": "EU/1/24/1839/027",
+      "aic": "051386276",
+      "nome_aifa": null,
+      "principio_attivo_aifa": null,
+      "ema_documentato": null,
+      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
+      "candidati_ema_per_nome": [],
+      "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
+    },
+    {
+      "atto_gu": "26A05886",
+      "data_pubblicazione": "2026-11-11",
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05886/sg",
+      "codice_presentazione_ue": "EU/1/24/1839/028",
+      "aic": "051386288",
+      "nome_aifa": null,
+      "principio_attivo_aifa": null,
+      "ema_documentato": null,
+      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
+      "candidati_ema_per_nome": [],
+      "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
+    },
+    {
+      "atto_gu": "26A05886",
+      "data_pubblicazione": "2026-11-11",
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05886/sg",
+      "codice_presentazione_ue": "EU/1/24/1839/029",
+      "aic": "051386290",
+      "nome_aifa": null,
+      "principio_attivo_aifa": null,
+      "ema_documentato": null,
+      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
+      "candidati_ema_per_nome": [],
+      "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
+    },
+    {
+      "atto_gu": "26A05886",
+      "data_pubblicazione": "2026-11-11",
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05886/sg",
+      "codice_presentazione_ue": "EU/1/24/1839/030",
+      "aic": "051386302",
+      "nome_aifa": null,
+      "principio_attivo_aifa": null,
+      "ema_documentato": null,
+      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
+      "candidati_ema_per_nome": [],
+      "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
+    },
+    {
+      "atto_gu": "26A05887",
+      "data_pubblicazione": "2026-11-11",
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05887/sg",
+      "codice_presentazione_ue": "EU/1/26/2052/001",
+      "aic": "053313019",
+      "nome_aifa": null,
+      "principio_attivo_aifa": null,
+      "ema_documentato": null,
+      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
+      "candidati_ema_per_nome": [],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     }
   ]
