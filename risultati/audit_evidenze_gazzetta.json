@@ -1,9 +1,9 @@
 {
-  "generato_utc": "2026-11-12T05:40:23+00:00",
+  "generato_utc": "2026-11-13T05:38:56+00:00",
   "criterio": "Ricontrollo automatico per prossimita EU/AIC, hash e collegamenti. Non certifica autorizzazione, classificazione vigente o rimborsabilita.",
-  "totale_coppie": 108,
+  "totale_coppie": 116,
   "riepilogo": {
-    "COERENTE_NEL_TESTO_DA_REVISIONARE": 108,
+    "COERENTE_NEL_TESTO_DA_REVISIONARE": 116,
     "REVISIONE_PRIORITARIA": 0,
     "ANOMALIA_DOCUMENTALE": 0
   },
@@ -143,6 +143,18 @@
     "26A05887": {
       "totale": 1,
       "coerenti_nel_testo": 1
+    },
+    "26A05891": {
+      "totale": 2,
+      "coerenti_nel_testo": 2
+    },
+    "26A05892": {
+      "totale": 4,
+      "coerenti_nel_testo": 4
+    },
+    "26A05893": {
+      "totale": 2,
+      "coerenti_nel_testo": 2
     }
   },
   "coppie": [
@@ -1547,6 +1559,110 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05887/sg",
       "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05887&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-11&art.progressivo=0#art",
       "estratto_documentale": "rafo 6.6. Confezioni autorizzate: EU/1/26/2052/001 A.I.C.: 053313019 In base 32: 1LUZHV - 120 mg - Soluzione ini",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05891",
+      "data_pubblicazione_atto": "2026-11-12",
+      "presentazione_ue": "EU/1/26/2049/001",
+      "aic": "053293015",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/12/26A05891/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05891&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-12&art.progressivo=0#art",
+      "estratto_documentale": "grafo 6.6. Confezioni autorizzate: EU/1/26/2049/001 A.I.C.: 053293015 in base 32: 1LUCYR - 500 U/mL - soluzion",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05891",
+      "data_pubblicazione_atto": "2026-11-12",
+      "presentazione_ue": "EU/1/26/2049/002",
+      "aic": "053293027",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/12/26A05891/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05891&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-12&art.progressivo=0#art",
+      "estratto_documentale": "ikPen) 3 mL - 1 penna preriempita; EU/1/26/2049/002 A.I.C.: 053293027 in base 32: 1LUCZ3 - 1000 U/mL - soluzion",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05892",
+      "data_pubblicazione_atto": "2026-11-12",
+      "presentazione_ue": "EU/1/26/2050/001",
+      "aic": "053294017",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/12/26A05892/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05892&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-12&art.progressivo=0#art",
+      "estratto_documentale": "grafo 6.6. Confezioni autorizzate: EU/1/26/2050/001 A.I.C.: 053294017 In base 32: 1LUDY1 1 ml - sospensione iniett",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05892",
+      "data_pubblicazione_atto": "2026-11-12",
+      "presentazione_ue": "EU/1/26/2050/002",
+      "aic": "053294029",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/12/26A05892/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05892&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-12&art.progressivo=0#art",
+      "estratto_documentale": "n ago 1 ml - 1 siringa preriempita EU/1/26/2050/002 A.I.C.: 053294029 In base 32: 1LUDYF 1 ml - sospensione iniett",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05892",
+      "data_pubblicazione_atto": "2026-11-12",
+      "presentazione_ue": "EU/1/26/2050/003",
+      "aic": "053294031",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/12/26A05892/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05892&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-12&art.progressivo=0#art",
+      "estratto_documentale": "ago 1 ml - 10 siringhe preriempite EU/1/26/2050/003 A.I.C.: 053294031 In base 32: 1LUDYH 1 ml - sospensione iniett",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05892",
+      "data_pubblicazione_atto": "2026-11-12",
+      "presentazione_ue": "EU/1/26/2050/004",
+      "aic": "053294043",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/12/26A05892/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05892&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-12&art.progressivo=0#art",
+      "estratto_documentale": "a ago 1 ml - 1 siringa preriempita EU/1/26/2050/004 A.I.C.: 053294043 In base 32: 1LUDYV 1 ml - sospensione iniett",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05893",
+      "data_pubblicazione_atto": "2026-11-12",
+      "presentazione_ue": "EU/1/21/1559/003",
+      "aic": "049613033",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/12/26A05893/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05893&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-12&art.progressivo=0#art",
+      "estratto_documentale": "attamento. Confezioni autorizzate: EU/1/21/1559/003 A.I.C.: 049613033 In base 32: 1HB279 120 mg - Soluzione iniett",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05893",
+      "data_pubblicazione_atto": "2026-11-12",
+      "presentazione_ue": "EU/1/21/1559/004",
+      "aic": "049613045",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/12/26A05893/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05893&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-12&art.progressivo=0#art",
+      "estratto_documentale": "0 mg/mL) - 1 penna preriempita; EU/1/21/1559/004 A.I.C.: 049613045 In base 32: 1HB27P 120 mg - Soluzione iniett",
       "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
       "conflitti_con_link_esistenti": []
     }
