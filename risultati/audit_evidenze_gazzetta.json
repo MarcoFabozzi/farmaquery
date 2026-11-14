@@ -1,9 +1,9 @@
 {
-  "generato_utc": "2026-11-13T05:38:56+00:00",
+  "generato_utc": "2026-11-14T05:30:47+00:00",
   "criterio": "Ricontrollo automatico per prossimita EU/AIC, hash e collegamenti. Non certifica autorizzazione, classificazione vigente o rimborsabilita.",
-  "totale_coppie": 116,
+  "totale_coppie": 123,
   "riepilogo": {
-    "COERENTE_NEL_TESTO_DA_REVISIONARE": 116,
+    "COERENTE_NEL_TESTO_DA_REVISIONARE": 123,
     "REVISIONE_PRIORITARIA": 0,
     "ANOMALIA_DOCUMENTALE": 0
   },
@@ -155,6 +155,22 @@
     "26A05893": {
       "totale": 2,
       "coerenti_nel_testo": 2
+    },
+    "26A05901": {
+      "totale": 1,
+      "coerenti_nel_testo": 1
+    },
+    "26A05902": {
+      "totale": 4,
+      "coerenti_nel_testo": 4
+    },
+    "26A05903": {
+      "totale": 1,
+      "coerenti_nel_testo": 1
+    },
+    "26A05904": {
+      "totale": 1,
+      "coerenti_nel_testo": 1
     }
   },
   "coppie": [
@@ -1663,6 +1679,97 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/12/26A05893/sg",
       "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05893&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-12&art.progressivo=0#art",
       "estratto_documentale": "0 mg/mL) - 1 penna preriempita; EU/1/21/1559/004 A.I.C.: 049613045 In base 32: 1HB27P 120 mg - Soluzione iniett",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05901",
+      "data_pubblicazione_atto": "2026-11-13",
+      "presentazione_ue": "EU/1/26/2045/001",
+      "aic": "053240014",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/13/26A05901/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05901&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-13&art.progressivo=0#art",
+      "estratto_documentale": "rico (NG). Confezioni autorizzate: EU/1/26/2045/001 A.I.C.: 053240014 in base 32: 1LSS6G - 200 mg/ml - soluzio",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05902",
+      "data_pubblicazione_atto": "2026-11-13",
+      "presentazione_ue": "EU/1/26/2054/001",
+      "aic": "053292013",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/13/26A05902/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05902&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-13&art.progressivo=0#art",
+      "estratto_documentale": "prodotto. Confezioni autorizzate: EU/1/26/2054/001 A.I.C.: 053292013 in base 32: 1LUBZF - 140 mg/35 mg - caps",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05902",
+      "data_pubblicazione_atto": "2026-11-13",
+      "presentazione_ue": "EU/1/26/2054/002",
+      "aic": "053292025",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/13/26A05902/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05902&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-13&art.progressivo=0#art",
+      "estratto_documentale": "le - flacone (HDPE) - 100 capsule; EU/1/26/2054/002 A.I.C.: 053292025 in base 32: 1LUBZT - 210 mg/52,5 mg - ca",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05902",
+      "data_pubblicazione_atto": "2026-11-13",
+      "presentazione_ue": "EU/1/26/2054/003",
+      "aic": "053292037",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/13/26A05902/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05902&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-13&art.progressivo=0#art",
+      "estratto_documentale": "e - flacone (HDPE) - 100 capsule; EU/1/26/2054/003 A.I.C.: 053292037 in base 32: 1LUC05 - 280 mg/70 mg - caps",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05902",
+      "data_pubblicazione_atto": "2026-11-13",
+      "presentazione_ue": "EU/1/26/2054/004",
+      "aic": "053292049",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/13/26A05902/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05902&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-13&art.progressivo=0#art",
+      "estratto_documentale": "le - flacone (HDPE) - 100 capsule; EU/1/26/2054/004 A.I.C.: 053292049 in base 32: 1LUC0K - 350 mg/87,5 mg - ca",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05903",
+      "data_pubblicazione_atto": "2026-11-13",
+      "presentazione_ue": "EU/1/25/1998/004",
+      "aic": "052768049",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/13/26A05903/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05903&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-13&art.progressivo=0#art",
+      "estratto_documentale": "ustrativo. Confezioni autorizzate: EU/1/25/1998/004 - A.I.C.: 052768049 in base 32: 1LBC9K - 1 mg/ml - concentra",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05904",
+      "data_pubblicazione_atto": "2026-11-13",
+      "presentazione_ue": "EU/1/25/2000/003",
+      "aic": "052804034",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/13/26A05904/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05904&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-13&art.progressivo=0#art",
+      "estratto_documentale": "rafo 6.6). Confezioni autorizzate: EU/1/25/2000/003 - A.I.C.: 052804034 in base 32: 1LCGG2 - 100 unita'/ml - sol",
       "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
       "conflitti_con_link_esistenti": []
     }
