@@ -1,9 +1,9 @@
 {
-  "generato_utc": "2026-11-14T05:30:47+00:00",
+  "generato_utc": "2026-11-15T05:33:05+00:00",
   "criterio": "Ricontrollo automatico per prossimita EU/AIC, hash e collegamenti. Non certifica autorizzazione, classificazione vigente o rimborsabilita.",
-  "totale_coppie": 123,
+  "totale_coppie": 128,
   "riepilogo": {
-    "COERENTE_NEL_TESTO_DA_REVISIONARE": 123,
+    "COERENTE_NEL_TESTO_DA_REVISIONARE": 128,
     "REVISIONE_PRIORITARIA": 0,
     "ANOMALIA_DOCUMENTALE": 0
   },
@@ -171,6 +171,14 @@
     "26A05904": {
       "totale": 1,
       "coerenti_nel_testo": 1
+    },
+    "26A05908": {
+      "totale": 1,
+      "coerenti_nel_testo": 1
+    },
+    "26A05910": {
+      "totale": 4,
+      "coerenti_nel_testo": 4
     }
   },
   "coppie": [
@@ -1770,6 +1778,71 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/13/26A05904/sg",
       "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05904&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-13&art.progressivo=0#art",
       "estratto_documentale": "rafo 6.6). Confezioni autorizzate: EU/1/25/2000/003 - A.I.C.: 052804034 in base 32: 1LCGG2 - 100 unita'/ml - sol",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05908",
+      "data_pubblicazione_atto": "2026-11-14",
+      "presentazione_ue": "EU/1/21/1623/005",
+      "aic": "049964051",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/14/26A05908/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05908&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-14&art.progressivo=0#art",
+      "estratto_documentale": "tocutanea. Confezioni autorizzate: EU/1/21/1623/005 - A.I.C.: 049964051 - in base 32: 1HNT0M - 120 mg - soluzione in",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05910",
+      "data_pubblicazione_atto": "2026-11-14",
+      "presentazione_ue": "EU/1/21/1544/003",
+      "aic": "049480039",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/14/26A05910/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05910&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-14&art.progressivo=0#art",
+      "estratto_documentale": "i sciolga. Confezioni autorizzate: EU/1/21/1544/003 A.I.C.: 049480039 In base 32: 1H60C7 - 72 mg - Granulato rives",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05910",
+      "data_pubblicazione_atto": "2026-11-14",
+      "presentazione_ue": "EU/1/21/1544/004",
+      "aic": "049480041",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/14/26A05910/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05910&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-14&art.progressivo=0#art",
+      "estratto_documentale": "a (PET/Alluminio/PE) - 28 bustine; EU/1/21/1544/004 A.I.C.: 049480041 In base 32: 1H60C9 - 96 mg - Granulato rives",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05910",
+      "data_pubblicazione_atto": "2026-11-14",
+      "presentazione_ue": "EU/1/21/1544/005",
+      "aic": "049480054",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/14/26A05910/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05910&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-14&art.progressivo=0#art",
+      "estratto_documentale": "a (PET/Alluminio/PE) - 28 bustine; EU/1/21/1544/005 A.I.C.: 049480054 In base 32: 1H60CQ - 108 mg - Granulato",
+      "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
+      "conflitti_con_link_esistenti": []
+    },
+    {
+      "atto": "26A05910",
+      "data_pubblicazione_atto": "2026-11-14",
+      "presentazione_ue": "EU/1/21/1544/006",
+      "aic": "049480066",
+      "esito_controllo_automatico": "COERENTE_NEL_TESTO_DA_REVISIONARE",
+      "motivi": [],
+      "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/14/26A05910/sg",
+      "url_allegato": "https://www.gazzettaufficiale.it/atto/serie_generale/caricaArticolo?art.versione=1&art.idGruppo=0&art.flagTipoArticolo=1&art.codiceRedazionale=26A05910&art.idArticolo=1&art.idSottoArticolo=1&art.idSottoArticolo1=10&art.dataPubblicazioneGazzetta=2026-11-14&art.progressivo=0#art",
+      "estratto_documentale": "a (PET/Alluminio/PE) - 28 bustine; EU/1/21/1544/006 A.I.C.: 049480066 In base 32: 1H60D2 - 132 mg - Granulato",
       "stato_nel_database": "EVIDENZA_DOCUMENTALE_DA_REVISIONARE",
       "conflitti_con_link_esistenti": []
     }
