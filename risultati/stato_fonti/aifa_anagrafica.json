@@ -1,14 +1,14 @@
 {
   "fonte": "aifa_anagrafica",
   "esito": "OK",
-  "ultimo_successo_utc": "2026-11-14T05:16:55+00:00",
-  "precedente_successo_utc": "2026-11-13T05:25:19+00:00",
+  "ultimo_successo_utc": "2026-11-15T05:19:20+00:00",
+  "precedente_successo_utc": "2026-11-14T05:16:55+00:00",
   "statistiche": {
-    "confezioni_file": 160016,
+    "confezioni_file": 160025,
     "principi_attivi_righe_file": 339766,
     "copertura_principi_attivi": {
-      "aic_con_principio": 159960,
-      "aic_totali": 160016,
+      "aic_con_principio": 159969,
+      "aic_totali": 160025,
       "percentuale_copertura": 99.97
     },
     "audit_principi_attivi": {
@@ -90,22 +90,22 @@
       "nota_quarantena": "AIC con oltre 20 sostanze distinte: esclusa solo questa associazione dalla sorgente PA_confezioni; richiede controllo manuale."
     },
     "archivio_completo": {
-      "confezioni_totali": 160016,
-      "bytes_compressi": 5027108,
-      "sha256_archivio": "5cf9d32599d29014e767c03e1abc3b44fc8687d97be077a2bc65d9478f2e8d79",
+      "confezioni_totali": 160025,
+      "bytes_compressi": 5026900,
+      "sha256_archivio": "0e57a02876fdcc2a49cee3dc38db49680fcd3995f68da8d5f5ed8eb7d7f0f644",
       "file_archivio": "aifa_confezioni_complete.sqlite.gz"
     },
     "confezioni_pertinenti": 10603,
     "nuove_confezioni": 0,
-    "nuovi_match_candidati": 0,
+    "nuovi_match_candidati": 1,
     "aic_precedenti_non_nel_file": 4,
     "nota": "L anagrafica non prova la classe vigente; le AIC assenti restano storiche"
   },
   "fonti": {
     "aifa": {
       "url": "https://drive.aifa.gov.it/farmaci/confezioni_fornitura.csv",
-      "bytes": 82492677,
-      "sha256": "6a4dfa80ab37c932b69b1a9f0a688004227aa90a99397559047e584a2367de19"
+      "bytes": 82497844,
+      "sha256": "b43e109ddd620950ee5908e2af7236ed12204658509ebff96f8824f0b4e818d0"
     },
     "aifa_principi_attivi": {
       "url": "https://drive.aifa.gov.it/farmaci/PA_confezioni.csv",
