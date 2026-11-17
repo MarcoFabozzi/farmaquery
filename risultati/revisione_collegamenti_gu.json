@@ -1,9 +1,9 @@
 {
-  "generato_utc": "2026-11-16T09:44:38+00:00",
+  "generato_utc": "2026-11-17T08:24:45+00:00",
   "totale_evidenze": 128,
   "riepilogo": {
-    "AIC_NON_NEL_DATABASE_PRINCIPALE": 29,
-    "CANDIDATO_NOME_EMA_DA_REVISIONARE": 90,
+    "AIC_NON_NEL_DATABASE_PRINCIPALE": 1,
+    "CANDIDATO_NOME_EMA_DA_REVISIONARE": 118,
     "COLLEGAMENTO_GIA_DOCUMENTATO": 4,
     "NOME_EMA_AMBIGUO_DA_REVISIONARE": 5
   },
@@ -1934,11 +1934,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05885/sg",
       "codice_presentazione_ue": "EU/1/26/2051/001",
       "aic": "053307017",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "NYLASPEG",
+      "principio_attivo_aifa": "PEGFILGRASTIM",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/006085",
+          "nome": "Nylaspeg",
+          "principio_attivo": "pegfilgrastim"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -1947,11 +1953,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05886/sg",
       "codice_presentazione_ue": "EU/1/24/1839/025",
       "aic": "051386252",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "DASATINIB ACCORD HEALTHCARE",
+      "principio_attivo_aifa": "DASATINIB",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/006251",
+          "nome": "Dasatinib Accord Healthcare",
+          "principio_attivo": "Dasatinib monohydrate"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -1960,11 +1972,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05886/sg",
       "codice_presentazione_ue": "EU/1/24/1839/026",
       "aic": "051386264",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "DASATINIB ACCORD HEALTHCARE",
+      "principio_attivo_aifa": "DASATINIB",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/006251",
+          "nome": "Dasatinib Accord Healthcare",
+          "principio_attivo": "Dasatinib monohydrate"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -1973,11 +1991,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05886/sg",
       "codice_presentazione_ue": "EU/1/24/1839/027",
       "aic": "051386276",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "DASATINIB ACCORD HEALTHCARE",
+      "principio_attivo_aifa": "DASATINIB",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/006251",
+          "nome": "Dasatinib Accord Healthcare",
+          "principio_attivo": "Dasatinib monohydrate"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -1986,11 +2010,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05886/sg",
       "codice_presentazione_ue": "EU/1/24/1839/028",
       "aic": "051386288",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "DASATINIB ACCORD HEALTHCARE",
+      "principio_attivo_aifa": "DASATINIB",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/006251",
+          "nome": "Dasatinib Accord Healthcare",
+          "principio_attivo": "Dasatinib monohydrate"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -1999,11 +2029,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05886/sg",
       "codice_presentazione_ue": "EU/1/24/1839/029",
       "aic": "051386290",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "DASATINIB ACCORD HEALTHCARE",
+      "principio_attivo_aifa": "DASATINIB",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/006251",
+          "nome": "Dasatinib Accord Healthcare",
+          "principio_attivo": "Dasatinib monohydrate"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -2012,11 +2048,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05886/sg",
       "codice_presentazione_ue": "EU/1/24/1839/030",
       "aic": "051386302",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "DASATINIB ACCORD HEALTHCARE",
+      "principio_attivo_aifa": "DASATINIB",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/006251",
+          "nome": "Dasatinib Accord Healthcare",
+          "principio_attivo": "Dasatinib monohydrate"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -2025,11 +2067,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/11/26A05887/sg",
       "codice_presentazione_ue": "EU/1/26/2052/001",
       "aic": "053313019",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "DENOSUMAB ASCEND",
+      "principio_attivo_aifa": "DENOSUMAB",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/006626",
+          "nome": "Denosumab Ascend",
+          "principio_attivo": "denosumab"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -2038,11 +2086,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/12/26A05891/sg",
       "codice_presentazione_ue": "EU/1/26/2049/001",
       "aic": "053293015",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "ONSWIK",
+      "principio_attivo_aifa": "INSULINA EFSITORA ALFA",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/006388",
+          "nome": "Onswik",
+          "principio_attivo": "Insulin efsitora alfa"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -2051,11 +2105,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/12/26A05891/sg",
       "codice_presentazione_ue": "EU/1/26/2049/002",
       "aic": "053293027",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "ONSWIK",
+      "principio_attivo_aifa": "INSULINA EFSITORA ALFA",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/006388",
+          "nome": "Onswik",
+          "principio_attivo": "Insulin efsitora alfa"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -2064,11 +2124,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/12/26A05892/sg",
       "codice_presentazione_ue": "EU/1/26/2050/001",
       "aic": "053294017",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "AUJEMFLU",
+      "principio_attivo_aifa": "VACCINO ANTINFLUENZALE (ANTIGENE DI SUPERFICIE, INATTIVATO, ADIUVATO, PRODOTTO IN COLTURE CELLULARI)",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/006692",
+          "nome": "Aujemflu",
+          "principio_attivo": "A/(H1N1)-like virus antigen;A/(H3N2)-like virus antigen;B (Victoria lineage)-like virus antigen"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -2077,11 +2143,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/12/26A05892/sg",
       "codice_presentazione_ue": "EU/1/26/2050/002",
       "aic": "053294029",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "AUJEMFLU",
+      "principio_attivo_aifa": "VACCINO ANTINFLUENZALE (ANTIGENE DI SUPERFICIE, INATTIVATO, ADIUVATO, PRODOTTO IN COLTURE CELLULARI)",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/006692",
+          "nome": "Aujemflu",
+          "principio_attivo": "A/(H1N1)-like virus antigen;A/(H3N2)-like virus antigen;B (Victoria lineage)-like virus antigen"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -2090,11 +2162,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/12/26A05892/sg",
       "codice_presentazione_ue": "EU/1/26/2050/003",
       "aic": "053294031",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "AUJEMFLU",
+      "principio_attivo_aifa": "VACCINO ANTINFLUENZALE (ANTIGENE DI SUPERFICIE, INATTIVATO, ADIUVATO, PRODOTTO IN COLTURE CELLULARI)",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/006692",
+          "nome": "Aujemflu",
+          "principio_attivo": "A/(H1N1)-like virus antigen;A/(H3N2)-like virus antigen;B (Victoria lineage)-like virus antigen"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -2103,11 +2181,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/12/26A05892/sg",
       "codice_presentazione_ue": "EU/1/26/2050/004",
       "aic": "053294043",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "AUJEMFLU",
+      "principio_attivo_aifa": "VACCINO ANTINFLUENZALE (ANTIGENE DI SUPERFICIE, INATTIVATO, ADIUVATO, PRODOTTO IN COLTURE CELLULARI)",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/006692",
+          "nome": "Aujemflu",
+          "principio_attivo": "A/(H1N1)-like virus antigen;A/(H3N2)-like virus antigen;B (Victoria lineage)-like virus antigen"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -2116,11 +2200,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/12/26A05893/sg",
       "codice_presentazione_ue": "EU/1/21/1559/003",
       "aic": "049613033",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "ENSPRYNG",
+      "principio_attivo_aifa": "SATRALIZUMAB",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/004788",
+          "nome": "Enspryng",
+          "principio_attivo": "satralizumab"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -2129,11 +2219,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/12/26A05893/sg",
       "codice_presentazione_ue": "EU/1/21/1559/004",
       "aic": "049613045",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "ENSPRYNG",
+      "principio_attivo_aifa": "SATRALIZUMAB",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/004788",
+          "nome": "Enspryng",
+          "principio_attivo": "satralizumab"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -2142,11 +2238,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/13/26A05901/sg",
       "codice_presentazione_ue": "EU/1/26/2045/001",
       "aic": "053240014",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "DAYBU",
+      "principio_attivo_aifa": "TROFINETIDE",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/006482",
+          "nome": "Daybu",
+          "principio_attivo": "trofinetide"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -2155,11 +2257,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/13/26A05902/sg",
       "codice_presentazione_ue": "EU/1/26/2054/001",
       "aic": "053292013",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "HOPLEDO",
+      "principio_attivo_aifa": "CARBIDOPA; LEVODOPA",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/006629",
+          "nome": "Hopledo",
+          "principio_attivo": "carbidopa monohydrate;levodopa"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -2168,11 +2276,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/13/26A05902/sg",
       "codice_presentazione_ue": "EU/1/26/2054/002",
       "aic": "053292025",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "HOPLEDO",
+      "principio_attivo_aifa": "CARBIDOPA; LEVODOPA",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/006629",
+          "nome": "Hopledo",
+          "principio_attivo": "carbidopa monohydrate;levodopa"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -2181,11 +2295,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/13/26A05902/sg",
       "codice_presentazione_ue": "EU/1/26/2054/003",
       "aic": "053292037",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "HOPLEDO",
+      "principio_attivo_aifa": "CARBIDOPA; LEVODOPA",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/006629",
+          "nome": "Hopledo",
+          "principio_attivo": "carbidopa monohydrate;levodopa"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -2194,11 +2314,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/13/26A05902/sg",
       "codice_presentazione_ue": "EU/1/26/2054/004",
       "aic": "053292049",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "HOPLEDO",
+      "principio_attivo_aifa": "CARBIDOPA; LEVODOPA",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/006629",
+          "nome": "Hopledo",
+          "principio_attivo": "carbidopa monohydrate;levodopa"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -2207,11 +2333,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/13/26A05903/sg",
       "codice_presentazione_ue": "EU/1/25/1998/004",
       "aic": "052768049",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "TEIZEILD",
+      "principio_attivo_aifa": "TEPLIZUMAB",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/005496",
+          "nome": "Teizeild",
+          "principio_attivo": "teplizumab"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -2220,11 +2352,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/13/26A05904/sg",
       "codice_presentazione_ue": "EU/1/25/2000/003",
       "aic": "052804034",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "ONDIBTA",
+      "principio_attivo_aifa": "INSULINA GLARGINE",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/006136",
+          "nome": "Ondibta",
+          "principio_attivo": "insulin glargine"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -2233,11 +2371,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/14/26A05908/sg",
       "codice_presentazione_ue": "EU/1/21/1623/005",
       "aic": "049964051",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "SAPHNELO",
+      "principio_attivo_aifa": "ANIFROLUMAB",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/004975",
+          "nome": "Saphnelo",
+          "principio_attivo": "anifrolumab"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -2246,11 +2390,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/14/26A05910/sg",
       "codice_presentazione_ue": "EU/1/21/1544/003",
       "aic": "049480039",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "ORLADEYO",
+      "principio_attivo_aifa": "BEROTRALSTAT",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/005138",
+          "nome": "Orladeyo",
+          "principio_attivo": "berotralstat dihydrochloride"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -2259,11 +2409,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/14/26A05910/sg",
       "codice_presentazione_ue": "EU/1/21/1544/004",
       "aic": "049480041",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "ORLADEYO",
+      "principio_attivo_aifa": "BEROTRALSTAT",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/005138",
+          "nome": "Orladeyo",
+          "principio_attivo": "berotralstat dihydrochloride"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -2272,11 +2428,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/14/26A05910/sg",
       "codice_presentazione_ue": "EU/1/21/1544/005",
       "aic": "049480054",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "ORLADEYO",
+      "principio_attivo_aifa": "BEROTRALSTAT",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/005138",
+          "nome": "Orladeyo",
+          "principio_attivo": "berotralstat dihydrochloride"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     },
     {
@@ -2285,11 +2447,17 @@
       "fonte_ufficiale": "https://www.gazzettaufficiale.it/eli/id/2026/11/14/26A05910/sg",
       "codice_presentazione_ue": "EU/1/21/1544/006",
       "aic": "049480066",
-      "nome_aifa": null,
-      "principio_attivo_aifa": null,
+      "nome_aifa": "ORLADEYO",
+      "principio_attivo_aifa": "BEROTRALSTAT",
       "ema_documentato": null,
-      "stato_revisione": "AIC_NON_NEL_DATABASE_PRINCIPALE",
-      "candidati_ema_per_nome": [],
+      "stato_revisione": "CANDIDATO_NOME_EMA_DA_REVISIONARE",
+      "candidati_ema_per_nome": [
+        {
+          "ema_id": "EMEA/H/C/005138",
+          "nome": "Orladeyo",
+          "principio_attivo": "berotralstat dihydrochloride"
+        }
+      ],
       "avvertenza": "L abbinamento per nome non conferma la presentazione UE o lo stato regolatorio."
     }
   ]
