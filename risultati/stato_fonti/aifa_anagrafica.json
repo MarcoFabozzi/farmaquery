@@ -1,11 +1,11 @@
 {
   "fonte": "aifa_anagrafica",
   "esito": "OK",
-  "ultimo_successo_utc": "2026-11-17T05:24:37+00:00",
-  "precedente_successo_utc": "2026-11-16T06:58:36+00:00",
+  "ultimo_successo_utc": "2026-11-18T05:27:34+00:00",
+  "precedente_successo_utc": "2026-11-17T05:24:37+00:00",
   "statistiche": {
     "confezioni_file": 160101,
-    "principi_attivi_righe_file": 339806,
+    "principi_attivi_righe_file": 339847,
     "copertura_principi_attivi": {
       "aic_con_principio": 160045,
       "aic_totali": 160101,
@@ -91,26 +91,26 @@
     },
     "archivio_completo": {
       "confezioni_totali": 160101,
-      "bytes_compressi": 5032006,
-      "sha256_archivio": "e2f7a4036061e7324685b15fbfcda8388fc709c37dabad139eaf2f17c9de24b6",
+      "bytes_compressi": 5032415,
+      "sha256_archivio": "9b3f736c709cd265b502e7cc750347fd1398ca8267b7c3b641cf9270645c6da9",
       "file_archivio": "aifa_confezioni_complete.sqlite.gz"
     },
     "confezioni_pertinenti": 10637,
-    "nuove_confezioni": 34,
-    "nuovi_match_candidati": 34,
+    "nuove_confezioni": 0,
+    "nuovi_match_candidati": 0,
     "aic_precedenti_non_nel_file": 4,
     "nota": "L anagrafica non prova la classe vigente; le AIC assenti restano storiche"
   },
   "fonti": {
     "aifa": {
       "url": "https://drive.aifa.gov.it/farmaci/confezioni_fornitura.csv",
-      "bytes": 82541572,
-      "sha256": "8257f05b99e71f41ddb57603deba24d4a39f04fa97d710072a29e504274a2ee4"
+      "bytes": 82541593,
+      "sha256": "33fa577fe6b635507b8b757b94a7a8b342ed01784fee64f577d27883d1350fa9"
     },
     "aifa_principi_attivi": {
       "url": "https://drive.aifa.gov.it/farmaci/PA_confezioni.csv",
-      "bytes": 11592831,
-      "sha256": "4e1b3c99375654598d8379f24f6355ae1b06d5c51024e18aeff624760ec15c86"
+      "bytes": 11594213,
+      "sha256": "0b9a8760ae861a015ea55da62df875dc6ab1885361e4588fe50152934203063b"
     }
   },
   "nota": "Controllo della fonte completato, non certificazione di stato regolatorio corrente"
