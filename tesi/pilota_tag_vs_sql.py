@@ -639,11 +639,15 @@ def _in_phase(phase,func,*args,**kwargs):
 def ask(model,system,payload,*,timeout=40,max_tokens=None):
     """LiteLLM con restituzione di token e costo quando disponibili."""
     from litellm import completion
-    request={"model":model,"temperature":0,
+    request={"model":model,
              "messages":[{"role":"system","content":system},
                          {"role":"user","content":json.dumps(
                              payload,ensure_ascii=False,default=str)}],
              "timeout":timeout,"num_retries":0}
+    # Gemini 3.5 Flash-Lite non accetta una temperatura personalizzata.
+    # Gli altri modelli mantengono la configurazione originale.
+    if model.rsplit("/",1)[-1].casefold() != "gemini-3.5-flash-lite":
+        request["temperature"]=0
     if max_tokens is not None:
         request["max_tokens"]=max_tokens
     direct_attempt()
