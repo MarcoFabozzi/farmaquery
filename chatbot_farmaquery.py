@@ -224,10 +224,15 @@ def verify_provider(model):
     piccola quota del provider ma non verifica la correttezza delle risposte.
     """
     from litellm import completion
-    out=completion(model=model,temperature=0,timeout=20,num_retries=0,
-                   max_tokens=12,
-                   messages=[{"role":"user",
-                              "content":"Rispondi solo con la parola OK."}])
+    request={"model":model,"timeout":20,"num_retries":0,
+             "max_tokens":12,
+             "messages":[{"role":"user",
+                          "content":"Rispondi solo con la parola OK."}]}
+    # Stessa compatibilita' del motore: Gemini 3.5 Flash-Lite
+    # non supporta valori personalizzati di temperature.
+    if model.rsplit("/",1)[-1].casefold() != "gemini-3.5-flash-lite":
+        request["temperature"]=0
+    out=completion(**request)
     # Una risposta HTTP valida prova la connessione anche se il modello
     # non produce testo per un limite di token di ragionamento.
     return bool(out.choices)
