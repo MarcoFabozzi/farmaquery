@@ -1,14 +1,14 @@
 {
   "fonte": "aifa_anagrafica",
   "esito": "OK",
-  "ultimo_successo_utc": "2026-11-18T05:27:34+00:00",
-  "precedente_successo_utc": "2026-11-17T05:24:37+00:00",
+  "ultimo_successo_utc": "2026-11-19T05:28:41+00:00",
+  "precedente_successo_utc": "2026-11-18T05:27:34+00:00",
   "statistiche": {
-    "confezioni_file": 160101,
-    "principi_attivi_righe_file": 339847,
+    "confezioni_file": 160100,
+    "principi_attivi_righe_file": 339871,
     "copertura_principi_attivi": {
-      "aic_con_principio": 160045,
-      "aic_totali": 160101,
+      "aic_con_principio": 160044,
+      "aic_totali": 160100,
       "percentuale_copertura": 99.97
     },
     "audit_principi_attivi": {
@@ -90,9 +90,9 @@
       "nota_quarantena": "AIC con oltre 20 sostanze distinte: esclusa solo questa associazione dalla sorgente PA_confezioni; richiede controllo manuale."
     },
     "archivio_completo": {
-      "confezioni_totali": 160101,
-      "bytes_compressi": 5032415,
-      "sha256_archivio": "9b3f736c709cd265b502e7cc750347fd1398ca8267b7c3b641cf9270645c6da9",
+      "confezioni_totali": 160100,
+      "bytes_compressi": 5033237,
+      "sha256_archivio": "61400faa59958afb702950337d1be05dba80ccc5894a75ac9d2c583da83c40db",
       "file_archivio": "aifa_confezioni_complete.sqlite.gz"
     },
     "confezioni_pertinenti": 10637,
@@ -104,13 +104,13 @@
   "fonti": {
     "aifa": {
       "url": "https://drive.aifa.gov.it/farmaci/confezioni_fornitura.csv",
-      "bytes": 82541593,
-      "sha256": "33fa577fe6b635507b8b757b94a7a8b342ed01784fee64f577d27883d1350fa9"
+      "bytes": 82541055,
+      "sha256": "7c6f00ec461f0f67300b2607a4eff924a7156d20d51d5517c2dbc96122a97ff6"
     },
     "aifa_principi_attivi": {
       "url": "https://drive.aifa.gov.it/farmaci/PA_confezioni.csv",
-      "bytes": 11594213,
-      "sha256": "0b9a8760ae861a015ea55da62df875dc6ab1885361e4588fe50152934203063b"
+      "bytes": 11595081,
+      "sha256": "0ad383fd1ae221fe9b8d0ae9d3909d7f70f540fa0ed26d544b2fdad9f972d94d"
     }
   },
   "nota": "Controllo della fonte completato, non certificazione di stato regolatorio corrente"
