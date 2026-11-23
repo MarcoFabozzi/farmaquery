@@ -1,8 +1,8 @@
 {
   "fonte": "ema",
   "esito": "OK",
-  "ultimo_successo_utc": "2026-11-22T05:17:14+00:00",
-  "precedente_successo_utc": "2026-11-21T05:15:40+00:00",
+  "ultimo_successo_utc": "2026-11-23T06:28:17+00:00",
+  "precedente_successo_utc": "2026-11-22T05:17:14+00:00",
   "statistiche": {
     "catalogo_sorgente": 2365,
     "modalita": "CATALOGO_EMA_COMPLETO",
@@ -17,7 +17,7 @@
     "ema": {
       "url": "https://www.ema.europa.eu/en/documents/report/medicines-output-medicines_json-report_en.json",
       "bytes": 6824059,
-      "sha256": "7f6f6d130b8efcd37a8d8271df5e845c35d3a088ff2f6cac82e925649d2440ae"
+      "sha256": "5f341d8b2f028585593a0eaa0ec4f40c137ea1bb99c8619f8f67cf7b1aa95c7d"
     }
   },
   "nota": "Controllo della fonte completato, non certificazione di stato regolatorio corrente"
