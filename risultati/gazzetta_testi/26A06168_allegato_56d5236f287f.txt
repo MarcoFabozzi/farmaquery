@@ -1,0 +1,88 @@
+(Allegato 1)
+Allegato 1
+Denominazione: Anakinra.
+Indicazione terapeutica: trattamento della pericardite idiopatica
+ricorrente cortico-dipendente e colchicina-resistente.
+Criteri di inclusione:
+diagnosi di pericardite recidivante  secondo  i  criteri  della
+societa' europea di cardiologia 2025, con aumento  della  proteina  C
+reattiva o  con  proteina  C  reattiva  normale  ma  in  presenza  di
+infiammazione pericardica all'imaging, e per la quale possano  essere
+escluse cause infettive, autoimmuni, neoplastiche e metaboliche;
+negli adulti:  trattamento  corticosteroideo,  con  tapering  o
+sospensione  seguito  da  nuova  recidiva  (cortico-dipendente);  nei
+pazienti  pediatrici  tale  trattamento   corticosteroideo   non   e'
+richiesto;
+fallimento di precedente trattamento con  aspirina  o  FANS  in
+associazione a colchicina;
+sono incluse le forme recidivanti post-pericardiotomiche quando
+soddisfano i criteri sopra indicati.
+Criteri di esclusione:
+dolori toracici aspecifici;
+ipersensibilita' al principio attivo o a  uno  qualsiasi  degli
+eccipienti;
+neutropenia (conteggio assoluto dei neutrofili <1.5 x 109 /L);
+gravidanza o allattamento;
+infezione in fase attiva.
+Periodo di prescrizione a totale carico  del  Servizio  sanitario
+nazionale: fino a nuova determina dell'Agenzia italiana del farmaco.
+Piano terapeutico
+Schema posologico
+Dose abituale:
+popolazione pediatrica 2 mg/kg/die;
+adulti: dose minima 100 mg/die.
+La dose  puo'  essere  aumentata  in  presenza  di  una  parziale
+risposta clinica, strumentale e/o  laboratoristica.  Tale  incremento
+posologico dovra' essere esplicitamente  documentato  e  motivato  in
+cartella clinica e prevede:
+popolazione pediatrica: fino a un massimo di 4 mg/kg/die;
+adulti: incremento fino a 100 mg ogni 12 ore  (valutando  anche
+il peso corporeo).
+In fase di mantenimento,  nei  pazienti  stabilizzati:  possibile
+riduzione a 2-3 somministrazioni settimanali.
+Fase di induzione
+Durata: sei mesi.
+Obiettivo: controllo completo dell'attivita' di malattia.
+Criteri di remissione clinica:
+assenza di  dolore  toracico  e  sintomi  correlati:  Numerical
+Rating Scale (NRS) per dolore pericardico <2 su una scala da 0 a 11;
+normalizzazione persistente della PCR;
+riduzione del versamento pericardico e/o segni di infiammazione
+dell'imaging cardiaco.
+Tapering terapeutico:
+possibile dopo almeno sei mesi in caso di remissione stabile
+modalita':  riduzione  progressiva  della  dose   e/o   aumento
+dell'intervallo di somministrazione;
+decisione guidata da criteri clinici oggettivi tra cui  assenza
+di  sintomatologia,  in  particolare  netta  riduzione   del   dolore
+toracico, normalizzazione persistente degli indici di flogosi  (PCR),
+e  assenza  di  versamento  o  segni  di  infiammazione   pericardica
+all'imaging cardiaca.
+Limitazione al tapering.
+Possibile non praticabilita' in pazienti con:
+malattia refrattaria;
+elevata tendenza alla recidiva.
+In tali casi puo' necessario trattamento cronico continuativo.
+Durata della terapia:
+individualizzata in base alla risposta clinica  e  alla  storia
+naturale della malattia;
+possibile trattamento prolungato o cronico.
+Gestione delle recidive:
+ripresa di anakinra a dose appropriata per il  controllo  della
+recidiva;
+successiva rivalutazione per eventuale nuovo tapering.
+Altre  condizioni  da  osservare:  le  modalita'  previste  dagli
+articoli 4, 5, 6 del provvedimento datato 20 luglio  2000  citato  in
+premessa,  in  relazione  a:  art.  4:  istituzione   del   registro,
+rilevamento e  trasmissione  dei  dati  di  monitoraggio  clinico  ed
+informazioni  riguardo  a  sospensioni  del   trattamento   (mediante
+apposita scheda come da provvedimento  31  gennaio  2001,  pubblicato
+nella  Gazzetta  Ufficiale  n.  70  del  24  marzo  2001);  art.   5:
+acquisizione del consenso informato, modalita' di prescrizione  e  di
+dispensazione del medicinale; art. 6: rilevamento e trasmissione  dei
+dati di spesa.
+Parametri per il monitoraggio clinico:
+proteina   C   reattiva,   emocromo   con   conta   neutrofili,
+transaminasi, funzione renale;
+versamento pericardico all'ecocardiografia;
+infiammazione pericardica a imaging cardiaca.
