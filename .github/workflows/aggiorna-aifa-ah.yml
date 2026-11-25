@@ -87,7 +87,18 @@ jobs:
           fi
           if ! git diff --cached --quiet; then
             git commit -m 'data: aifa_ah aggiornato'
-            git push origin HEAD:main
+            # Prima integra i commit intervenuti su main (senza forzare i dati).
+            for attempt in 1 2 3; do
+              if git -c rebase.autoStash=true pull --rebase origin main && git push origin HEAD:main; then
+                break
+              fi
+              git rebase --abort || true
+              if [ "$attempt" -eq 3 ]; then
+                echo "Conflitto o aggiornamenti concorrenti: nessun force-push. Riprovare dopo una nuova elaborazione." >&2
+                exit 1
+              fi
+              sleep 5
+            done
           fi
 
       - name: Source already up to date today

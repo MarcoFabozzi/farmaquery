@@ -56,6 +56,8 @@ Il test comparativo finale usa un unico SQLite congelato del **2 novembre 2026**
 f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742
 ```
 
+Lo snapshot usato per le Gold è **immutabile**: il workflow di verifica statica non può più sovrascriverlo automaticamente. È stato ripristinato dal commit `d1a743dd` del 03/11/2026 dopo una rigenerazione accidentale del 25/11/2026. Il relativo controllo dei test è documentato in [docs/INTEGRITA_SNAPSHOT_TESI_20261125.md](docs/INTEGRITA_SNAPSHOT_TESI_20261125.md).
+
 I moduli applicativi sono organizzati nel pacchetto `farmaquery/`, mentre lo script di avvio resta nella radice. I percorsi usati dai workflow e dai test sono stati aggiornati. **Non sono stati modificati il database operativo, lo snapshot congelato o le Gold sperimentali.**
 
 ## Ulteriori documenti

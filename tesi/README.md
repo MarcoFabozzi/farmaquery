@@ -13,8 +13,10 @@ Il confronto consiste in **35 domande** sul medesimo database SQLite congelato, 
 | Materiale | File |
 | --- | --- |
 | Questionario finale | [QUESTIONARIO_FINALE_35_20261109.csv](QUESTIONARIO_FINALE_35_20261109.csv) |
-| Gold validate sullo snapshot | [GOLD_35_VALIDATO_SOLO_DATABASE_20261109.csv](GOLD_35_VALIDATO_SOLO_DATABASE_20261109.csv) |
-| Gold strutturate | [FarmaQuery_Gold_35_20261109.json](FarmaQuery_Gold_35_20261109.json) |
+| Gold storiche — solo database (09/11) | [GOLD_35_VALIDATO_SOLO_DATABASE_20261109.csv](GOLD_35_VALIDATO_SOLO_DATABASE_20261109.csv) |
+| Gold strutturate storiche (09/11) | [FarmaQuery_Gold_35_20261109.json](FarmaQuery_Gold_35_20261109.json) |
+| **Gold con revisione documentale (16/11)** | [GOLD_35_REVISIONE_DOCUMENTALE_20261116.csv](GOLD_35_REVISIONE_DOCUMENTALE_20261116.csv) |
+| **Gold strutturate revisionate (16/11)** | [FarmaQuery_Gold_35_REVISIONE_DOCUMENTALE_20261116.json](FarmaQuery_Gold_35_REVISIONE_DOCUMENTALE_20261116.json) |
 | Manifesto di congelamento | [MANIFESTO_CONGELAMENTO_PRETEST_35_SOLO_DATABASE_20261109.json](MANIFESTO_CONGELAMENTO_PRETEST_35_SOLO_DATABASE_20261109.json) |
 | Protocollo di test | [PROTOCOLLO_PILOTA_20_E_FINALE_35_20261109.md](PROTOCOLLO_PILOTA_20_E_FINALE_35_20261109.md) |
 | Runner / valutazione | [esegui_holdout.py](esegui_holdout.py), [valuta_confronto.py](valuta_confronto.py) |
