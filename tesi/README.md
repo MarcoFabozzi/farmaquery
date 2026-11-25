@@ -4,6 +4,8 @@
 
 ## Esperimento finale (riferimento principale)
 
+**Stato della documentazione (25/11/2026):** la valutazione conclusiva è riportata in [RISULTATI_TESI_FINALE_20261125.md](RISULTATI_TESI_FINALE_20261125.md). Le Gold pubblicate nel 2026-11-09 rappresentano una **versione storica**: per Q11 e Q14 il riferimento definitivo della tesi comprende le integrazioni documentali descritte nel rapporto finale. Evitare di utilizzare quei due elenchi storici come se fossero le Gold definitive.
+
 Il confronto consiste in **35 domande** sul medesimo database SQLite congelato, distribuite in cinque categorie: 10 semplici, 10 a categoria implicita, 5 multifonte, 5 non documentabili e 5 multiple.
 
 | Materiale | File |
@@ -26,7 +28,7 @@ Modello registrato nelle esportazioni: `gemini/gemini-3.5-flash-lite`. Le specif
 
 **Criterio di valutazione concordato:** conservare tutte le esecuzioni grezze, escludere dal punteggio soltanto i tentativi interrotti da errori esterni (ad es. Gemini 503); contare i fallimenti SQL generati dal motore e le astensioni non giustificate. Per ciascuna domanda valutare risposta **integrale**, completezza, documento e pagina; distinguere precisione/richiamo per le domande a elenco e astensioni corrette. Non scegliere retroattivamente il tentativo migliore fra esecuzioni valide.
 
-Il benchmark 35 domande è stato eseguito sui due motori. Gli score manuali e le metriche devono essere verificati prima della pubblicazione in tesi; eventuali JSON esportati fuori dal repository vanno archiviati senza sovrascrivere le Gold.
+Il benchmark di 35 domande è stato eseguito su entrambi i motori; un test separato di 15 interrogazioni SQL (Q36–Q50) è documentato nella tesi ed è riepilogato nel rapporto finale. I risultati finali riportati nella tesi sono riepilogati nel rapporto collegato. Le risposte integrali e le esportazioni grezze non sono automaticamente pubblicate da questo README: verificare la presenza effettiva dei file prima di dichiararli disponibili. Mantenere separati i dati originali delle esecuzioni, le Gold storiche e le Gold definitive; non sovrascrivere lo snapshot.
 
 ## Struttura della tesi e indicazioni del relatore
 
