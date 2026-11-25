@@ -1,13 +1,13 @@
 {
   "fonte": "aifa_cnn",
   "esito": "OK",
-  "ultimo_successo_utc": "2026-11-25T06:46:17+00:00",
-  "precedente_successo_utc": "2026-11-24T05:43:28+00:00",
+  "ultimo_successo_utc": "2026-11-25T08:53:00+00:00",
+  "precedente_successo_utc": "2026-11-25T06:46:17+00:00",
   "statistiche": {
     "data_riferimento_file_cnn": "2026-11-24",
     "righe_file_cnn": 3115,
     "righe_pertinenti": 2875,
-    "nuove_righe_storiche": 19,
+    "nuove_righe_storiche": 0,
     "indice_nazionale_cnn": {
       "file_indice": "aifa_riferimenti_cnn.json",
       "record_indicizzati": 2093,
@@ -16,7 +16,7 @@
     },
     "nota": "La C(nn) in elenco storico non certifica la classificazione attuale",
     "metodo_scoperta": "pagina_aifa",
-    "ultima_scoperta_indice_utc": "2026-11-25T06:46:03+00:00"
+    "ultima_scoperta_indice_utc": "2026-11-25T08:52:51+00:00"
   },
   "fonti": {
     "aifa_cnn": {
