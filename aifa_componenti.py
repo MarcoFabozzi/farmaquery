@@ -14,7 +14,7 @@ import json
 from pathlib import Path
 from urllib.parse import urlparse
 
-import aggiorna_automatico as etl
+from scripts import aggiorna_automatico as etl
 import pipeline
 
 ROOT=Path(__file__).resolve().parent

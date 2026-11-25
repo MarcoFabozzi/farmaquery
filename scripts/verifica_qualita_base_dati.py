@@ -16,7 +16,7 @@ from pathlib import Path
 import re
 import sqlite3
 
-DB_DEFAULT = Path(__file__).resolve().parent / 'risultati' / 'farmaci_automatico.sqlite'
+DB_DEFAULT = Path(__file__).resolve().parents[1] / 'risultati' / 'farmaci_automatico.sqlite'
 REQUIRED = {'ema_medicinali','aifa_confezioni','link_verificati',
             'match_candidati','classi_snapshot','acquisizioni'}
 SOURCES = ('ema','aifa_anagrafica','aifa_ah','aifa_cnn','gazzetta')

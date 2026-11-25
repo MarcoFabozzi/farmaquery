@@ -9,7 +9,7 @@ import tempfile
 
 from aifa_archivio_completo import estrai_archivio
 
-ROOT=Path(__file__).resolve().parent
+ROOT=Path(__file__).resolve().parents[1]
 DATA=ROOT/'risultati'
 
 def verifica(data_dir=DATA):

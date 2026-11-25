@@ -5,7 +5,7 @@ import unittest
 from hashlib import sha256
 from pathlib import Path
 
-from valida_evidenze_gazzetta import esamina
+from scripts.valida_evidenze_gazzetta import esamina
 
 
 class AuditTests(unittest.TestCase):

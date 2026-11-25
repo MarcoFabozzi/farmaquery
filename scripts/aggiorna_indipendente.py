@@ -18,9 +18,9 @@ import tempfile
 from urllib.parse import urlparse
 
 import pipeline
-import aggiorna_automatico as etl
+from scripts import aggiorna_automatico as etl
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DB = ROOT / 'risultati' / 'farmaci_automatico.sqlite'
 STATES = ROOT / 'risultati' / 'stato_fonti'
 REQUIRED = {'ema_medicinali','aifa_confezioni','acquisizioni','link_verificati'}

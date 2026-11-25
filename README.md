@@ -13,7 +13,8 @@ Repository: https://github.com/MarcoFabozzi/farmaquery
 | --- | --- |
 | `dashboard_regolatorio.py`, `chatbot_widget.py` | Interfaccia Streamlit e chatbot |
 | `chatbot_farmaquery.py`, `tesi/*.py` | Componenti dei motori Text-to-SQL e TAG |
-| `*.py` nella radice | Pipeline di acquisizione e qualità dei dati |
+| `scripts/` | Programmi di aggiornamento, diagnostica e verifica; da avviare con `python -m scripts.nome` |
+| Moduli `.py` nella radice | Componenti condivisi importati dall'applicazione, dai motori e dagli script |
 | `risultati/` | Database operativo, dati e report di aggiornamento |
 | `risultati/tesi_statico_20261102.sqlite.gz` | Copia congelata per il benchmark, **da non modificare** |
 | `tesi/` | Benchmark, Gold, protocolli, motori, test e materiali della tesi |

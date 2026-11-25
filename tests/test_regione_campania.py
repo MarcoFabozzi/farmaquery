@@ -8,7 +8,7 @@ from pathlib import Path
 
 import fitz
 
-import regione_campania_etl as etl
+from scripts import regione_campania_etl as etl
 
 
 def document(testo):
