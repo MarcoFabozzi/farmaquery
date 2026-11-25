@@ -26,4 +26,4 @@ Conservare l'ordine cronologico delle immagini quando una risposta occupa più s
 - Non introdurre numeri, valutazioni o interpretazioni nelle immagini che non appartenevano alle risposte originali.
 - Gli esperimenti si riferiscono allo snapshot congelato del **2 novembre 2026**: non confondere gli screenshot con risposte della dashboard aggiornata in seguito.
 
-Le cartelle sono inizialmente vuote: gli screenshot saranno caricati separatamente.
+Cartelle predisposte nella **radice del repository**. Gli screenshot PNG saranno caricati separatamente.
