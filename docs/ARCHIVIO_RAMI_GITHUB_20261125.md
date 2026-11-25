@@ -6,7 +6,7 @@ L'applicazione FarmaQuery è gestita tramite il ramo `main`. I rami storici sono
 
 ## Risultato verificato
 
-- **149 rami storici archiviati ed eliminati**: 144 durante la prima esecuzione, 5 nel tentativo successivo.
+- **152 rami storici archiviati ed eliminati**: 144 durante la prima esecuzione, 5 nel secondo tentativo e altri 3 rami temporanei (screenshot e audit finale) nel terzo tentativo.
 - **4 rami rimasti**: `main` e i tre rami collegati alle pull request aperte #1, #41 e #138.
 - **0 errori nell'ultima esecuzione**. Ogni ramo eliminato era già stato conservato in un tag.
 - L'elenco delle operazioni è disponibile nei file `archivio_rami_esito.json` allegati alle due esecuzioni del workflow, soggetti alla retention GitHub Actions.
