@@ -2,6 +2,8 @@
 
 **Titolo:** Interrogazione in linguaggio naturale di basi di dati: dal Text-to-SQL alla Table-Augmented Generation.
 
+Gli screenshot delle risposte sono raccolti nella [cartella principale «Screenshot risposte»](../Screenshot%20risposte/), separati dalle Gold e dai dati sperimentali.
+
 ## Esperimento finale (riferimento principale)
 
 **Stato della documentazione (25/11/2026):** la valutazione conclusiva è riportata in [RISULTATI_TESI_FINALE_20261125.md](RISULTATI_TESI_FINALE_20261125.md). Le Gold pubblicate nel 2026-11-09 rappresentano una **versione storica**: per Q11 e Q14 il riferimento definitivo della tesi comprende le integrazioni documentali descritte nel rapporto finale. Evitare di utilizzare quei due elenchi storici come se fossero le Gold definitive.

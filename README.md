@@ -22,6 +22,7 @@ Repository: https://github.com/MarcoFabozzi/farmaquery
 | `tests/`, `tesi/tests/` | Test automatici |
 | `.github/workflows/` | GitHub Actions per aggiornamenti e verifiche |
 | `docs/` | Documentazione tecnica e storico |
+| [`Screenshot risposte/`](Screenshot%20risposte/) | Screenshot originali delle risposte Text-to-SQL e TAG, separati per benchmark |
 
 Il materiale **attivo** della sperimentazione è descritto in [tesi/README.md](tesi/README.md). I rapporti delle prove precedenti sono conservati separatamente per non confonderli con i risultati finali.
 
