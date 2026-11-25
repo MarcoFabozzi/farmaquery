@@ -4,12 +4,14 @@ Questa cartella raccoglie gli **screenshot delle risposte originali** dei due mo
 
 ## Organizzazione
 
-- [benchmark_35/](benchmark_35/): risposte del benchmark regolatorio, **Q01–Q35**.
-- [test_sql_15/](test_sql_15/): risposte del test separato di generazione SQL, **Q36–Q50**.
+- [benchmark_35/Text-to-SQL/](benchmark_35/Text-to-SQL/): risposte **Text-to-SQL** delle **Q01–Q35**.
+- [benchmark_35/TAG/](benchmark_35/TAG/): risposte **TAG** delle **Q01–Q35**.
+- [test_sql_15/Text-to-SQL/](test_sql_15/Text-to-SQL/): risposte **Text-to-SQL** delle **Q36–Q50**.
+- [test_sql_15/TAG/](test_sql_15/TAG/): risposte **TAG** delle **Q36–Q50**.
 
 ## Convenzione per i file
 
-Salvare ciascuno screenshot con il numero della domanda e il motore:
+Salvare ciascuno screenshot nella **sottocartella del motore corrispondente**, conservando il numero della domanda e il nome originale già adottato:
 
 - `Q01_Text-to-SQL.png`
 - `Q01_TAG.png`
@@ -26,4 +28,4 @@ Conservare l'ordine cronologico delle immagini quando una risposta occupa più s
 - Non introdurre numeri, valutazioni o interpretazioni nelle immagini che non appartenevano alle risposte originali.
 - Gli esperimenti si riferiscono allo snapshot congelato del **2 novembre 2026**: non confondere gli screenshot con risposte della dashboard aggiornata in seguito.
 
-Cartelle predisposte nella **radice del repository**. Gli screenshot PNG saranno caricati separatamente.
+Le quattro sottocartelle si trovano in **`Screenshot risposte/` nella radice del repository**. Gli screenshot PNG non sono ancora stati caricati.
