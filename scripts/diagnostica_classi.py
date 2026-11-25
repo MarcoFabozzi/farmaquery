@@ -7,7 +7,7 @@ from pathlib import Path
 import sqlite3
 import tempfile
 
-BASE=Path(__file__).resolve().parent
+BASE=Path(__file__).resolve().parents[1]
 DATA=BASE/'risultati'
 main=DATA/'farmaci_automatico.sqlite'
 archive=DATA/'aifa_confezioni_complete.sqlite.gz'

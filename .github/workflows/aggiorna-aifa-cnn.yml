@@ -7,7 +7,7 @@ on:
     paths:
       - 'aifa_componenti.py'
       - 'classi_complementari.py'
-      - 'aggiorna_indipendente.py'
+      - 'scripts/aggiorna_indipendente.py'
       - '.github/workflows/aggiorna-aifa-cnn.yml'
   schedule:
     - cron: '51 * * * *'
@@ -67,7 +67,7 @@ jobs:
 
       - name: Check Python source files
         if: steps.due.outputs.run == 'true'
-        run: python -m py_compile pipeline.py aggiorna_automatico.py aifa_componenti.py classi_complementari.py dashboard_regolatorio.py aggiorna_indipendente.py gazzetta_incrementale.py
+        run: python -m py_compile pipeline.py scripts/aggiorna_automatico.py aifa_componenti.py classi_complementari.py dashboard_regolatorio.py scripts/aggiorna_indipendente.py gazzetta_incrementale.py
 
       - name: Test separazione fonti AIFA
         if: steps.due.outputs.run == 'true'
@@ -79,7 +79,7 @@ jobs:
 
       - name: Update AIFA and validate snapshot
         if: steps.due.outputs.run == 'true'
-        run: python aggiorna_indipendente.py --source aifa_cnn
+        run: python -m scripts.aggiorna_indipendente --source aifa_cnn
 
       - name: Publish AIFA on success
         if: steps.due.outputs.run == 'true'

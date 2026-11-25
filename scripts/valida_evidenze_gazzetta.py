@@ -16,7 +16,7 @@ import sqlite3
 
 from gazzetta_incrementale import coppie_eu_aic_da_testo
 
-DEFAULT_DB=Path(__file__).resolve().parent/'risultati'/'farmaci_automatico.sqlite'
+DEFAULT_DB=Path(__file__).resolve().parents[1]/'risultati'/'farmaci_automatico.sqlite'
 
 
 def file_sicuro(db_dir, filename):

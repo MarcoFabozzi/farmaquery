@@ -23,17 +23,17 @@ jobs:
         with:
           python-version: '3.12'
       - name: Verifica sintassi
-        run: python -m py_compile verifica_qualita_base_dati.py prepara_revisione_collegamenti.py
+        run: python -m py_compile scripts/verifica_qualita_base_dati.py scripts/prepara_revisione_collegamenti.py
       - name: Test regressione revisioni, senza rete
         run: python -m unittest -v tests.test_prepara_revisione_collegamenti
       - name: Audit strutturale e fonti, senza rete
         run: |
-          python verifica_qualita_base_dati.py \
+          python -m scripts.verifica_qualita_base_dati \
             --db risultati/farmaci_automatico.sqlite \
             --output risultati/qualita_strutturale.json --strict
       - name: Prepara revisione collegamenti GU - AIFA - EMA
         run: |
-          python prepara_revisione_collegamenti.py \
+          python -m scripts.prepara_revisione_collegamenti \
             --db risultati/farmaci_automatico.sqlite \
             --output risultati/revisione_collegamenti_gu.json
       - name: Pubblica audit solo dopo successo

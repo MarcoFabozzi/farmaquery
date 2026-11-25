@@ -23,7 +23,7 @@ from urllib.parse import urljoin, urlparse, unquote
 from urllib.request import Request, urlopen
 import zipfile
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "risultati"
 DB_GZ = DATA / "regione_campania.sqlite.gz"
 REPORT = DATA / "stato_fonti" / "regione_campania.json"

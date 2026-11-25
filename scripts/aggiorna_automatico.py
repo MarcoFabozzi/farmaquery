@@ -26,7 +26,7 @@ from urllib.error import HTTPError, URLError
 
 import pipeline
 
-HERE = Path(__file__).resolve().parent
+HERE = Path(__file__).resolve().parents[1]
 DEFAULT_DB = HERE / 'risultati' / 'farmaci_automatico.sqlite'
 SOURCE_PAGE_AIFA = 'https://www.aifa.gov.it/liste-dei-farmaci'
 EMA_MEDICINES_JSON = 'https://www.ema.europa.eu/en/documents/report/medicines-output-medicines_json-report_en.json'

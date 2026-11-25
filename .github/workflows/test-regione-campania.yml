@@ -3,7 +3,7 @@ name: Test ETL note regionali
 on:
   pull_request:
     paths:
-      - 'regione_campania_etl.py'
+      - 'scripts/regione_campania_etl.py'
       - 'regione_campania_dashboard.py'
       - 'dashboard_regolatorio.py'
       - 'tests/test_regione_campania.py'
@@ -26,5 +26,5 @@ jobs:
         run: python -m pip install 'PyMuPDF>=1.24,<2'
       - name: Compila codice e verifica PDF, strutture e SQLite
         run: |
-          python -m py_compile regione_campania_etl.py regione_campania_dashboard.py dashboard_regolatorio.py
+          python -m py_compile scripts/regione_campania_etl.py regione_campania_dashboard.py dashboard_regolatorio.py
           python -m unittest -v tests.test_regione_campania

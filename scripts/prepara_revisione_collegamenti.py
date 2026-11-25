@@ -13,7 +13,7 @@ from pathlib import Path
 import sqlite3
 from pipeline import normalizza
 
-DEFAULT=Path(__file__).resolve().parent/'risultati'/'farmaci_automatico.sqlite'
+DEFAULT=Path(__file__).resolve().parents[1]/'risultati'/'farmaci_automatico.sqlite'
 
 def prepara(db_path=DEFAULT):
     with closing(sqlite3.connect(Path(db_path).resolve().as_uri()+'?mode=ro',uri=True)) as db:

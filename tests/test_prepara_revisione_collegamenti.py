@@ -2,7 +2,7 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
-from prepara_revisione_collegamenti import prepara
+from scripts.prepara_revisione_collegamenti import prepara
 
 class ReportTests(unittest.TestCase):
     def test_name_match_is_never_verified(self):

@@ -5,7 +5,7 @@ on:
     paths:
       - 'classi_complementari.py'
       - 'aifa_componenti.py'
-      - 'aggiorna_indipendente.py'
+      - 'scripts/aggiorna_indipendente.py'
       - 'dashboard_regolatorio.py'
       - 'tests/test_classi_complementari.py'
       - '.github/workflows/aggiorna-aifa-cnn.yml'
@@ -24,6 +24,6 @@ jobs:
         with:
           python-version: '3.12'
       - name: Compila codice sorgente e dashboard
-        run: python -m py_compile pipeline.py classi_aifa.py classi_complementari.py aifa_componenti.py aggiorna_indipendente.py dashboard_regolatorio.py
+        run: python -m py_compile pipeline.py classi_aifa.py classi_complementari.py aifa_componenti.py scripts/aggiorna_indipendente.py dashboard_regolatorio.py
       - name: Test classi ed acquisizione AIFA
         run: python -m unittest -v tests.test_classi_complementari tests.test_classi_aifa tests.test_aifa_componenti tests.test_aifa_principi_attivi

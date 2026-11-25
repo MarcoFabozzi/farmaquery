@@ -14,7 +14,7 @@ import json
 from pathlib import Path
 import sqlite3
 
-BASE = Path(__file__).resolve().parent
+BASE = Path(__file__).resolve().parents[1]
 DEFAULT_DB = BASE / 'risultati' / 'farmaci_automatico.sqlite'
 REQUIRED = ('ema_medicinali', 'aifa_confezioni', 'link_verificati',
             'match_candidati', 'acquisizioni')
