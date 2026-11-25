@@ -1,7 +1,7 @@
 """Test senza API per raggruppamento e classificazione quote TAG."""
 import unittest
 
-from errori_chatbot import EnginePhaseError,diagnose_error,label_error
+from farmaquery.errori_chatbot import EnginePhaseError,diagnose_error,label_error
 from tesi.tag_budget import (semantic_plan,expand_selected,selection_mode,
                              sem_filter_controlled,LOTUS_SELECTION_TIMEOUT_SECONDS,
                              preserve_category_recall)

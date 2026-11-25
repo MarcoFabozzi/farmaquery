@@ -3,8 +3,8 @@ import sqlite3
 import unittest
 from unittest.mock import MagicMock, patch
 
-from errori_chatbot import EnginePhaseError,label_error
-from chatbot_farmaquery import verify_provider
+from farmaquery.errori_chatbot import EnginePhaseError,label_error
+from farmaquery.chatbot_farmaquery import verify_provider
 from tesi import pilota_tag_vs_sql as core
 
 

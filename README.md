@@ -11,10 +11,10 @@ Repository: https://github.com/MarcoFabozzi/farmaquery
 
 | Percorso | Contenuto |
 | --- | --- |
-| `dashboard_regolatorio.py`, `chatbot_widget.py` | Interfaccia Streamlit e chatbot |
-| `chatbot_farmaquery.py`, `tesi/*.py` | Componenti dei motori Text-to-SQL e TAG |
+| `dashboard_regolatorio.py` | Punto di avvio della dashboard Streamlit |
+| `farmaquery/` | Pacchetto dei moduli applicativi: chatbot, motori di accesso, classificazioni e pipeline condivise |
+| `tesi/*.py` | Componenti sperimentali, benchmark e motori Text-to-SQL e TAG |
 | `scripts/` | Programmi di aggiornamento, diagnostica e verifica; da avviare con `python -m scripts.nome` |
-| Moduli `.py` nella radice | Componenti condivisi importati dall'applicazione, dai motori e dagli script |
 | `risultati/` | Database operativo, dati e report di aggiornamento |
 | `risultati/tesi_statico_20261102.sqlite.gz` | Copia congelata per il benchmark, **da non modificare** |
 | `tesi/` | Benchmark, Gold, protocolli, motori, test e materiali della tesi |
@@ -55,7 +55,7 @@ Il test comparativo finale usa un unico SQLite congelato del **2 novembre 2026**
 f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742
 ```
 
-Il codice dell'app, le pipeline, il database operativo, le Gold congelate e i workflow **non sono stati spostati** durante il riordino della documentazione.
+I moduli applicativi sono organizzati nel pacchetto `farmaquery/`, mentre lo script di avvio resta nella radice. I percorsi usati dai workflow e dai test sono stati aggiornati. **Non sono stati modificati il database operativo, lo snapshot congelato o le Gold sperimentali.**
 
 ## Ulteriori documenti
 

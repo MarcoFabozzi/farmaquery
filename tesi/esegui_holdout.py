@@ -14,7 +14,7 @@ from pathlib import Path
 import time
 
 from tesi.valida_gold import read,run as validate_gold
-from chatbot_farmaquery import answer_question
+from farmaquery.chatbot_farmaquery import answer_question
 
 COLUMNS=("id","metodo","modello","snapshot_sha256","risposta","fonti",
          "secondi","token_input","token_output","costo_usd",

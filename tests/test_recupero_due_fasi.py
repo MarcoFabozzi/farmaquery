@@ -26,7 +26,7 @@ from tesi.piano_documentale import (
     PLAN_PROMPT, sql_from_document_plan, document_center_anchors,
     recovery_center_anchors, question_center_anchors,
 )
-from errori_chatbot import EnginePhaseError
+from farmaquery.errori_chatbot import EnginePhaseError
 from tesi.raffinamento_documentale import refinement_batches
 
 QUESTION=(

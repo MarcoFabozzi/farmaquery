@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - 'tesi/build_frozen_demo.py'
-      - 'chatbot_farmaquery.py'
+      - 'farmaquery/chatbot_farmaquery.py'
       - 'tests/test_chatbot_farmaquery.py'
       - 'tesi/collaudo_statico.py'
       - 'tesi/demo_finale_quattro_domande.csv'

@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from classi_aifa import costruisci_indice, leggi_indice, etichetta_classe
+from farmaquery.classi_aifa import costruisci_indice, leggi_indice, etichetta_classe
 
 
 class ClassiAifaTests(unittest.TestCase):

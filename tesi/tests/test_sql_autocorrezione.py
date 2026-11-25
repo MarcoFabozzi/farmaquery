@@ -2,7 +2,7 @@
 import unittest
 from unittest.mock import patch, Mock
 
-from errori_chatbot import EnginePhaseError
+from farmaquery.errori_chatbot import EnginePhaseError
 from tesi.sql_autocorrezione import sql_autocorrezione
 from tesi import pilota_tag_vs_sql as p
 

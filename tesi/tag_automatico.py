@@ -10,7 +10,7 @@ import json
 import re
 import time
 
-from errori_chatbot import EnginePhaseError, diagnose_error
+from farmaquery.errori_chatbot import EnginePhaseError, diagnose_error
 from tesi.contatore_llm import instrument_lotus, measured_engine
 from tesi.piano_documentale import (
     PLAN_PROMPT, document_center_anchors, recovery_center_anchors,

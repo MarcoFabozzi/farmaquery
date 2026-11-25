@@ -2,7 +2,7 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
-from collegamenti_aifa import annota_collegamenti
+from farmaquery.collegamenti_aifa import annota_collegamenti
 
 class LinkLookupTests(unittest.TestCase):
     def test_documented_candidate_and_unlinked(self):

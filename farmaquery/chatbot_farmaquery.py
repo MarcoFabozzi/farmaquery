@@ -15,7 +15,7 @@ import os
 from pathlib import Path
 import tempfile
 
-ROOT=Path(__file__).resolve().parent
+ROOT=Path(__file__).resolve().parents[1]
 DATA=ROOT/"risultati"
 MODEL_DEFAULT="gemini/gemini-3.5-flash-lite"
 REQUIRED=(

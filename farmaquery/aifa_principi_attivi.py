@@ -7,7 +7,7 @@ dal nome commerciale: la seconda tabella elenca le sostanze per confezione.
 from __future__ import annotations
 from collections import defaultdict
 import re
-import pipeline
+from farmaquery import pipeline
 
 
 def principi_per_aic(csv_path, audit=None):

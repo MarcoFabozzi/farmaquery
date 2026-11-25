@@ -5,8 +5,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'aifa_componenti.py'
-      - 'classi_complementari.py'
+      - 'farmaquery/aifa_componenti.py'
+      - 'farmaquery/classi_complementari.py'
       - 'scripts/aggiorna_indipendente.py'
       - '.github/workflows/aggiorna-aifa-cnn.yml'
   schedule:
@@ -67,7 +67,7 @@ jobs:
 
       - name: Check Python source files
         if: steps.due.outputs.run == 'true'
-        run: python -m py_compile pipeline.py scripts/aggiorna_automatico.py aifa_componenti.py classi_complementari.py dashboard_regolatorio.py scripts/aggiorna_indipendente.py gazzetta_incrementale.py
+        run: python -m py_compile farmaquery/pipeline.py scripts/aggiorna_automatico.py farmaquery/aifa_componenti.py farmaquery/classi_complementari.py dashboard_regolatorio.py scripts/aggiorna_indipendente.py farmaquery/gazzetta_incrementale.py
 
       - name: Test separazione fonti AIFA
         if: steps.due.outputs.run == 'true'

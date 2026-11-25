@@ -6,7 +6,7 @@ on:
     branches: [main]
     paths:
       - 'scripts/regione_campania_etl.py'
-      - 'regione_campania_dashboard.py'
+      - 'farmaquery/regione_campania_dashboard.py'
       - '.github/workflows/aggiorna-regione-campania.yml'
   schedule:
     # Aggiornamento giornaliero e controlli successivi in caso di fonte non disponibile.
@@ -40,7 +40,7 @@ jobs:
           sudo apt-get install -y -qq tesseract-ocr tesseract-ocr-ita tesseract-ocr-eng
       - name: Test dei parser e del database regionale
         run: |
-          python -m py_compile scripts/regione_campania_etl.py regione_campania_dashboard.py dashboard_regolatorio.py
+          python -m py_compile scripts/regione_campania_etl.py farmaquery/regione_campania_dashboard.py dashboard_regolatorio.py
           python -m unittest -v tests.test_regione_campania
       - name: Importa archivi Campania e strutture AIFA
         run: |

@@ -20,7 +20,7 @@ import sys
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
-BASE = Path(__file__).resolve().parent
+BASE = Path(__file__).resolve().parents[1]
 RAW = BASE / 'data' / 'raw'
 DEFAULT_DB = BASE / 'risultati' / 'staging_ema_aifa.sqlite'
 SEED = BASE / 'dataset_verificato.json'

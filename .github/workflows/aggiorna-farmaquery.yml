@@ -64,9 +64,9 @@ jobs:
       - name: Controlla dipendenze pipeline
         if: steps.due.outputs.run == 'true'
         run: |
-          test -f pipeline.py || { echo 'Manca pipeline.py'; exit 1; }
+          test -f farmaquery/pipeline.py || { echo 'Manca farmaquery/pipeline.py'; exit 1; }
           test -f scripts/aggiorna_automatico.py || { echo 'Manca scripts/aggiorna_automatico.py'; exit 1; }
-          python -m py_compile pipeline.py scripts/aggiorna_automatico.py scripts/verifica_snapshot.py
+          python -m py_compile farmaquery/pipeline.py scripts/aggiorna_automatico.py scripts/verifica_snapshot.py
 
       - name: Salva database attualmente pubblicato
         if: steps.due.outputs.run == 'true'

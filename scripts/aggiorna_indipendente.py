@@ -17,7 +17,7 @@ import sqlite3
 import tempfile
 from urllib.parse import urlparse
 
-import pipeline
+from farmaquery import pipeline
 from scripts import aggiorna_automatico as etl
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -68,7 +68,7 @@ def normalize(v):
 
 
 def update_ema(db, work):
-    from catalogo_ema import importa_catalogo_ema
+    from farmaquery.catalogo_ema import importa_catalogo_ema
     src=etl.EMA_MEDICINES_JSON
     p=work/'ema.json'
     meta=etl.salva_dataset(src,p,etl.MAX_BYTES['ema'])
@@ -180,7 +180,7 @@ def update_aifa(db, work):
 def update_gu(db, work):
     # L'importatore originale viene eseguito sul database di staging:
     # no modifica a classi o collegamenti documentati.
-    import gazzetta_incrementale
+    from farmaquery import gazzetta_incrementale
     return gazzetta_incrementale.run(db,work,limit_issues=30)
 
 
@@ -207,7 +207,7 @@ def run(source, db_path=DEFAULT_DB):
             elif source=='gazzetta':
                 info=update_gu(con,work)
             elif source in ('aifa_anagrafica','aifa_ah','aifa_cnn'):
-                from aifa_componenti import aggiorna
+                from farmaquery.aifa_componenti import aggiorna
                 info=aggiorna(source,con,work)
             else:
                 raise ValueError('Fonte non autorizzata')
@@ -233,14 +233,14 @@ def run(source, db_path=DEFAULT_DB):
                 raise ValueError('Archivio AIFA completo non generato')
             shutil.copy2(archived,db_path.parent/archived.name)
         if source=='aifa_ah':
-            from classi_aifa import INDICE_FILE, leggi_indice
+            from farmaquery.classi_aifa import INDICE_FILE, leggi_indice
             indice=work/INDICE_FILE
             if not indice.is_file():
                 raise ValueError('Indice completo A/H non generato')
             leggi_indice(indice)
             shutil.copy2(indice,db_path.parent/INDICE_FILE)
         if source=='aifa_cnn':
-            from classi_complementari import CNN_FILE, leggi_indice_cnn
+            from farmaquery.classi_complementari import CNN_FILE, leggi_indice_cnn
             indice=work/CNN_FILE
             if not indice.is_file():
                 raise ValueError('Indice storico C(nn) non generato')

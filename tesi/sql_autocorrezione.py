@@ -6,7 +6,7 @@ non ripete query valide che restituiscono zero righe e non usa LOTUS.
 """
 from __future__ import annotations
 
-from errori_chatbot import EnginePhaseError, label_error
+from farmaquery.errori_chatbot import EnginePhaseError, label_error
 from tesi.contatore_llm import measured_engine
 from tesi import pilota_tag_vs_sql as sql_base
 from tesi.sql_sicurezza_risposta import (

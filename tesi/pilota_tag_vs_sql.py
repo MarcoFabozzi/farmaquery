@@ -15,7 +15,7 @@ import re
 import sqlite3
 import time
 
-from errori_chatbot import EnginePhaseError
+from farmaquery.errori_chatbot import EnginePhaseError
 from tesi.contatore_llm import (direct_attempt,instrument_lotus,measured_engine)
 from tesi.recupero_gu import domanda_gu, candidati_gu
 from tesi.recupero_regionale import regional_candidates, categoria

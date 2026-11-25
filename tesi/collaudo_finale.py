@@ -14,8 +14,8 @@ import sqlite3
 import time
 import traceback
 
-from chatbot_farmaquery import answer_question,prepare_snapshot,model_from_settings
-from errori_chatbot import diagnose_error
+from farmaquery.chatbot_farmaquery import answer_question,prepare_snapshot,model_from_settings
+from farmaquery.errori_chatbot import diagnose_error
 
 CASES=[
  ("S1","SEMPLICE",

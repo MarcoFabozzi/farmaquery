@@ -53,7 +53,7 @@ jobs:
 
       - name: Check Python source files
         if: steps.due.outputs.run == 'true'
-        run: python -m py_compile pipeline.py scripts/aggiorna_automatico.py aifa_componenti.py aifa_principi_attivi.py aifa_archivio_completo.py scripts/aggiorna_indipendente.py gazzetta_incrementale.py
+        run: python -m py_compile farmaquery/pipeline.py scripts/aggiorna_automatico.py farmaquery/aifa_componenti.py farmaquery/aifa_principi_attivi.py farmaquery/aifa_archivio_completo.py scripts/aggiorna_indipendente.py farmaquery/gazzetta_incrementale.py
 
       - name: Test separazione fonti AIFA
         if: steps.due.outputs.run == 'true'

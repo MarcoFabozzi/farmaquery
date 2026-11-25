@@ -16,4 +16,4 @@ Gli altri strumenti di controllo sono `scripts.verifica_snapshot`, `scripts.veri
 
 **Non avviare questi file con** `python scripts/nome.py`: usare `python -m scripts.nome` dalla radice, come nei workflow aggiornati.
 
-I moduli condivisi, richiamati da Streamlit e/o dai processi di aggiornamento (`pipeline.py`, `aifa_componenti.py`, `catalogo_ema.py`, `gazzetta_incrementale.py`, ecc.), restano temporaneamente nella radice per conservare la compatibilità degli import e dei test. Lo snapshot congelato della tesi non viene modificato.
+I moduli condivisi, richiamati da Streamlit e dai processi di aggiornamento (`farmaquery/pipeline.py`, `farmaquery/aifa_componenti.py`, `farmaquery/catalogo_ema.py`, `farmaquery/gazzetta_incrementale.py`, ecc.), si trovano nel pacchetto `farmaquery/`. Lo snapshot congelato della tesi non viene modificato.

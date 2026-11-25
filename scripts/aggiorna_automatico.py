@@ -24,7 +24,7 @@ from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
-import pipeline
+from farmaquery import pipeline
 
 HERE = Path(__file__).resolve().parents[1]
 DEFAULT_DB = HERE / 'risultati' / 'farmaci_automatico.sqlite'

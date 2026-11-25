@@ -4,7 +4,7 @@ Eseguire: python -m unittest -v test_gazzetta_incrementale.py
 """
 import unittest
 from unittest.mock import patch
-import gazzetta_incrementale as gu
+from farmaquery import gazzetta_incrementale as gu
 
 
 class GazzettaTests(unittest.TestCase):

@@ -3,9 +3,9 @@ name: Verifica chatbot Text-to-SQL e LOTUS
 on:
   pull_request:
     paths:
-      - 'chatbot_farmaquery.py'
-      - 'chatbot_widget.py'
-      - 'errori_chatbot.py'
+      - 'farmaquery/chatbot_farmaquery.py'
+      - 'farmaquery/chatbot_widget.py'
+      - 'farmaquery/errori_chatbot.py'
       - 'tesi/pilota_tag_vs_sql.py'
       - 'tesi/tests/test_recupero_tag.py'
       - 'tests/test_errori_chatbot.py'
@@ -34,7 +34,7 @@ jobs:
           python -m pip check
       - name: Compila app e verifica i moduli reali
         run: |
-          python -m py_compile dashboard_regolatorio.py chatbot_widget.py chatbot_farmaquery.py errori_chatbot.py tesi/pilota_tag_vs_sql.py
+          python -m py_compile dashboard_regolatorio.py farmaquery/chatbot_widget.py farmaquery/chatbot_farmaquery.py farmaquery/errori_chatbot.py tesi/pilota_tag_vs_sql.py
           python -m unittest discover -s tests -p 'test_assistente_flottante.py' -v
           python -m unittest discover -s tests -p 'test_chatbot_farmaquery.py' -v
           python -m unittest discover -s tests -p 'test_errori_chatbot.py' -v
@@ -49,7 +49,7 @@ jobs:
       - name: Simula la creazione del DB condiviso senza LLM
         run: |
           python - <<'PY'
-          import chatbot_farmaquery as c
+          from farmaquery import chatbot_farmaquery as c
           from tesi import pilota_tag_vs_sql as m
           version=c.snapshot_version()
           path,meta=c.prepare_snapshot()

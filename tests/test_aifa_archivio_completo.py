@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from aifa_archivio_completo import crea_archivio,estrai_archivio,ricerca_confezioni
+from farmaquery.aifa_archivio_completo import crea_archivio,estrai_archivio,ricerca_confezioni
 
 def row(n):
     return {'aic':str(n).zfill(9),'nome':'Farmaco Test','principio_attivo':'Molecola',
@@ -17,7 +17,7 @@ class ArchiveTests(unittest.TestCase):
                                   'https://drive.aifa.gov.it/farmaci/confezioni_fornitura.csv',min_rows=100)
             self.assertEqual(result['confezioni_totali'],100)
             dest=Path(t)/'confezioni.sqlite'
-            with patch('aifa_archivio_completo.MIN_ROWS',100):
+            with patch('farmaquery.aifa_archivio_completo.MIN_ROWS',100):
                 self.assertEqual(estrai_archivio(src,dest,result['sha256_archivio']),100)
             self.assertEqual(len(ricerca_confezioni(dest,'Molecola')),100)
             self.assertEqual(len(ricerca_confezioni(dest,'000000042')),1)

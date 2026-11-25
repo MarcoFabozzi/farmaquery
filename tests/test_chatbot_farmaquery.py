@@ -9,7 +9,7 @@ import sqlite3
 import unittest
 from unittest.mock import patch
 
-import chatbot_farmaquery as chat
+from farmaquery import chatbot_farmaquery as chat
 
 
 class ChatbotTests(unittest.TestCase):
