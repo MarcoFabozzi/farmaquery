@@ -1,7 +1,7 @@
 import sqlite3
 import json
 import unittest
-from catalogo_ema import importa_catalogo_ema
+from farmaquery.catalogo_ema import importa_catalogo_ema
 
 def rec(n,status='Authorised'):
     return {'ema_id':f'EMEA/H/C/{n:06d}','nome':f'Medicine {n}','principio_attivo':'ingredient',

@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from classi_complementari import (
+from farmaquery.classi_complementari import (
     costruisci_indice_cnn, leggi_indice_cnn, riferimenti_cnn,
     etichetta_cnn_storica, classe_con_fonti, classe_sintetica_demo,
 )

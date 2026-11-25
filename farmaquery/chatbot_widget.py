@@ -17,8 +17,8 @@ from datetime import datetime,timezone
 from urllib.parse import urlsplit
 
 import streamlit as st
-from errori_chatbot import label_error
-from chatbot_farmaquery import (
+from farmaquery.errori_chatbot import label_error
+from farmaquery.chatbot_farmaquery import (
     answer_question, enable_server_key, history_key,
     model_from_settings, prepare_snapshot, snapshot_version,
     verify_provider,
@@ -152,7 +152,7 @@ def _citation_details(ref):
 
 @st.cache_data(ttl=3600,max_entries=2,show_spinner=False)
 def _cached_pdf_from_archive(url,document):
-    from demo_fonti_pdf import pdf_from_official_archive
+    from farmaquery.demo_fonti_pdf import pdf_from_official_archive
     return pdf_from_official_archive(url,document)
 
 

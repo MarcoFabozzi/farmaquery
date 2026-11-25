@@ -3,7 +3,7 @@ import io
 import unittest
 from zipfile import ZipFile
 
-from demo_fonti_pdf import extract_cited_pdf, _validated_regional_archive
+from farmaquery.demo_fonti_pdf import extract_cited_pdf, _validated_regional_archive
 
 
 def build_zip(files):

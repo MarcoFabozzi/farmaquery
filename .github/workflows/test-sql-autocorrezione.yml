@@ -8,9 +8,9 @@ on:
       - 'tesi/tests/test_runner_holdout_congelato.py'
       - 'tesi/sql_sicurezza_risposta.py'
       - 'tesi/tests/test_sql_controlli_v2.py'
-      - 'chatbot_widget.py'
+      - 'farmaquery/chatbot_widget.py'
       - 'tesi/tests/test_sql_autocorrezione.py'
-      - 'chatbot_farmaquery.py'
+      - 'farmaquery/chatbot_farmaquery.py'
       - '.github/workflows/test-sql-autocorrezione.yml'
   workflow_dispatch:
 
@@ -32,5 +32,5 @@ jobs:
           python -m pip check
       - name: Compilazione e test senza API
         run: |
-          python -m py_compile tesi/sql_autocorrezione.py tesi/sql_sicurezza_risposta.py chatbot_farmaquery.py chatbot_widget.py
+          python -m py_compile tesi/sql_autocorrezione.py tesi/sql_sicurezza_risposta.py farmaquery/chatbot_farmaquery.py farmaquery/chatbot_widget.py
           python -m unittest -v tesi.tests.test_sql_autocorrezione tesi.tests.test_sql_controlli_v2 tesi.tests.test_runner_holdout_congelato tests.test_chatbot_farmaquery

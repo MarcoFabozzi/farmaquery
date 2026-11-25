@@ -1,7 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
-from aifa_principi_attivi import principi_per_aic,arricchisci_confezioni
+from farmaquery.aifa_principi_attivi import principi_per_aic,arricchisci_confezioni
 
 class PrincipiAifaTest(unittest.TestCase):
     def test_join_by_aic_and_multiple_actives(self):

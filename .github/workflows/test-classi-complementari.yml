@@ -3,8 +3,8 @@ name: Test integrazione classi C e Cnn
 on:
   pull_request:
     paths:
-      - 'classi_complementari.py'
-      - 'aifa_componenti.py'
+      - 'farmaquery/classi_complementari.py'
+      - 'farmaquery/aifa_componenti.py'
       - 'scripts/aggiorna_indipendente.py'
       - 'dashboard_regolatorio.py'
       - 'tests/test_classi_complementari.py'
@@ -24,6 +24,6 @@ jobs:
         with:
           python-version: '3.12'
       - name: Compila codice sorgente e dashboard
-        run: python -m py_compile pipeline.py classi_aifa.py classi_complementari.py aifa_componenti.py scripts/aggiorna_indipendente.py dashboard_regolatorio.py
+        run: python -m py_compile farmaquery/pipeline.py farmaquery/classi_aifa.py farmaquery/classi_complementari.py farmaquery/aifa_componenti.py scripts/aggiorna_indipendente.py dashboard_regolatorio.py
       - name: Test classi ed acquisizione AIFA
         run: python -m unittest -v tests.test_classi_complementari tests.test_classi_aifa tests.test_aifa_componenti tests.test_aifa_principi_attivi

@@ -3,7 +3,7 @@ import sqlite3
 import unittest
 from unittest.mock import patch
 
-from errori_chatbot import EnginePhaseError
+from farmaquery.errori_chatbot import EnginePhaseError
 from tesi.pilota_tag_vs_sql import sql_method, SQL_GENERATION_PROMPT, _sql_schema, validate_sql
 
 

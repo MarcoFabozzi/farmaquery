@@ -7,7 +7,7 @@ import json
 import sqlite3
 import tempfile
 
-from aifa_archivio_completo import estrai_archivio
+from farmaquery.aifa_archivio_completo import estrai_archivio
 
 ROOT=Path(__file__).resolve().parents[1]
 DATA=ROOT/'risultati'

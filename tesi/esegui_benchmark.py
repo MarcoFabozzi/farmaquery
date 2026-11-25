@@ -19,7 +19,7 @@ import sys
 import time
 
 from tesi import pilota_tag_vs_sql as motori
-from errori_chatbot import diagnose_error
+from farmaquery.errori_chatbot import diagnose_error
 from tesi.tag_budget import selection_mode
 
 FIELDS=["id","categoria","domanda","metodo","modello","snapshot_sha256",

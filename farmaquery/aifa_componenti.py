@@ -15,9 +15,9 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from scripts import aggiorna_automatico as etl
-import pipeline
+from farmaquery import pipeline
 
-ROOT=Path(__file__).resolve().parent
+ROOT=Path(__file__).resolve().parents[1]
 LEGACY_REPORT=ROOT/'risultati'/'rapporto_automatico.json'
 STATES=ROOT/'risultati'/'stato_fonti'
 ANAGRAFICA='https://drive.aifa.gov.it/farmaci/confezioni_fornitura.csv'
@@ -122,8 +122,8 @@ def aggiorna_anagrafica(db,work):
     if len(source_rows)<1000:
         raise ValueError('Dataset anagrafica AIFA troppo piccolo o danneggiato')
     # Il principio attivo e' pubblicato in un secondo CSV AIFA, collegato per AIC.
-    from aifa_principi_attivi import principi_per_aic, arricchisci_confezioni
-    pa_path=Path(work)/'aifa_principi_attivi.csv'
+    from farmaquery.aifa_principi_attivi import principi_per_aic, arricchisci_confezioni
+    pa_path=Path(work)/'farmaquery.aifa_principi_attivi.csv'
     pa_meta=etl.salva_dataset(PRINCIPI,pa_path,100_000_000)
     pa_audit={}
     pa_map,pa_rows=principi_per_aic(pa_path,audit=pa_audit)
@@ -144,7 +144,7 @@ def aggiorna_anagrafica(db,work):
     for aic,record in chosen.items():
         if aic in old and norm(old[aic])!=norm(record['nome']):
             raise ValueError('Denominazione AIC cambiata: '+aic+'; conservato database precedente')
-    from aifa_archivio_completo import crea_archivio, ARCHIVE_NAME
+    from farmaquery.aifa_archivio_completo import crea_archivio, ARCHIVE_NAME
     archive=crea_archivio(seen.values(),Path(work)/ARCHIVE_NAME,meta['sha256'],ANAGRAFICA)
     sid=pipeline.registra_fonte(db,'aifa',path,ANAGRAFICA,
         etichetta='FONTE_ISTITUZIONALE_ANAGRAFICA_NON_PROVA_CLASSE_VIGENTE')
@@ -207,7 +207,7 @@ def aggiorna_ah(db,work):
     # Il database principale contiene solo un sottoinsieme AIFA.
     # Conserviamo tutte le classi A/H in un indice datato separato,
     # da usare anche per le confezioni dell'archivio nazionale completo.
-    from classi_aifa import costruisci_indice, INDICE_FILE
+    from farmaquery.classi_aifa import costruisci_indice, INDICE_FILE
     indice_info=costruisci_indice(classes,date_ref,meta,Path(work)/INDICE_FILE)
     known={row[0] for row in db.execute('SELECT aic FROM aifa_confezioni')}
     inserted=0
@@ -246,7 +246,7 @@ def aggiorna_cnn(db,work):
         raise ValueError('Elenco C(nn) troppo piccolo o non interpretabile')
     if not date_ref:
         raise ValueError('Data di riferimento elenco C(nn) mancante')
-    from classi_complementari import costruisci_indice_cnn, CNN_FILE
+    from farmaquery.classi_complementari import costruisci_indice_cnn, CNN_FILE
     indice_cnn=costruisci_indice_cnn(
         records,date_ref,dict(url=url,**meta),Path(work)/CNN_FILE
     )

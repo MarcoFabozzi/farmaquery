@@ -57,7 +57,7 @@ jobs:
 
       - name: Check Python source files
         if: steps.due.outputs.run == 'true'
-        run: python -m py_compile pipeline.py scripts/aggiorna_automatico.py scripts/aggiorna_indipendente.py gazzetta_incrementale.py
+        run: python -m py_compile farmaquery/pipeline.py scripts/aggiorna_automatico.py scripts/aggiorna_indipendente.py farmaquery/gazzetta_incrementale.py
 
       - name: Test di regressione Gazzetta (senza rete)
         if: steps.due.outputs.run == 'true'

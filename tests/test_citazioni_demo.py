@@ -1,7 +1,7 @@
 """Controlli demo: documento, pagina e collegamenti verificabili."""
 import unittest
 
-from chatbot_widget import _citation_details
+from farmaquery.chatbot_widget import _citation_details
 
 
 class CitationPresentationTests(unittest.TestCase):

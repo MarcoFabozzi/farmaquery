@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
-WIDGET=ROOT/"chatbot_widget.py"
+WIDGET=ROOT/"farmaquery/chatbot_widget.py"
 DASHBOARD=ROOT/"dashboard_regolatorio.py"
 
 
@@ -62,7 +62,7 @@ class FloatingAssistantTests(unittest.TestCase):
         self.assertIn('st.rerun(scope="fragment")',src)
 
     def test_screenshot_container_does_not_pass_invalid_height(self):
-        import chatbot_widget as widget
+        from farmaquery import chatbot_widget as widget
         from unittest.mock import sentinel
 
         with patch.object(widget.st,"container",return_value=sentinel.container) as container:
@@ -74,7 +74,7 @@ class FloatingAssistantTests(unittest.TestCase):
             container.assert_called_once_with(height=560,border=True)
 
     def test_screenshot_cleanup_preserves_full_raw_error(self):
-        import chatbot_widget as widget
+        from farmaquery import chatbot_widget as widget
         item={"role":"assistant",
               "text":"Query non eseguibile. (fase: esecuzione SQL; codice: SQL; tipo: OperationalError).",
               "stato":"ERRORE"}
@@ -85,7 +85,7 @@ class FloatingAssistantTests(unittest.TestCase):
     def test_csv_export_preserves_full_question_answer_and_telemetry(self):
         import csv
         import io
-        import chatbot_widget as widget
+        from farmaquery import chatbot_widget as widget
         payload={
             "modello":"gemini/example",
             "snapshot_sha256":"test-sha",
@@ -120,7 +120,7 @@ class FloatingAssistantTests(unittest.TestCase):
         self.assertIn('"Scarica CSV"',WIDGET.read_text(encoding="utf-8"))
 
     def test_nuova_conversazione_cancella_tutte_tre_le_chat(self):
-        import chatbot_widget as widget
+        from farmaquery import chatbot_widget as widget
         state={
             "farmaquery_chat_sql":[{"role":"user","text":"prima domanda"}],
             "farmaquery_chat_tag":[{"role":"assistant","text":"risposta"}],

@@ -117,7 +117,7 @@ class ExperimentsTests(unittest.TestCase):
                     tag_fn=tag,sql_fn=sql)
 
     def test_quota_interrompe_la_serie_senza_chiamare_sql(self):
-        from errori_chatbot import EnginePhaseError
+        from farmaquery.errori_chatbot import EnginePhaseError
         class RateLimitError(Exception):
             status_code=429
         invoked={"tag":0,"sql":0}

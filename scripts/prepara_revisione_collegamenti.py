@@ -11,7 +11,7 @@ from datetime import datetime,timezone
 import json
 from pathlib import Path
 import sqlite3
-from pipeline import normalizza
+from farmaquery.pipeline import normalizza
 
 DEFAULT=Path(__file__).resolve().parents[1]/'risultati'/'farmaci_automatico.sqlite'
 

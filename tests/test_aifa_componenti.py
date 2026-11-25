@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-import aifa_componenti as aifa
+from farmaquery import aifa_componenti as aifa
 
 
 class AIFAComponentsTests(unittest.TestCase):

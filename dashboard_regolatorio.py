@@ -181,7 +181,7 @@ def ultimo(fonte):
 
 @st.cache_resource(show_spinner=False)
 def archivio_aifa(path,version):
-    from aifa_archivio_completo import estrai_archivio
+    from farmaquery.aifa_archivio_completo import estrai_archivio
     temp=Path(tempfile.mkdtemp(prefix='farmaquery_aifa_'))/'aifa.sqlite'
     state=DATA/'stato_fonti'/'aifa_anagrafica.json'
     expected=None
@@ -194,7 +194,7 @@ def archivio_aifa(path,version):
 
 @st.cache_data(show_spinner=False,max_entries=4)
 def indice_classi_aifa(path,version):
-    from classi_aifa import leggi_indice
+    from farmaquery.classi_aifa import leggi_indice
     return leggi_indice(path)
 
 
@@ -232,12 +232,12 @@ def etichetta_ah(record):
 
 @st.cache_data(show_spinner=False,max_entries=4)
 def indice_cnn(path,version):
-    from classi_complementari import leggi_indice_cnn
+    from farmaquery.classi_complementari import leggi_indice_cnn
     return leggi_indice_cnn(path)
 
 
 def riferimenti_cnn_per_confezioni(packages):
-    from classi_complementari import riferimenti_cnn
+    from farmaquery.classi_complementari import riferimenti_cnn
     if not AIFA_CNN.is_file():
         return {}
     try:
@@ -443,7 +443,7 @@ if requested_aic is not None:
     st.stop()
 
 
-from regione_campania_dashboard import conta_note_regionali, mostra_sezione_regione
+from farmaquery.regione_campania_dashboard import conta_note_regionali, mostra_sezione_regione
 
 ema=query('SELECT COUNT(*) AS n FROM ema_medicinali')[0]['n']
 gu=query('SELECT COUNT(*) AS n FROM gazzetta_atti')[0]['n']
@@ -514,8 +514,8 @@ if term.strip():
         st.info('Nessuna scheda nel catalogo EMA importato. Il medicinale potrebbe essere autorizzato a livello nazionale: consulta i risultati AIFA sotto.')
 
     if AIFA.is_file():
-        from aifa_archivio_completo import ricerca_confezioni
-        from collegamenti_aifa import annota_collegamenti
+        from farmaquery.aifa_archivio_completo import ricerca_confezioni
+        from farmaquery.collegamenti_aifa import annota_collegamenti
         try:
             file_aifa=archivio_aifa(str(AIFA),AIFA.stat().st_mtime_ns)
             packages=annota_collegamenti(DB,ricerca_confezioni(file_aifa,term,limit=50))
@@ -683,5 +683,5 @@ st.caption('Le date indicano acquisizioni delle fonti o, per la Regione, la data
 st.caption('Prototipo accademico: le informazioni non certificano la classificazione o la rimborsabilità corrente dei medicinali.')
 
 # Assistente sempre raggiungibile dall'icona in basso a destra.
-from chatbot_widget import render_assistant
+from farmaquery.chatbot_widget import render_assistant
 render_assistant()
