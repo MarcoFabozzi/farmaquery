@@ -2,7 +2,7 @@
   "tipo": "SNAPSHOT_STATICO_DEMO_TESI",
   "data_fonte": "2026-11-02",
   "snapshot_origine_sha256": "bb43ae4b00b6d581f4209ad83cbf9945054628868e6a52c59470ad32cada9a53",
-  "sha256_sqlite": "7f5a4bea7864931e1af1d4a50c1e487edf8f15e89a2e813ea66578d46a3c66f0",
+  "sha256_sqlite": "f0e5e1935cc00b844996234e78756f61338aa95a70bebcfc8b256382b327a742",
   "conteggi": {
     "note": 380,
     "pagine": 942,

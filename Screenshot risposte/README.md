@@ -11,12 +11,12 @@ Questa cartella raccoglie gli **screenshot delle risposte originali** dei due mo
 
 ## Convenzione per i file
 
-Salvare ciascuno screenshot nella **sottocartella del motore corrispondente**, conservando il numero della domanda e il nome originale già adottato:
+Gli screenshot già pubblicati usano la numerazione seguente:
 
-- `Q01_Text-to-SQL.png`
-- `Q01_TAG.png`
-- `Q13_TAG_01.png`, `Q13_TAG_02.png` per risposte che richiedono più immagini.
-- `Q40_Text-to-SQL.png`, `Q40_TAG.png` nella cartella del test SQL.
+- In `benchmark_35/`, i file si chiamano `1.png` … `35.png` in **entrambe** le cartelle del motore.
+- In `test_sql_15/`, i file si chiamano `36.png` … `50.png`.
+- Se una risposta richiede più schermate, i nomi sono del tipo `41-1.png` e `41-2.png`: il suffisso indica l'ordine delle immagini della **stessa domanda**.
+- L'indicazione del motore è nel nome della **cartella**, non nel nome del file.
 
 Conservare l'ordine cronologico delle immagini quando una risposta occupa più schermate. Preferire PNG per il testo, oppure JPG ad alta leggibilità. Non modificare né ricostruire le risposte raffigurate.
 
@@ -28,4 +28,6 @@ Conservare l'ordine cronologico delle immagini quando una risposta occupa più s
 - Non introdurre numeri, valutazioni o interpretazioni nelle immagini che non appartenevano alle risposte originali.
 - Gli esperimenti si riferiscono allo snapshot congelato del **2 novembre 2026**: non confondere gli screenshot con risposte della dashboard aggiornata in seguito.
 
-Le quattro sottocartelle si trovano in **`Screenshot risposte/` nella radice del repository**. Gli screenshot PNG non sono ancora stati caricati.
+Le quattro sottocartelle si trovano in **`Screenshot risposte/` nella radice del repository**.
+
+**Caricamento verificato il 25/11/2026:** 35 immagini Text-to-SQL e 35 TAG per Q01–Q35; 17 immagini Text-to-SQL e 21 TAG per Q36–Q50, per **108 PNG complessivi**. Tutte le 50 domande sono rappresentate da entrambi i motori. Alcune risposte SQL sono suddivise in due PNG.

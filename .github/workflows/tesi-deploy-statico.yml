@@ -1,4 +1,4 @@
-name: Tesi - costruisci e distribuisci base statica 02-11-2026
+name: Tesi - verifica e genera artifact snapshot statico (senza pubblicazione)
 
 on:
   pull_request:
@@ -9,15 +9,10 @@ on:
       - 'tesi/collaudo_statico.py'
       - 'tesi/demo_finale_quattro_domande.csv'
       - '.github/workflows/tesi-deploy-statico.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'tesi/build_frozen_demo.py'
-      - '.github/workflows/tesi-deploy-statico.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   actions: read
 
 jobs:
@@ -44,6 +39,8 @@ jobs:
           ref: 630613a1b3e5353fe33e207e843fb8dad5591b2a
           path: frozen_gu
           persist-credentials: false
+      # La ricostruzione è soltanto un esperimento: non sovrascrive il riferimento
+      # scientifico originale conservato nel repository.
       - name: Prepara SQLite statico e manifesta SHA-256
         run: |
           python -m tesi.build_frozen_demo \
@@ -94,20 +91,8 @@ jobs:
             frozen_source/collaudo_quattro_casi.json
           retention-days: 90
           if-no-files-found: error
-      - name: Distribuisci i due file statici nel repository
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add risultati/tesi_statico_20261102.sqlite.gz risultati/tesi_statico_20261102.json
-          if git diff --cached --quiet; then
-            echo "La fotografia statica è già distribuita."
-          else
-            git commit -m "tesi: distribuisce SQLite statico del 02-11-2026 [skip ci]"
-            git push origin HEAD:main
-          fi
       - name: Interroga TAG e Text-to-SQL sullo stesso SQLite congelato
-        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && vars.FARMAQUERY_RUN_LIVE_DEMO == 'true')
+        if: github.event_name == 'workflow_dispatch'
         continue-on-error: true
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -127,7 +112,7 @@ jobs:
               --max-domande 4 --conferma-chiamate
           fi
       - name: Conserva risposte effettive, senza attribuire punteggi gold
-        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && vars.FARMAQUERY_RUN_LIVE_DEMO == 'true')
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: tesi-demo-risposte-dei-due-motori
