@@ -1,32 +1,32 @@
 {
   "fonte": "aifa_ah",
   "esito": "OK",
-  "ultimo_successo_utc": "2026-11-24T06:35:02+00:00",
-  "precedente_successo_utc": "2026-11-23T09:02:28+00:00",
+  "ultimo_successo_utc": "2026-11-25T08:06:35+00:00",
+  "precedente_successo_utc": "2026-11-24T06:35:02+00:00",
   "statistiche": {
-    "data_riferimento_ah": "2026-06-30",
-    "a_file": 10766,
-    "h_file": 2487,
-    "nuove_righe_snapshot": 0,
-    "confezioni_abbinate": 2186,
+    "data_riferimento_ah": "2026-07-31",
+    "a_file": 10767,
+    "h_file": 2497,
+    "nuove_righe_snapshot": 2188,
+    "confezioni_abbinate": 2188,
     "indice_nazionale_ah": {
       "file_indice": "aifa_classi_ah.json",
-      "aic_indicizzate": 13253,
-      "data_riferimento": "2026-06-30"
+      "aic_indicizzate": 13264,
+      "data_riferimento": "2026-07-31"
     },
     "metodo_scoperta": "pagina_aifa",
-    "ultima_scoperta_indice_utc": "2026-11-24T06:34:59+00:00"
+    "ultima_scoperta_indice_utc": "2026-11-25T08:06:32+00:00"
   },
   "fonti": {
     "aifa_a": {
-      "url": "https://www.aifa.gov.it/documents/20142/3815901/Classe-A_per_nome-commerciale_30-6-2026.csv",
-      "bytes": 1520349,
-      "sha256": "2ea1df4035c5495efe70472e6dd2589af223521956a978f39714fa14eb4a1827"
+      "url": "https://www.aifa.gov.it/documents/20142/3815901/Classe-A_per_nome-commerciale_31-07-2026.csv",
+      "bytes": 1523904,
+      "sha256": "9c6cede237dd213718595db9cdaa70660b5fc202a2a5390b065ec2e6923c5e50"
     },
     "aifa_h": {
-      "url": "https://www.aifa.gov.it/documents/20142/3815901/Classe-H_per_nome-commerciale_30-6-2026.csv",
-      "bytes": 396740,
-      "sha256": "dba87eb2512aef2c156de64c1385f953ed2ca44ddd6f8e86abf42edfd6655948"
+      "url": "https://www.aifa.gov.it/documents/20142/3815901/Classe-H_per_nome-commerciale_31-07-2026.csv",
+      "bytes": 399241,
+      "sha256": "cac76337feb6b5b6cf0c8555795c92c07660068b8b4819da0d49b2ddebe3e6c5"
     }
   },
   "nota": "Controllo della fonte completato, non certificazione di stato regolatorio corrente"
