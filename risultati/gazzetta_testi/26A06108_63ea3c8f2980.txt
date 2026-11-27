@@ -1,0 +1,64 @@
+Estratto determina IP n. 678 del 9 novembre 2026
+Descrizione del medicinale da importare e attribuzione del numero
+di identificazione: al medicinale ADEMPAS 0.5 mg  film-coated  tablet
+42  tablets  autorizzato  dall'European  Medicines  Agency  -  EMA  e
+identificato con n. EU/1/13/907/001, sono assegnati i  seguenti  dati
+identificativi nazionali.
+Importatore: Orifarm A/S con sede legale  in  Energivej  15  5260
+Odense S, Danimarca.
+Confezione: ADEMPAS 0,5 mg - compressa rivestita con film  -  uso
+orale - blister (PP/ALU) - 42 compresse.
+Codice A.I.C.: 053222016 (in base 10), 1LS6N0 (in base 32).
+Forma farmaceutica: compressa rivestita.
+Composizione:
+ogni compressa rivestita con film contiene:
+principio attivo: 0,5 mg di riociguat;
+eccipienti:
+nucleo   della   compressa:   cellulosa   microcristallina,
+crospovidone  (tipo  B),  ipromellosa  5  cP,  lattosio   monoidrato,
+magnesio stearato  e  sodio  laurilsolfato  (vedere  al  termine  del
+paragrafo 2 per ulteriori informazioni sul lattosio e sul sodio).
+Rivestimento    della    compressa:     idrossipropilcellulosa,
+ipromellosa 3cP, glicole propilenico (E 1520) e biossido  di  titanio
+(E 171).
+«Adempas» 1 mg, 1,5 mg compresse  contengono  anche  ossido  di
+ferro giallo (E 172). «Adempas» 2 mg e 2,5  mg  compresse  contengono
+anche ossido di ferro giallo (E172) e ossido di ferro rosso (E 172).
+Classificazione ai fini della rimborsabilita'
+Confezione: ADEMPAS 0,5 mg - compressa rivestita con film  -  uso
+orale - blister (PP/ALU) - 42 compresse.
+Codice A.I.C.: 053222016.
+Classe di rimborsabilita': Cnn.
+Classificazione ai fini della fornitura
+Confezione: ADEMPAS 0,5 mg - compressa rivestita con film  -  uso
+orale - blister (PP/ALU) - 42 compresse.
+Codice A.I.C.: 053222016.
+RRL -  medicinale  soggetto  a  prescrizione  medica  limitativa,
+vendibile al pubblico su prescrizione  di  centri  ospedalieri  o  di
+specialisti - cardiochirurgo, cardiologo, pneumologo e reumatologo.
+Stampati
+Le confezioni del medicinale importato  devono  essere  poste  in
+commercio con gli stampati conformi ai testi approvati  dall'EMA  con
+l'indicazione  nella  parte  di  pertinenza  nazionale  dei  dati  di
+identificazione di cui alla presente determina.
+In ottemperanza all'art. 80, commi 1 e 3, del decreto legislativo
+24 aprile 2006, n. 219 e successive modificazioni ed integrazioni, il
+foglio illustrativo e le etichette devono essere  redatti  in  lingua
+italiana e, limitatamente ai medicinali in commercio nella  Provincia
+di Bolzano, anche in lingua  tedesca.  Il  titolare  dell'A.I.C.  che
+intende avvalersi dell'uso complementare di lingue estere deve  darne
+preventiva  comunicazione  all'AIFA  e  tenere  a   disposizione   la
+traduzione giurata dei testi in lingua tedesca e/o  in  altra  lingua
+estera. In caso di inosservanza delle disposizioni sull'etichettatura
+e sul foglio illustrativo si applicano le sanzioni di cui all'art. 82
+del suddetto decreto legislativo.
+Farmacovigilanza e gestione delle segnalazioni
+di sospette reazioni avverse
+Il  titolare  dell'AIP  e'  tenuto  a  comunicare   al   titolare
+dell'A.I.C. del medicinale importato, l'avvenuto rilascio dell'AIP  e
+le eventuali segnalazioni di sospetta  reazione  avversa  di  cui  e'
+venuto a conoscenza, cosi' da consentire allo stesso di assolvere gli
+obblighi di farmacovigilanza.
+Decorrenza di efficacia della determina:  dal  giorno  successivo
+alla sua pubblicazione  nella  Gazzetta  Ufficiale  della  Repubblica
+italiana.
