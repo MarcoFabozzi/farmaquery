@@ -1,8 +1,8 @@
 {
   "fonte": "aifa_ah",
   "esito": "OK",
-  "ultimo_successo_utc": "2026-11-27T08:05:54+00:00",
-  "precedente_successo_utc": "2026-11-26T06:36:47+00:00",
+  "ultimo_successo_utc": "2026-11-28T06:40:25+00:00",
+  "precedente_successo_utc": "2026-11-27T08:05:54+00:00",
   "statistiche": {
     "data_riferimento_ah": "2026-07-31",
     "a_file": 10767,
@@ -15,7 +15,7 @@
       "data_riferimento": "2026-07-31"
     },
     "metodo_scoperta": "pagina_aifa",
-    "ultima_scoperta_indice_utc": "2026-11-27T08:05:52+00:00"
+    "ultima_scoperta_indice_utc": "2026-11-28T06:40:22+00:00"
   },
   "fonti": {
     "aifa_a": {
